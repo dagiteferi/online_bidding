@@ -218,12 +218,19 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete_item' && isset($_GET['i
         $item = $stmt->fetch();
 
         if ($item) {
-            // Delete related offers first
+            // Step 1: Delete related transactions (via offers)
+            $stmt = $pdo->prepare("DELETE t FROM transactions t 
+                                   JOIN offers o ON t.offer_id = o.id 
+                                   WHERE o.item_id = ?");
+            $stmt->execute([$item_id]);
+            error_log("Deleted transactions for item_id: $item_id");
+
+            // Step 2: Delete related offers
             $stmt = $pdo->prepare("DELETE FROM offers WHERE item_id = ?");
             $stmt->execute([$item_id]);
             error_log("Deleted offers for item_id: $item_id");
 
-            // Delete the image file if it exists
+            // Step 3: Delete the image file if it exists
             if (!empty($item['image'])) {
                 $image_path = dirname(__DIR__) . '/' . $item['image'];
                 if (file_exists($image_path)) {
@@ -232,11 +239,11 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete_item' && isset($_GET['i
                 }
             }
 
-            // Delete the item from the database
+            // Step 4: Delete the item from the database
             $stmt = $pdo->prepare("DELETE FROM items WHERE id = ? AND posted_by = ?");
             $stmt->execute([$item_id, $_SESSION['user_id']]);
             if ($stmt->rowCount() > 0) {
-                $success = "Item and related offers deleted successfully!";
+                $success = "Item, related offers, and transactions deleted successfully!";
                 error_log("Item deleted - item_id: $item_id, admin_id: {$_SESSION['user_id']}");
             } else {
                 $error = "Item not found or you don't have permission to delete it.";
@@ -338,12 +345,19 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete_buy_request' && isset($
         $request = $stmt->fetch();
 
         if ($request) {
-            // Delete related offers first
+            // Step 1: Delete related transactions (via offers)
+            $stmt = $pdo->prepare("DELETE t FROM transactions t 
+                                   JOIN offers o ON t.offer_id = o.id 
+                                   WHERE o.request_id = ?");
+            $stmt->execute([$request_id]);
+            error_log("Deleted transactions for request_id: $request_id");
+
+            // Step 2: Delete related offers
             $stmt = $pdo->prepare("DELETE FROM offers WHERE request_id = ?");
             $stmt->execute([$request_id]);
             error_log("Deleted offers for request_id: $request_id");
 
-            // Delete the image file if it exists
+            // Step 3: Delete the image file if it exists
             if (!empty($request['image'])) {
                 $image_path = dirname(__DIR__) . '/' . $request['image'];
                 if (file_exists($image_path)) {
@@ -352,11 +366,11 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete_buy_request' && isset($
                 }
             }
 
-            // Delete the buy request from the database
+            // Step 4: Delete the buy request from the database
             $stmt = $pdo->prepare("DELETE FROM buy_requests WHERE id = ? AND user_id = ?");
             $stmt->execute([$request_id, $_SESSION['user_id']]);
             if ($stmt->rowCount() > 0) {
-                $success = "Buy request and related offers deleted successfully!";
+                $success = "Buy request, related offers, and transactions deleted successfully!";
                 error_log("Buy request deleted - request_id: $request_id, admin_id: {$_SESSION['user_id']}");
             } else {
                 $error = "Buy request not found or you don't have permission to delete it.";
@@ -409,13 +423,30 @@ if (isset($_GET['action']) && $_GET['action'] == 'close_offer' && isset($_GET['o
 if (isset($_GET['action']) && $_GET['action'] == 'delete_offer' && isset($_GET['offer_id'])) {
     $offer_id = intval($_GET['offer_id']);
     try {
+        $pdo->beginTransaction();
+
+        // Step 1: Delete related transactions
+        $stmt = $pdo->prepare("DELETE FROM transactions WHERE offer_id = ?");
+        $stmt->execute([$offer_id]);
+        error_log("Deleted transactions for offer_id: $offer_id");
+
+        // Step 2: Delete the offer
         $stmt = $pdo->prepare("DELETE FROM offers WHERE id = ?");
         $stmt->execute([$offer_id]);
-        $success = "Offer deleted successfully!";
+        if ($stmt->rowCount() > 0) {
+            $success = "Offer and related transactions deleted successfully!";
+            error_log("Offer deleted - offer_id: $offer_id");
+        } else {
+            $error = "Offer not found.";
+        }
+        $pdo->commit();
+
         header("Location: admin_dashboard.php?action=offers");
         exit();
     } catch (PDOException $e) {
+        $pdo->rollBack();
         $error = "Error deleting offer: " . $e->getMessage();
+        error_log("Offer deletion failed: " . $e->getMessage());
     }
 }
 
@@ -1013,7 +1044,7 @@ try {
                                                 <i class="fas fa-undo"></i> Reopen
                                             </a>
                                         <?php endif; ?>
-                                        <a href="?action=delete_item&item_id=<?php echo $item['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this item? All related offers will also be deleted, and this action cannot be undone.');">
+                                        <a href="?action=delete_item&item_id=<?php echo $item['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this item? All related offers and transactions will also be deleted, and this action cannot be undone.');">
                                             <i class="fas fa-trash"></i> Delete
                                         </a>
                                     </div>
@@ -1055,7 +1086,7 @@ try {
                                             <a href="?action=cancel_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to cancel this buy request?');">
                                                 <i class="fas fa-times"></i> Cancel
                                             </a>
-                                            <a href="?action=delete_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this buy request? All related offers will also be deleted, and this action cannot be undone.');">
+                                            <a href="?action=delete_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this buy request? All related offers and transactions will also be deleted, and this action cannot be undone.');">
                                                 <i class="fas fa-trash"></i> Delete
                                             </a>
                                         <?php endif; ?>
@@ -1110,7 +1141,7 @@ try {
                                             <a href="?action=close_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');">
                                                 <i class="fas fa-times-circle"></i> Close
                                             </a>
-                                            <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to delete this offer? This action cannot be undone.');">
+                                            <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to delete this offer? All related transactions will also be deleted, and this action cannot be undone.');">
                                                 <i class="fas fa-trash"></i> Delete
                                             </a>
                                         </td>
@@ -1186,7 +1217,7 @@ try {
                                             <a href="?action=close_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');">
                                                 <i class="fas fa-times-circle"></i> Close
                                             </a>
-                                            <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to delete this offer? This action cannot be undone.');">
+                                            <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to delete this offer? All related transactions will also be deleted, and this action cannot be undone.');">
                                                 <i class="fas fa-trash"></i> Delete
                                             </a>
                                         </td>
@@ -1255,7 +1286,7 @@ try {
                                             <a href="?action=close_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');">
                                                 <i class="fas fa-times-circle"></i> Close
                                             </a>
-                                            <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to delete this offer? This action cannot be undone.');">
+                                            <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to delete this offer? All related transactions will also be deleted, and this action cannot be undone.');">
                                                 <i class="fas fa-trash"></i> Delete
                                             </a>
                                         </td>
