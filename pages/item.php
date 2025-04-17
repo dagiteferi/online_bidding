@@ -1,4 +1,5 @@
 <?php
+// This page displays detailed information about a specific item.
 session_start();
 require_once '../config/db_connect.php';
 

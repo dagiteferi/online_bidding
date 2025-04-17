@@ -1,4 +1,5 @@
 <?php
+// This page serves as the seller dashboard where sellers can manage their listings and offers.
 session_start();
 require_once '../config/db_connect.php';
 

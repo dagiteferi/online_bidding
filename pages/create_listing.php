@@ -1,4 +1,5 @@
 <?php
+// This page allows users to create new listings for items they want to sell.
 session_start();
 require_once '../config/db_connect.php';
 

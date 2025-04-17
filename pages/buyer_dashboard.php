@@ -1,4 +1,5 @@
 <?php
+// This page serves as the buyer dashboard where buyers can view and manage their activities.
 session_start();
 require_once '../config/db_connect.php';
 

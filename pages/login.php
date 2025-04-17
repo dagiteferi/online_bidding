@@ -1,4 +1,5 @@
 <?php
+// This page handles user login functionality.
 session_start();
 require_once '../config/db_connect.php';
 

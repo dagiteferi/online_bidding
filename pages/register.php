@@ -1,4 +1,5 @@
 <?php
+// This page handles user registration functionality.
 require_once '../config/db_connect.php';
 
 if (isset($_POST['signup'])) {

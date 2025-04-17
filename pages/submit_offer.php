@@ -1,4 +1,5 @@
 <?php
+// This page allows users to submit offers for items or buy requests.
 session_start();
 require_once '../config/db_connect.php';
 
