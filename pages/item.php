@@ -61,6 +61,9 @@ if (!$item) {
     echo "Item not found.";
     exit();
 }
+
+// Display item details including name, description, price, and seller information
+// This helps users make informed decisions about the item
 ?>
 
 <!DOCTYPE html>

@@ -52,6 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         file_put_contents('debug.log', "Database error: " . $e->getMessage() . "\n", FILE_APPEND);
     }
 }
+
+// Display login form with error messages if any
+// This ensures users can retry login if they fail
 ?>
 
 <!DOCTYPE html>

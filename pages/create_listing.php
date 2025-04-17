@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
 
             if (!$error) {
-                // Insert item
+                // Insert item into the database
                 $stmt = $pdo->prepare("INSERT INTO items (user_id, title, description, category, starting_bid, end_date, image, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')");
                 $stmt->execute([$user_id, $title, $description, $category, $starting_bid, $end_date, $image_path]);
 

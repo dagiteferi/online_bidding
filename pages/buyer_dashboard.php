@@ -26,6 +26,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'buyer') {
 
     <h3>My Offers</h3>
     <?php
+    // Fetch buyer-specific data such as offers made by the buyer
+    // This data is displayed in the dashboard for easy access
     $stmt = $pdo->prepare("SELECT o.*, i.item_name FROM offers o JOIN items i ON o.item_id = i.id WHERE o.user_id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     while ($offer = $stmt->fetch()) {
