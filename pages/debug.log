@@ -1,0 +1,1256 @@
+Username: 'Admin', Password: '123456'
+Username match (case-insensitive): true
+Password verify: false
+Username: 'Admin', Password: '123456'
+Username match (case-insensitive): true
+Password verify: false
+Username: 'Admin', Password: '1234556'
+Username match (case-insensitive): true
+Password verify: false
+Username: 'Admin', Password: '1234556'
+User found: false
+Username: 'Admin', Password: '1234556'
+Username match (case-insensitive): true
+Password verify: false
+Username: 'Admin', Password: '1234556'
+Username match (case-insensitive): true
+Password verify: false
+Username: 'Admin', Password: '123456'
+Username match (case-insensitive): true
+Password verify: false
+Failed login attempt: Admin
+Failed login attempt: Admin
+Admin Check - Username: 'Admin', Password: '123456'
+Username match (case-insensitive): true
+Password verify: false
+Checking regular user in database...
+User found: true
+Password verify for user: false
+Login failed: Invalid username or password.
+Username: 'Admin', Password: '123456'
+User found: true
+Password verify: false
+Login failed: Invalid username or password.
+Username: 'Admin', Password: '123456'
+User found: true
+Password verify: false
+Login failed: Invalid username or password.
+Username: 'Admin', Password: '123456'
+User found: true
+Password verify: false
+Login failed: Invalid username or password.
+Username: 'Admin', Password: '123456'
+User found: true
+Password verify: true
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username: 'Admin', Password: '123456'
+User found: true
+Password verify: true
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username: 'Admin', Password: '123456'
+User found: true
+Password verify: true
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username: 'Admin', Password: '123456'
+User found: true
+Password verify: true
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username: 'Admin', Password: '123456'
+User found: true
+Password verify: true
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'dagi'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$EQU8Da.2gyjigwEg1XnwS.hkaqRFNtqypmEgt48261QR9tCKoiuGy
+Password verify: false
+is_admin: 0
+Login failed: Invalid username or password.
+Username entered: 'test'
+Password entered: '123456'
+User found: false
+Login failed: Invalid username or password.
+Username entered: 'test'
+Password entered: '123456'
+User found: false
+Login failed: Invalid username or password.
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'test'
+Password entered: '123456'
+User found: false
+Login failed: Invalid username or password.
+Username entered: 'test'
+Password entered: '123456'
+User found: false
+Login failed: Invalid username or password.
+Username entered: 'test'
+Password entered: '123456'
+User found: false
+Login failed: Invalid username or password.
+Username entered: 'test'
+Password entered: '123456'
+User found: false
+Login failed: Invalid username or password.
+Username entered: 'admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'test'
+Password entered: '123456'
+User found: false
+Login failed: Invalid username or password.
+Username entered: 'test'
+Password entered: '123456'
+User found: false
+Login failed: Invalid username or password.
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Registration attempt:
+Raw first_name: 'john'
+Raw last_name: 'abc'
+Raw email: 'john@gmail.com'
+Raw username: 'john'
+Raw password: '123456'
+Raw confirm_password: '123456'
+Hashed password: '$2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2'
+User registered successfully: 'john'
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Registration attempt:
+Raw first_name: 'henok'
+Raw last_name: 'Tesfaye'
+Raw email: 'henok@gmail.com'
+Raw username: 'henok'
+Raw password: '654321'
+Raw confirm_password: '654321'
+Hashed password: '$2y$10$PMFprDhPg1Q45uMNsQ.4o.TS7VaiEaq94xB6lESbyoMeTh0BcWpZW'
+User registered successfully: 'henok'
+Username entered: 'henok'
+Password entered: '654321'
+User found: true
+Stored hash: $2y$10$PMFprDhPg1Q45uMNsQ.4o.TS7VaiEaq94xB6lESbyoMeTh0BcWpZW
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 8
+    [username] => henok
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'henok'
+Password entered: '654321'
+User found: true
+Stored hash: $2y$10$PMFprDhPg1Q45uMNsQ.4o.TS7VaiEaq94xB6lESbyoMeTh0BcWpZW
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 8
+    [username] => henok
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'henok'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$PMFprDhPg1Q45uMNsQ.4o.TS7VaiEaq94xB6lESbyoMeTh0BcWpZW
+Password verify: false
+is_admin: 0
+Login failed: Invalid username or password.
+Username entered: 'honk'
+Password entered: '123456'
+User found: false
+Login failed: Invalid username or password.
+Username entered: 'henok'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$PMFprDhPg1Q45uMNsQ.4o.TS7VaiEaq94xB6lESbyoMeTh0BcWpZW
+Password verify: false
+is_admin: 0
+Login failed: Invalid username or password.
+Username entered: 'henok'
+Password entered: '654321'
+User found: true
+Stored hash: $2y$10$PMFprDhPg1Q45uMNsQ.4o.TS7VaiEaq94xB6lESbyoMeTh0BcWpZW
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 8
+    [username] => henok
+    [is_admin] => 
+)
+
+Username entered: 'admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'Henok'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$PMFprDhPg1Q45uMNsQ.4o.TS7VaiEaq94xB6lESbyoMeTh0BcWpZW
+Password verify: false
+is_admin: 0
+Login failed: Invalid username or password.
+Username entered: 'henok'
+Password entered: '654321'
+User found: true
+Stored hash: $2y$10$PMFprDhPg1Q45uMNsQ.4o.TS7VaiEaq94xB6lESbyoMeTh0BcWpZW
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 8
+    [username] => henok
+    [is_admin] => 
+)
+
+Registration attempt:
+Raw first_name: 'dagi'
+Raw last_name: 'teferi'
+Raw email: 'fg@gmail.com'
+Raw username: 'dagi'
+Raw password: '123456'
+Raw confirm_password: '123456'
+Registration error: Username is already taken!
+Registration attempt:
+Raw first_name: 'edale '
+Raw last_name: 'endale'
+Raw email: 'endale@gmail.com'
+Raw username: 'endale'
+Raw password: '123456'
+Raw confirm_password: '123456'
+Hashed password: '$2y$10$4751HWGZbXU44DBvQG9RM.FOLHw7VY9KLmZ66PJLJ36J4CHp6QB3i'
+User registered successfully: 'endale'
+Username entered: 'endale'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$4751HWGZbXU44DBvQG9RM.FOLHw7VY9KLmZ66PJLJ36J4CHp6QB3i
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 9
+    [username] => endale
+    [is_admin] => 
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
+Username entered: 'john'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$UC1YDYAT.coZWM190yCrNO.2qqXvaqYwzSkJpvWX2z69bemyo7Yb2
+Password verify: true
+is_admin: 0
+Login successful. Session: Array
+(
+    [user_id] => 7
+    [username] => john
+    [is_admin] => 
+)
+
