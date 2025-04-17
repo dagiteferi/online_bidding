@@ -3,6 +3,7 @@
 session_start();
 require_once '../config/db_connect.php';
 
+// Redirect to login page if the user is not logged in or is not a buyer
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'buyer') {
     header("Location: login.php");
     exit();

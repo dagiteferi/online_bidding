@@ -6,13 +6,13 @@ require_once '../config/db_connect.php';
 // Initialize error variable
 $error = null;
 
-// Only process if form was submitted
+// Check user credentials and start session
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Trim inputs to remove whitespace
     $username = trim($_POST['username'] ?? '');
     $password = trim($_POST['password'] ?? '');
 
-    // Check user in database (case-insensitive)
+    // Query the database for the user
     try {
         $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(username) = LOWER(?)");
         $stmt->execute([$username]);

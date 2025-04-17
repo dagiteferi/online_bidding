@@ -52,6 +52,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = "Invalid username or password.";
     }
 }
+
+// Fetch item details from the database
+$stmt = $pdo->prepare("SELECT * FROM items WHERE id = ?");
+$stmt->execute([$item_id]);
+$item = $stmt->fetch();
+if (!$item) {
+    echo "Item not found.";
+    exit();
+}
 ?>
 
 <!DOCTYPE html>

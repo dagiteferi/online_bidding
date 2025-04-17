@@ -9,6 +9,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['is_admin']) {
     exit();
 }
 
+// Validate inputs and handle image upload
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
         $title = trim($_POST['title']);
@@ -18,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $end_date = $_POST['end_date'];
         $user_id = $_SESSION['user_id'];
 
-        // Validate inputs
+        // Ensure all required fields are filled and valid
         if (empty($title) || empty($description) || empty($category) || $starting_bid <= 0 || empty($end_date)) {
             $error = "All fields are required, and starting bid must be positive.";
         } elseif (strtotime($end_date) <= time()) {
