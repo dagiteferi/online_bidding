@@ -13,7 +13,7 @@ error_log("Admin user_id: " . $_SESSION['user_id']);
 
 // Validate that the user_id exists in the users table
 try {
-    $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ? AND is_admin = 1");
     $stmt->execute([$_SESSION['user_id']]);
     if (!$stmt->fetch()) {
         session_destroy();
@@ -141,9 +141,13 @@ if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($_GET['ite
                 }
 
                 if (!isset($error)) {
-                    $stmt = $pdo->prepare("UPDATE items SET supplier_name = ?, item_name = ?, description = ?, price = ?, quantity = ?, image = ? WHERE id = ?");
-                    $stmt->execute([$supplier_name, $item_name, $description, $price, $quantity, $image_path, $item_id]);
-                    $success = "Item updated successfully!";
+                    $stmt = $pdo->prepare("UPDATE items SET supplier_name = ?, item_name = ?, description = ?, price = ?, quantity = ?, image = ? WHERE id = ? AND posted_by = ?");
+                    $stmt->execute([$supplier_name, $item_name, $description, $price, $quantity, $image_path, $item_id, $_SESSION['user_id']]);
+                    if ($stmt->rowCount() > 0) {
+                        $success = "Item updated successfully!";
+                    } else {
+                        $error = "Item not found or you don't have permission to edit it.";
+                    }
                     header("Location: admin_dashboard.php?action=items_for_sell");
                     exit();
                 }
@@ -154,11 +158,11 @@ if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($_GET['ite
     } else {
         // Fetch the item for editing
         try {
-            $stmt = $pdo->prepare("SELECT * FROM items WHERE id = ?");
-            $stmt->execute([$item_id]);
+            $stmt = $pdo->prepare("SELECT * FROM items WHERE id = ? AND posted_by = ?");
+            $stmt->execute([$item_id, $_SESSION['user_id']]);
             $item_to_edit = $stmt->fetch();
             if (!$item_to_edit) {
-                $error = "Item not found.";
+                $error = "Item not found or you don't have permission to edit it.";
             }
         } catch (PDOException $e) {
             $error = "Error fetching item: " . $e->getMessage();
@@ -170,9 +174,13 @@ if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($_GET['ite
 if (isset($_GET['action']) && $_GET['action'] == 'close_item' && isset($_GET['item_id'])) {
     $item_id = intval($_GET['item_id']);
     try {
-        $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE id = ?");
-        $stmt->execute([$item_id]);
-        $success = "Item marked as closed successfully!";
+        $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE id = ? AND posted_by = ?");
+        $stmt->execute([$item_id, $_SESSION['user_id']]);
+        if ($stmt->rowCount() > 0) {
+            $success = "Item marked as closed successfully!";
+        } else {
+            $error = "Item not found or you don't have permission to close it.";
+        }
         header("Location: admin_dashboard.php?action=items_for_sell");
         exit();
     } catch (PDOException $e) {
@@ -184,9 +192,13 @@ if (isset($_GET['action']) && $_GET['action'] == 'close_item' && isset($_GET['it
 if (isset($_GET['action']) && $_GET['action'] == 'reopen_item' && isset($_GET['item_id'])) {
     $item_id = intval($_GET['item_id']);
     try {
-        $stmt = $pdo->prepare("UPDATE items SET status = 'open' WHERE id = ?");
-        $stmt->execute([$item_id]);
-        $success = "Item reopened successfully!";
+        $stmt = $pdo->prepare("UPDATE items SET status = 'open' WHERE id = ? AND posted_by = ?");
+        $stmt->execute([$item_id, $_SESSION['user_id']]);
+        if ($stmt->rowCount() > 0) {
+            $success = "Item reopened successfully!";
+        } else {
+            $error = "Item not found or you don't have permission to reopen it.";
+        }
         header("Location: admin_dashboard.php?action=items_for_sell");
         exit();
     } catch (PDOException $e) {
@@ -198,29 +210,48 @@ if (isset($_GET['action']) && $_GET['action'] == 'reopen_item' && isset($_GET['i
 if (isset($_GET['action']) && $_GET['action'] == 'delete_item' && isset($_GET['item_id'])) {
     $item_id = intval($_GET['item_id']);
     try {
+        $pdo->beginTransaction();
+
         // Fetch the item to get the image path
-        $stmt = $pdo->prepare("SELECT image FROM items WHERE id = ?");
-        $stmt->execute([$item_id]);
+        $stmt = $pdo->prepare("SELECT image FROM items WHERE id = ? AND posted_by = ?");
+        $stmt->execute([$item_id, $_SESSION['user_id']]);
         $item = $stmt->fetch();
+
         if ($item) {
+            // Delete related offers first
+            $stmt = $pdo->prepare("DELETE FROM offers WHERE item_id = ?");
+            $stmt->execute([$item_id]);
+            error_log("Deleted offers for item_id: $item_id");
+
             // Delete the image file if it exists
             if (!empty($item['image'])) {
                 $image_path = dirname(__DIR__) . '/' . $item['image'];
                 if (file_exists($image_path)) {
                     unlink($image_path);
+                    error_log("Deleted image for item_id: $item_id, path: $image_path");
                 }
             }
+
             // Delete the item from the database
-            $stmt = $pdo->prepare("DELETE FROM items WHERE id = ?");
-            $stmt->execute([$item_id]);
-            $success = "Item permanently deleted successfully!";
+            $stmt = $pdo->prepare("DELETE FROM items WHERE id = ? AND posted_by = ?");
+            $stmt->execute([$item_id, $_SESSION['user_id']]);
+            if ($stmt->rowCount() > 0) {
+                $success = "Item and related offers deleted successfully!";
+                error_log("Item deleted - item_id: $item_id, admin_id: {$_SESSION['user_id']}");
+            } else {
+                $error = "Item not found or you don't have permission to delete it.";
+            }
+            $pdo->commit();
         } else {
-            $error = "Item not found.";
+            $error = "Item not found or you don't have permission to delete it.";
+            $pdo->rollBack();
         }
         header("Location: admin_dashboard.php?action=items_for_sell");
         exit();
     } catch (PDOException $e) {
+        $pdo->rollBack();
         $error = "Error deleting item: " . $e->getMessage();
+        error_log("Item deletion failed: " . $e->getMessage());
     }
 }
 
@@ -283,11 +314,64 @@ if (isset($_GET['action']) && $_GET['action'] == 'cancel_buy_request' && isset($
     try {
         $stmt = $pdo->prepare("UPDATE buy_requests SET status = 'closed' WHERE id = ? AND user_id = ?");
         $stmt->execute([$request_id, $_SESSION['user_id']]);
-        $success = "Buy request canceled successfully!";
+        if ($stmt->rowCount() > 0) {
+            $success = "Buy request canceled successfully!";
+        } else {
+            $error = "Buy request not found or you don't have permission to cancel it.";
+        }
         header("Location: admin_dashboard.php?action=buy_requests");
         exit();
     } catch (PDOException $e) {
         $error = "Error canceling buy request: " . $e->getMessage();
+    }
+}
+
+// Handle Delete Buy Request
+if (isset($_GET['action']) && $_GET['action'] == 'delete_buy_request' && isset($_GET['request_id'])) {
+    $request_id = intval($_GET['request_id']);
+    try {
+        $pdo->beginTransaction();
+
+        // Fetch the buy request to get the image path
+        $stmt = $pdo->prepare("SELECT image FROM buy_requests WHERE id = ? AND user_id = ?");
+        $stmt->execute([$request_id, $_SESSION['user_id']]);
+        $request = $stmt->fetch();
+
+        if ($request) {
+            // Delete related offers first
+            $stmt = $pdo->prepare("DELETE FROM offers WHERE request_id = ?");
+            $stmt->execute([$request_id]);
+            error_log("Deleted offers for request_id: $request_id");
+
+            // Delete the image file if it exists
+            if (!empty($request['image'])) {
+                $image_path = dirname(__DIR__) . '/' . $request['image'];
+                if (file_exists($image_path)) {
+                    unlink($image_path);
+                    error_log("Deleted image for request_id: $request_id, path: $image_path");
+                }
+            }
+
+            // Delete the buy request from the database
+            $stmt = $pdo->prepare("DELETE FROM buy_requests WHERE id = ? AND user_id = ?");
+            $stmt->execute([$request_id, $_SESSION['user_id']]);
+            if ($stmt->rowCount() > 0) {
+                $success = "Buy request and related offers deleted successfully!";
+                error_log("Buy request deleted - request_id: $request_id, admin_id: {$_SESSION['user_id']}");
+            } else {
+                $error = "Buy request not found or you don't have permission to delete it.";
+            }
+            $pdo->commit();
+        } else {
+            $error = "Buy request not found or you don't have permission to delete it.";
+            $pdo->rollBack();
+        }
+        header("Location: admin_dashboard.php?action=buy_requests");
+        exit();
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        $error = "Error deleting buy request: " . $e->getMessage();
+        error_log("Buy request deletion failed: " . $e->getMessage());
     }
 }
 
@@ -299,8 +383,8 @@ if (isset($_GET['action']) && $_GET['action'] == 'view_offers' && isset($_GET['r
             FROM offers o 
             JOIN users u ON o.user_id = u.id 
             JOIN buy_requests br ON o.request_id = br.id 
-            WHERE o.request_id = ? AND o.status = 'pending'");
-        $stmt->execute([$request_id]);
+            WHERE o.request_id = ? AND o.status = 'pending' AND br.user_id = ?");
+        $stmt->execute([$request_id, $_SESSION['user_id']]);
         $buy_request_offers = $stmt->fetchAll();
     } catch (PDOException $e) {
         $error = "Error fetching offers: " . $e->getMessage();
@@ -424,8 +508,8 @@ if (isset($_GET['action']) && $_GET['action'] == 'offer_action' && isset($_GET['
 $items_for_sell = $buy_requests = $pending_offers = 0;
 try {
     // Count all items for admin (not just posted_by)
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM items");
-    $stmt->execute();
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM items WHERE posted_by = ?");
+    $stmt->execute([$_SESSION['user_id']]);
     $items_for_sell = $stmt->fetchColumn();
     error_log("Items for sell count (admin): $items_for_sell");
 
@@ -476,20 +560,21 @@ try {
 $min_stock = 5;
 $low_stock_items = [];
 try {
-    $stmt = $pdo->prepare("SELECT item_name FROM items WHERE quantity < ? AND status = 'open'");
-    $stmt->execute([$min_stock]);
+    $stmt = $pdo->prepare("SELECT item_name FROM items WHERE quantity < ? AND status = 'open' AND posted_by = ?");
+    $stmt->execute([$min_stock, $_SESSION['user_id']]);
     $low_stock_items = $stmt->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
     $error = "Error fetching low stock items: " . $e->getMessage();
 }
 
-// Fetch items for sale (all items for admin)
+// Fetch items for sale (only items posted by this admin)
 $items = [];
 try {
     $stmt = $pdo->prepare("SELECT i.*, u.username AS posted_by_name 
         FROM items i 
-        JOIN users u ON i.posted_by = u.id");
-    $stmt->execute();
+        JOIN users u ON i.posted_by = u.id 
+        WHERE i.posted_by = ?");
+    $stmt->execute([$_SESSION['user_id']]);
     $items = $stmt->fetchAll();
     error_log("Fetched items: " . count($items));
 } catch (PDOException $e) {
@@ -928,7 +1013,7 @@ try {
                                                 <i class="fas fa-undo"></i> Reopen
                                             </a>
                                         <?php endif; ?>
-                                        <a href="?action=delete_item&item_id=<?php echo $item['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this item? This action cannot be undone and will remove the item from both admin and user dashboards.');">
+                                        <a href="?action=delete_item&item_id=<?php echo $item['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this item? All related offers will also be deleted, and this action cannot be undone.');">
                                             <i class="fas fa-trash"></i> Delete
                                         </a>
                                     </div>
@@ -967,8 +1052,11 @@ try {
                                             <a href="?action=view_offers&request_id=<?php echo $request['id']; ?>" class="admin-btn">
                                                 <i class="fas fa-search"></i> View Offers
                                             </a>
-                                            <a href="?action=cancel_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to cancel this buy request?');">
+                                            <a href="?action=cancel_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to cancel this buy request?');">
                                                 <i class="fas fa-times"></i> Cancel
+                                            </a>
+                                            <a href="?action=delete_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this buy request? All related offers will also be deleted, and this action cannot be undone.');">
+                                                <i class="fas fa-trash"></i> Delete
                                             </a>
                                         <?php endif; ?>
                                     </div>
@@ -986,7 +1074,7 @@ try {
                     </div>
                 <?php endif; ?>
 
-            <?php elseif ($_GET['action'] == 'view_offBasic Infoers' && isset($buy_request_offers)): ?>
+            <?php elseif ($_GET['action'] == 'view_offers' && isset($buy_request_offers)): ?>
                 <!-- View Offers for Buy Request -->
                 <h2><i class="fas fa-exchange-alt"></i> Offers for Buy Request</h2>
                 <?php if ($buy_request_offers): ?>

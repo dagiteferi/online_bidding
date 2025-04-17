@@ -1345,3 +1345,42 @@ Login successful. Session: Array
     [is_admin] => 1
 )
 
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
+Username entered: 'Admin'
+Password entered: '123456'
+User found: true
+Stored hash: $2y$10$MqkDgSuOsmt84ZZvVWN72.DXZm0beEGJwLlsL.6TeWAll6XC.f2xe
+Password verify: true
+is_admin: 1
+Login successful. Session: Array
+(
+    [user_id] => 4
+    [username] => Admin
+    [is_admin] => 1
+)
+
