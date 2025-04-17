@@ -1086,10 +1086,10 @@ try {
                                             <a href="?action=cancel_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to cancel this buy request?');">
                                                 <i class="fas fa-times"></i> Cancel
                                             </a>
-                                            <a href="?action=delete_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this buy request? All related offers and transactions will also be deleted, and this action cannot be undone.');">
-                                                <i class="fas fa-trash"></i> Delete
-                                            </a>
                                         <?php endif; ?>
+                                        <a href="?action=delete_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this buy request? All related offers and transactions will also be deleted, and this action cannot be undone.');">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </a>
                                     </div>
                                 </div>
                             </div>

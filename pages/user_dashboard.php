@@ -1,27 +1,35 @@
 <?php
+// Start output buffering and session to manage user authentication
 ob_start();
 session_start();
+
+// Include the database connection file
 require_once '../config/db_connect.php';
 
-// Check if user is logged in and is not an admin
+// Redirect to login page if the user is not logged in or is an admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['is_admin']) || $_SESSION['is_admin']) {
     header("Location: ../login.php");
     exit();
 }
 
-// Validate user_id against the users table
+// Validate the logged-in user's ID against the database
 try {
     $stmt = $pdo->prepare("SELECT id, username FROM users WHERE id = ? AND is_admin = 0");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch();
+
+    // If the user is not valid, destroy the session and redirect to login
     if (!$user) {
         session_destroy();
         header("Location: ../login.php?error=invalid_user");
         exit();
     }
+
+    // Store the username in the session for later use
     $_SESSION['username'] = $user['username'];
     error_log("Logged-in user_id: {$_SESSION['user_id']}, username: {$_SESSION['username']}");
 } catch (PDOException $e) {
+    // Log database errors and redirect to login with an error message
     error_log("User validation failed: " . $e->getMessage());
     session_destroy();
     header("Location: ../login.php?error=database_error");
