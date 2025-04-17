@@ -1,35 +1,27 @@
 <?php
-// Start output buffering and session to manage user authentication
 ob_start();
 session_start();
-
-// Include the database connection file
 require_once '../config/db_connect.php';
 
-// Redirect to login page if the user is not logged in or is an admin
+// Check if user is logged in and is not an admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['is_admin']) || $_SESSION['is_admin']) {
     header("Location: ../login.php");
     exit();
 }
 
-// Validate the logged-in user's ID against the database
+// Validate user_id against the users table
 try {
     $stmt = $pdo->prepare("SELECT id, username FROM users WHERE id = ? AND is_admin = 0");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch();
-
-    // If the user is not valid, destroy the session and redirect to login
     if (!$user) {
         session_destroy();
         header("Location: ../login.php?error=invalid_user");
         exit();
     }
-
-    // Store the username in the session for later use
     $_SESSION['username'] = $user['username'];
     error_log("Logged-in user_id: {$_SESSION['user_id']}, username: {$_SESSION['username']}");
 } catch (PDOException $e) {
-    // Log database errors and redirect to login with an error message
     error_log("User validation failed: " . $e->getMessage());
     session_destroy();
     header("Location: ../login.php?error=database_error");
@@ -47,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
     $buyer_name = trim($_POST['buyer_name'] ?? '');
 
     if (empty($buyer_name)) {
-        $error_msg = "Please enter your " . ($offer_type === 'buy' ? 'buyer' : 'seller') . " name.";
+        $error_msg = "Please enter your buyer name.";
     } elseif (empty($offered_price) || !is_numeric($offered_price) || $offered_price <= 0) {
         $error_msg = "Please enter a valid offered price (greater than 0).";
     } elseif (empty($quantity) || !is_numeric($quantity) || $quantity <= 0) {
@@ -118,6 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
     }
 
     if (isset($success_msg)) {
+        // Check if dashboard.php exists
         if (file_exists(__DIR__ . '/dashboard.php')) {
             header("Location: dashboard.php?success=" . urlencode($success_msg));
             exit();
@@ -137,11 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_offer'])) {
     $buyer_name = trim($_POST['buyer_name'] ?? '');
 
     if (empty($buyer_name)) {
-        $stmt = $pdo->prepare("SELECT offer_type FROM offers WHERE id = ? AND user_id = ?");
-        $stmt->execute([$offer_id, $_SESSION['user_id']]);
-        $offer = $stmt->fetch();
-        $offer_type = $offer['offer_type'] ?? 'buy'; // Default to 'buy' if not found
-        $error_msg = "Please enter your " . ($offer_type === 'buy' ? 'buyer' : 'seller') . " name.";
+        $error_msg = "Please enter your buyer name.";
     } elseif (empty($offered_price) || !is_numeric($offered_price) || $offered_price <= 0) {
         $error_msg = "Please enter a valid offered price (greater than 0).";
     } elseif (empty($quantity) || !is_numeric($quantity) || $quantity <= 0) {
@@ -869,7 +858,7 @@ try {
                                 <td><?php echo date('M j, Y', strtotime($offer['created_at'] ?? 'now')); ?></td>
                                 <td>
                                     <button class="btn-edit" 
-                                            onclick="openEditModal(<?php echo $offer['id']; ?>, '<?php echo htmlspecialchars($offer['item_name']); ?>', '<?php echo htmlspecialchars($offer['buyer_name']); ?>', <?php echo $offer['offered_price']; ?>, <?php echo $offer['quantity']; ?>, '<?php echo htmlspecialchars($offer['description'] ?? ''); ?>', '<?php echo htmlspecialchars($offer['offer_type']); ?>')"
+                                            onclick="openEditModal(<?php echo $offer['id']; ?>, '<?php echo htmlspecialchars($offer['item_name']); ?>', '<?php echo htmlspecialchars($offer['buyer_name']); ?>', <?php echo $offer['offered_price']; ?>, <?php echo $offer['quantity']; ?>, '<?php echo htmlspecialchars($offer['description'] ?? ''); ?>')"
                                             <?php echo $offer['status'] != 'pending' ? 'disabled' : ''; ?>>
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
@@ -894,7 +883,7 @@ try {
                 <input type="hidden" name="offer_type" id="modalOfferType">
                 
                 <div class="form-group">
-                    <label for="buyer_name" id="nameLabel">Buyer Name</label>
+                    <label for="buyer_name">Buyer Name</label>
                     <input type="text" class="form-control" name="buyer_name" id="buyer_name" value="<?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?>" required>
                 </div>
                 
@@ -935,7 +924,7 @@ try {
                 <input type="hidden" name="offer_id" id="editModalOfferId">
                 
                 <div class="form-group">
-                    <label for="edit_buyer_name" id="editNameLabel">Buyer Name</label>
+                    <label for="edit_buyer_name">Buyer Name</label>
                     <input type="text" class="form-control" name="buyer_name" id="edit_buyer_name" required>
                 </div>
                 
@@ -985,15 +974,6 @@ try {
             document.getElementById('modalRequestId').value = requestId !== null ? requestId : '';
             document.getElementById('modalOfferType').value = offerType;
             document.getElementById('modalTitle').textContent = 'Make Offer for ' + title;
-
-            // Update the name label based on offer type
-            const nameLabel = document.getElementById('nameLabel');
-            if (offerType === 'buy') {
-                nameLabel.textContent = 'Buyer Name';
-            } else if (offerType === 'sell') {
-                nameLabel.textContent = 'Seller Name';
-            }
-
             document.getElementById('offered_price').value = '';
             document.getElementById('quantity').value = '';
             document.getElementById('description').value = '';
@@ -1001,18 +981,9 @@ try {
             document.getElementById('offerModal').style.display = 'flex';
         }
 
-        function openEditModal(offerId, itemName, buyerName, offeredPrice, quantity, description, offerType) {
+        function openEditModal(offerId, itemName, buyerName, offeredPrice, quantity, description) {
             document.getElementById('editModalOfferId').value = offerId;
             document.getElementById('editModalTitle').textContent = 'Edit Offer for ' + itemName;
-
-            // Update the name label based on offer type
-            const editNameLabel = document.getElementById('editNameLabel');
-            if (offerType === 'buy') {
-                editNameLabel.textContent = 'Buyer Name';
-            } else if (offerType === 'sell') {
-                editNameLabel.textContent = 'Seller Name';
-            }
-
             document.getElementById('edit_buyer_name').value = buyerName;
             document.getElementById('edit_offered_price').value = offeredPrice;
             document.getElementById('edit_quantity').value = quantity;
