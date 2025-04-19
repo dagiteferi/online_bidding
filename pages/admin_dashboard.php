@@ -2,16 +2,11 @@
 session_start();
 require_once '../config/db_connect.php';
 
-// This page serves as the admin dashboard where administrators can manage the platform.
-
 // Check if admin is logged in
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
     header("Location: login.php");
     exit();
 }
-
-// Debug: Print user_id to ensure it's set correctly
-error_log("Admin user_id: " . $_SESSION['user_id']);
 
 // Validate that the user_id exists in the users table
 try {
@@ -537,6 +532,182 @@ if (isset($_GET['action']) && $_GET['action'] == 'offer_action' && isset($_GET['
     exit();
 }
 
+// Handle Report Generation and Export
+if (isset($_GET['action']) && $_GET['action'] == 'report' && isset($_GET['generate_report'])) {
+    $start_date = $_POST['start_date'] ?? '';
+    $end_date = $_POST['end_date'] ?? '';
+    $transaction_type = $_POST['transaction_type'] ?? 'all';
+    $status = $_POST['status'] ?? 'all';
+
+    // Validate dates
+    if ($start_date && $end_date) {
+        $start_date = date('Y-m-d 00:00:00', strtotime($start_date));
+        $end_date = date('Y-m-d 23:59:59', strtotime($end_date));
+        if (strtotime($start_date) > strtotime($end_date)) {
+            $error = "Start date must be earlier than end date.";
+        }
+    } else {
+        $start_date = null;
+        $end_date = null;
+    }
+
+    if (!isset($error)) {
+        try {
+            // Build the base query for transactions
+            $query = "SELECT t.*, 
+                i.item_name AS item_name_sell, 
+                br.item_name AS item_name_buy, 
+                ub.username AS buyer, 
+                us.username AS seller,
+                i.supplier_name AS supplier_name_sell,
+                i.description AS description_sell,
+                br.description AS description_buy,
+                i.price AS original_price_sell,
+                br.max_price AS max_price_buy
+            FROM transactions t 
+            LEFT JOIN items i ON t.item_id = i.id 
+            LEFT JOIN buy_requests br ON t.request_id = br.id 
+            JOIN users ub ON t.buyer_or_seller_id = ub.id 
+            LEFT JOIN users us ON (i.posted_by = us.id OR br.user_id = us.id) 
+            WHERE (i.posted_by = ? OR br.user_id = ?)";
+
+            $params = [$_SESSION['user_id'], $_SESSION['user_id']];
+
+            // Apply date filters
+            if ($start_date && $end_date) {
+                $query .= " AND t.created_at BETWEEN ? AND ?";
+                $params[] = $start_date;
+                $params[] = $end_date;
+            }
+
+            // Apply transaction type filter
+            if ($transaction_type !== 'all') {
+                if ($transaction_type == 'sell') {
+                    $query .= " AND t.item_id IS NOT NULL";
+                } elseif ($transaction_type == 'buy') {
+                    $query .= " AND t.request_id IS NOT NULL";
+                }
+            }
+
+            $stmt = $pdo->prepare($query);
+            $stmt->execute($params);
+            $report_transactions = $stmt->fetchAll();
+
+            // Fetch items for inventory report
+            $items_query = "SELECT i.*, u.username AS posted_by_name 
+                FROM items i 
+                JOIN users u ON i.posted_by = u.id 
+                WHERE i.posted_by = ?";
+            $items_params = [$_SESSION['user_id']];
+            if ($start_date && $end_date) {
+                $items_query .= " AND i.created_at BETWEEN ? AND ?";
+                $items_params[] = $start_date;
+                $items_params[] = $end_date;
+            }
+            if ($status !== 'all') {
+                $items_query .= " AND i.status = ?";
+                $items_params[] = $status;
+            }
+            $stmt = $pdo->prepare($items_query);
+            $stmt->execute($items_params);
+            $report_items = $stmt->fetchAll();
+
+            // Fetch buy requests for report
+            $requests_query = "SELECT br.*, u.username 
+                FROM buy_requests br 
+                JOIN users u ON br.user_id = u.id 
+                WHERE br.user_id = ?";
+            $requests_params = [$_SESSION['user_id']];
+            if ($start_date && $end_date) {
+                $requests_query .= " AND br.created_at BETWEEN ? AND ?";
+                $requests_params[] = $start_date;
+                $requests_params[] = $end_date;
+            }
+            if ($status !== 'all') {
+                $requests_query .= " AND br.status = ?";
+                $requests_params[] = $status;
+            }
+            $stmt = $pdo->prepare($requests_query);
+            $stmt->execute($requests_params);
+            $report_requests = $stmt->fetchAll();
+
+            // Handle CSV export
+            if (isset($_POST['export_csv'])) {
+                header('Content-Type: text/csv');
+                header('Content-Disposition: attachment; filename="admin_report_' . date('Y-m-d_H-i-s') . '.csv"');
+
+                $output = fopen('php://output', 'w');
+
+                // Write Transactions Section
+                fputcsv($output, ['Transactions Report']);
+                fputcsv($output, ['ID', 'Item Name', 'Type', 'Buyer', 'Seller', 'Supplier', 'Original Price/Max Price', 'Final Price', 'Quantity', 'Total Amount', 'Description', 'Date']);
+                foreach ($report_transactions as $t) {
+                    $item_name = $t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A';
+                    $type = $t['item_id'] ? 'Sell' : 'Buy';
+                    $supplier = $t['supplier_name_sell'] ?? 'N/A';
+                    $original_price = $t['item_id'] ? ($t['original_price_sell'] ?? 'N/A') : ($t['max_price_buy'] ?? 'N/A');
+                    $description = $t['description_sell'] ?? $t['description_buy'] ?? 'N/A';
+                    $total_amount = $t['final_price'] * $t['quantity'];
+                    fputcsv($output, [
+                        $t['id'],
+                        $item_name,
+                        $type,
+                        $t['buyer'],
+                        $t['seller'],
+                        $supplier,
+                        $original_price,
+                        $t['final_price'],
+                        $t['quantity'],
+                        $total_amount,
+                        $description,
+                        $t['created_at']
+                    ]);
+                }
+
+                // Write Inventory Section
+                fputcsv($output, []);
+                fputcsv($output, ['Inventory Report']);
+                fputcsv($output, ['ID', 'Item Name', 'Supplier', 'Description', 'Price', 'Quantity', 'Status', 'Posted By', 'Created At']);
+                foreach ($report_items as $item) {
+                    fputcsv($output, [
+                        $item['id'],
+                        $item['item_name'],
+                        $item['supplier_name'] ?? 'N/A',
+                        $item['description'],
+                        $item['price'],
+                        $item['quantity'],
+                        $item['status'],
+                        $item['posted_by_name'],
+                        $item['created_at']
+                    ]);
+                }
+
+                // Write Buy Requests Section
+                fputcsv($output, []);
+                fputcsv($output, ['Buy Requests Report']);
+                fputcsv($output, ['ID', 'Item Name', 'Description', 'Max Price', 'Quantity', 'Status', 'User', 'Created At']);
+                foreach ($report_requests as $request) {
+                    fputcsv($output, [
+                        $request['id'],
+                        $request['item_name'],
+                        $request['description'],
+                        $request['max_price'],
+                        $request['quantity'],
+                        $request['status'],
+                        $request['username'],
+                        $request['created_at']
+                    ]);
+                }
+
+                fclose($output);
+                exit();
+            }
+        } catch (PDOException $e) {
+            $error = "Error generating report: " . $e->getMessage();
+        }
+    }
+}
+
 // Fetch counts for dashboard
 $items_for_sell = $buy_requests = $pending_offers = 0;
 try {
@@ -736,7 +907,7 @@ try {
         .admin-btn.reopen:hover {
             background-color: #27ae60;
         }
-        .offers-table-container {
+        .offers-table-container, .report-table-container {
             background: #fff;
             border-radius: 10px;
             overflow: hidden;
@@ -744,33 +915,36 @@ try {
             margin-bottom: 50px;
             overflow-x: auto;
         }
-        .offers-table {
+        .offers-table, .report-table {
             width: 100%;
             border-collapse: collapse;
         }
-        .offers-table th {
+        .offers-table th, .report-table th {
             background-color: #48dbfb;
             color: white;
             padding: 15px;
             text-align: left;
         }
-        .offers-table td {
+        .offers-table td, .report-table td {
             padding: 12px 15px;
             border-bottom: 1px solid #eee;
         }
-        .offers-table tr:hover {
+        .offers-table tr:hover, .report-table tr:hover {
             background-color: rgba(72, 219, 251, 0.05);
         }
-        .sort-form {
+        .sort-form, .report-form {
             margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
         }
-        .sort-form select {
+        .sort-form select, .report-form select, .report-form input {
             padding: 8px;
-            margin-right: 10px;
             border: 1px solid #ddd;
             border-radius: 5px;
         }
-        .sort-form button {
+        .sort-form button, .report-form button {
             padding: 8px 15px;
             background-color: #48dbfb;
             color: white;
@@ -778,8 +952,14 @@ try {
             border-radius: 5px;
             cursor: pointer;
         }
-        .sort-form button:hover {
+        .sort-form button:hover, .report-form button:hover {
             background-color: #3aa8d8;
+        }
+        .report-form button.export {
+            background-color: #2ecc71;
+        }
+        .report-form button.export:hover {
+            background-color: #27ae60;
         }
     </style>
 </head>
@@ -1034,7 +1214,7 @@ try {
                                         <p><strong>Status:</strong> <?php echo htmlspecialchars($item['status'] ?? 'N/A'); ?></p>
                                     </div>
                                     <div class="item-actions">
-                                        <a href="?action=edit_item&item_id=<?php echo $item['id']; ?>" class="admin-btn">
+                                        <a href="?action=edit_item&item_id=<?<?php echo $item['id']; ?>" class="admin-btn">
                                             <i class="fas fa-edit"></i> Edit
                                         </a>
                                         <?php if ($item['status'] !== 'closed'): ?>
@@ -1116,7 +1296,7 @@ try {
                             <thead>
                                 <tr>
                                     <th>From</th>
-                                    <th>Buyer Name</th>
+                                    <th>Item Name</th>
                                     <th>Offered Price ($)</th>
                                     <th>Quantity</th>
                                     <th>Description</th>
@@ -1128,7 +1308,7 @@ try {
                                 <?php foreach ($buy_request_offers as $offer): ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($offer['username']); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['buyer_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($offer['item_name']); ?></td>
                                         <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
                                         <td><?php echo htmlspecialchars($offer['quantity']); ?></td>
                                         <td><?php echo htmlspecialchars($offer['description'] ?? 'N/A'); ?></td>
@@ -1191,7 +1371,6 @@ try {
                                 <tr>
                                     <th>Item Name</th>
                                     <th>From</th>
-                                    <th>Buyer Name</th>
                                     <th>Offered Price ($)</th>
                                     <th>Quantity</th>
                                     <th>Description</th>
@@ -1204,7 +1383,6 @@ try {
                                     <tr>
                                         <td><?php echo htmlspecialchars($offer['item_name']); ?></td>
                                         <td><?php echo htmlspecialchars($offer['username']); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['buyer_name']); ?></td>
                                         <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
                                         <td><?php echo htmlspecialchars($offer['quantity']); ?></td>
                                         <td><?php echo htmlspecialchars($offer['description'] ?? 'N/A'); ?></td>
@@ -1260,7 +1438,6 @@ try {
                                 <tr>
                                     <th>Requested Item</th>
                                     <th>From</th>
-                                    <th>Buyer Name</th>
                                     <th>Offered Price ($)</th>
                                     <th>Quantity</th>
                                     <th>Description</th>
@@ -1273,7 +1450,6 @@ try {
                                     <tr>
                                         <td><?php echo htmlspecialchars($offer['item_name']); ?></td>
                                         <td><?php echo htmlspecialchars($offer['username']); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['buyer_name']); ?></td>
                                         <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
                                         <td><?php echo htmlspecialchars($offer['quantity']); ?></td>
                                         <td><?php echo htmlspecialchars($offer['description'] ?? 'N/A'); ?></td>
@@ -1332,37 +1508,183 @@ try {
             <?php elseif ($_GET['action'] == 'report'): ?>
                 <!-- Reports -->
                 <h2><i class="fas fa-chart-pie"></i> Reports</h2>
-                <div class="report-card">
-                    <h3>Sales Summary</h3>
-                    <p>Total Items Sold: <?php echo count($transactions); ?></p>
-                    <p>Total Revenue: $<?php
-                        $total_revenue = 0;
-                        foreach ($transactions as $t) {
-                            $total_revenue += $t['final_price'] * $t['quantity'];
-                        }
-                        echo number_format($total_revenue, 2);
-                    ?></p>
+                
+                <!-- Report Filters -->
+                <div class="report-form">
+                    <form method="POST" action="?action=report&generate_report=1">
+                        <label for="start_date">Start Date:</label>
+                        <input type="date" name="start_date" id="start_date" value="<?php echo isset($start_date) ? date('Y-m-d', strtotime($start_date)) : ''; ?>">
+                        
+                        <label for="end_date">End Date:</label>
+                        <input type="date" name="end_date" id="end_date" value="<?php echo isset($end_date) ? date('Y-m-d', strtotime($end_date)) : ''; ?>">
+                        
+                        <label for="transaction_type">Transaction Type:</label>
+                        <select name="transaction_type" id="transaction_type">
+                            <option value="all" <?php echo (isset($transaction_type) && $transaction_type == 'all') ? 'selected' : ''; ?>>All</option>
+                            <option value="sell" <?php echo (isset($transaction_type) && $transaction_type == 'sell') ? 'selected' : ''; ?>>Sell</option>
+                            <option value="buy" <?php echo (isset($transaction_type) && $transaction_type == 'buy') ? 'selected' : ''; ?>>Buy</option>
+                        </select>
+                        
+                                                <label for="status">Status:</label>
+                        <select name="status" id="status">
+                            <option value="all" <?php echo (isset($status) && $status == 'all') ? 'selected' : ''; ?>>All</option>
+                            <option value="open" <?php echo (isset($status) && $status == 'open') ? 'selected' : ''; ?>>Open</option>
+                            <option value="closed" <?php echo (isset($status) && $status == 'closed') ? 'selected' : ''; ?>>Closed</option>
+                        </select>
+                        
+                        <button type="submit">Generate Report</button>
+                        <button type="submit" name="export_csv" class="export">Export to CSV</button>
+                    </form>
                 </div>
-                <div class="report-card">
-                    <h3>Inventory Overview</h3>
-                    <p>Total Items for Sale: <?php echo htmlspecialchars($items_for_sell); ?></p>
-                    <p>Low Stock Items: <?php echo count($low_stock_items); ?></p>
-                </div>
+
+                <?php if (isset($report_transactions) || isset($report_items) || isset($report_requests)): ?>
+                    <!-- Transactions Report -->
+                    <h3>Transactions Report</h3>
+                    <?php if ($report_transactions): ?>
+                        <div class="report-table-container">
+                            <table class="report-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Item Name</th>
+                                        <th>Type</th>
+                                        <th>Buyer</th>
+                                        <th>Seller</th>
+                                        <th>Supplier</th>
+                                        <th>Original Price/Max Price</th>
+                                        <th>Final Price</th>
+                                        <th>Quantity</th>
+                                        <th>Total Amount</th>
+                                        <th>Description</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($report_transactions as $t): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($t['id']); ?></td>
+                                            <td><?php echo htmlspecialchars($t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A'); ?></td>
+                                            <td><?php echo $t['item_id'] ? 'Sell' : 'Buy'; ?></td>
+                                            <td><?php echo htmlspecialchars($t['buyer']); ?></td>
+                                            <td><?php echo htmlspecialchars($t['seller']); ?></td>
+                                            <td><?php echo htmlspecialchars($t['supplier_name_sell'] ?? 'N/A'); ?></td>
+                                            <td><?php echo $t['item_id'] ? number_format($t['original_price_sell'] ?? 0, 2) : number_format($t['max_price_buy'] ?? 0, 2); ?></td>
+                                            <td>$<?php echo number_format($t['final_price'], 2); ?></td>
+                                            <td><?php echo htmlspecialchars($t['quantity']); ?></td>
+                                            <td>$<?php echo number_format($t['final_price'] * $t['quantity'], 2); ?></td>
+                                            <td><?php echo htmlspecialchars($t['description_sell'] ?? $t['description_buy'] ?? 'N/A'); ?></td>
+                                            <td><?php echo htmlspecialchars($t['created_at']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="no-data">
+                            <i class="fas fa-receipt"></i>
+                            <p>No transactions match the selected criteria.</p>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Inventory Report -->
+                    <h3>Inventory Report</h3>
+                    <?php if ($report_items): ?>
+                        <div class="report-table-container">
+                            <table class="report-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Item Name</th>
+                                        <th>Supplier</th>
+                                        <th>Description</th>
+                                        <th>Price</th>
+                                        <th>Quantity</th>
+                                        <th>Status</th>
+                                        <th>Posted By</th>
+                                        <th>Created At</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($report_items as $item): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($item['id']); ?></td>
+                                            <td><?php echo htmlspecialchars($item['item_name']); ?></td>
+                                            <td><?php echo htmlspecialchars($item['supplier_name'] ?? 'N/A'); ?></td>
+                                            <td><?php echo htmlspecialchars($item['description']); ?></td>
+                                            <td>$<?php echo number_format($item['price'], 2); ?></td>
+                                            <td><?php echo htmlspecialchars($item['quantity']); ?></td>
+                                            <td><?php echo htmlspecialchars($item['status']); ?></td>
+                                            <td><?php echo htmlspecialchars($item['posted_by_name']); ?></td>
+                                            <td><?php echo htmlspecialchars($item['created_at']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="no-data">
+                            <i class="fas fa-box-open"></i>
+                            <p>No items match the selected criteria.</p>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Buy Requests Report -->
+                    <h3>Buy Requests Report</h3>
+                    <?php if ($report_requests): ?>
+                        <div class="report-table-container">
+                            <table class="report-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Item Name</th>
+                                        <th>Description</th>
+                                        <th>Max Price</th>
+                                        <th>Quantity</th>
+                                        <th>Status</th>
+                                        <th>User</th>
+                                        <th>Created At</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($report_requests as $request): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($request['id']); ?></td>
+                                            <td><?php echo htmlspecialchars($request['item_name']); ?></td>
+                                            <td><?php echo htmlspecialchars($request['description']); ?></td>
+                                            <td>$<?php echo number_format($request['max_price'], 2); ?></td>
+                                            <td><?php echo htmlspecialchars($request['quantity']); ?></td>
+                                            <td><?php echo htmlspecialchars($request['status']); ?></td>
+                                            <td><?php echo htmlspecialchars($request['username']); ?></td>
+                                            <td><?php echo htmlspecialchars($request['created_at']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="no-data">
+                            <i class="fas fa-hand-holding-usd"></i>
+                            <p>No buy requests match the selected criteria.</p>
+                        </div>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <div class="no-data">
+                        <i class="fas fa-chart-pie"></i>
+                        <p>Use the form above to generate a report.</p>
+                    </div>
+                <?php endif; ?>
+
             <?php endif; ?>
         </div>
     </div>
 
     <!-- Footer -->
-    <footer>
-        <div class="copyright">
-            © 2025 | Created & Designed By <a href="#home">Group 8</a>
-        </div>
-        <div class="sm">
-            <a href="#/"><i class="fa fa-facebook" style="font-size:24px"></i></a>
-            <a href="#/"><i class="fa fa-instagram" style="font-size:24px"></i></a>
-            <a href="#/"><i class="fa fa-twitter" style="font-size:24px"></i></a>
-            <a href="#/"><i class="fa fa-linkedin" style="font-size:24px"></i></a>
+    <footer class="footer">
+        <div class="inner-width">
+            <p>&copy; <?php echo date('Y'); ?> Admin Dashboard. All rights reserved.</p>
         </div>
     </footer>
+
+    <script src="../javaScript/admin.js"></script>
 </body>
 </html>
