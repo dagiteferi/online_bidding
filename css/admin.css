@@ -437,32 +437,24 @@ body {
 textarea.input {
     resize: vertical !important; /* Allow vertical resize for textareas */
 }
-.input::placeholder {
+
+/* Removed duplicate placeholder styles and added a comment for clarity */
+.input::placeholder,
+.input::-webkit-input-placeholder,
+.input::-moz-placeholder,
+.input:-ms-input-placeholder,
+.input::-ms-input-placeholder {
     color: #888 !important; /* Gray color for visibility */
     opacity: 1 !important; /* Ensure full visibility */
 }
-.input::-webkit-input-placeholder {
-    color: #888 !important;
-    opacity: 1 !important;
+.input::placeholder {
+    color: #888;
+    opacity: 1;
 }
-.input::-moz-placeholder {
-    color: #888 !important;
-    opacity: 1 !important;
-}
-.input:-ms-input-placeholder {
-    color: #888 !important;
-    opacity: 1 !important;
-}
-.input::-ms-input-placeholder {
-    color: #888 !important;
-    opacity: 1 !important;
-}
-
 textarea {
     resize: vertical;
     min-height: 120px;
     padding: 15px 18px;
-    line-height: 1.5;
 }
 
 /* Enhanced Button Styles */
