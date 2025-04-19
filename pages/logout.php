@@ -1,7 +1,11 @@
 <?php
-// This page handles user logout functionality.
 session_start();
+
+// Destroy the session
+session_unset();
 session_destroy();
-header("Location: index.php");
+
+// Redirect to login page
+header("Location: ../login.php");
 exit();
 ?>
