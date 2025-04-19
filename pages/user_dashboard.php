@@ -245,467 +245,51 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Dashboard - Offer System</title>
+    <!-- <link rel="stylesheet" href="../css/admin.css"> -->
     <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/user_dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script src="../javaScript/scripts.js"></script>
     <style>
-        :root {
-            --primary-color: #48dbfb;
-            --secondary-color: #353b48;
-            --text-color: #fff;
-            --dark-text: #111;
-            --light-bg: #f8f9fa;
-        }
-        
-        body {
-            font-family: 'Ubuntu', sans-serif;
-            color: var(--dark-text);
-            background-color: var(--light-bg);
-            padding-top: 80px;
-        }
-        
-        .dashboard-container {
-            max-width: 1300px;
-            margin: 0 auto;
-            padding: 0 40px;
-        }
-        
-        .welcome-banner {
-            background: linear-gradient(110deg, var(--primary-color) 60%, #98e4f5 60%);
-            color: var(--text-color);
-            padding: 40px;
-            border-radius: 10px;
-            margin: 30px 0;
-            text-align: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        
-        .welcome-banner h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-        
-        .welcome-banner .btn-view-offers {
-            background-color: var(--text-color);
-            color: var(--secondary-color);
-            padding: 10px 20px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: 500;
-            margin-top: 15px;
-            display: inline-block;
-            transition: background-color 0.3s;
-        }
-        
-        .welcome-banner .btn-view-offers:hover {
-            background-color: #e0e0e0;
-        }
-        
-        .section-title {
-            text-align: center;
-            margin: 60px 0 30px;
-            position: relative;
-            font-size: 26px;
-            color: var(--dark-text);
-        }
-        
-        .section-title::after {
-            content: '';
-            width: 60px;
-            height: 4px;
-            background-color: var(--primary-color);
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        
-        .items-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 25px;
-            margin-bottom: 50px;
-        }
-        
-        .item-card {
-            background: #fff;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            position: relative;
-        }
-        
-        .item-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        }
-        
-        .item-img-container {
-            height: 200px;
-            overflow: hidden;
-            background-color: #f5f5f5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .item-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .no-image {
-            color: #95a5a6;
-            font-size: 14px;
-        }
-        
-        .item-body {
-            padding: 20px;
-        }
-        
-        .item-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 10px;
-            color: var(--secondary-color);
-        }
-        
-        .item-price {
-            color: var(--primary-color);
-            font-weight: 700;
-            font-size: 1.1rem;
-            margin-bottom: 15px;
-        }
-        
-        .item-desc {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 15px;
-        }
-        
-        .item-admin {
-            color: #777;
-            font-size: 13px;
-            margin-bottom: 15px;
-        }
-        
-        .item-status {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 12px;
-            text-transform: uppercase;
-        }
-        
-        .status-open {
-            background-color: #2ecc71;
-            color: white;
-        }
-        
-        .status-closed {
-            background-color: #e74c3c;
-            color: white;
-        }
-        
-        .btn-offer {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 50px;
-            width: 100%;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        
-        .btn-offer:hover {
-            background-color: #3aa8d8;
-        }
-        
-        .btn-disabled {
-            background-color: #95a5a6;
-            cursor: not-allowed;
-        }
-        
-        .offers-table-container {
-            background: #fff;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            margin-bottom: 50px;
-            overflow-x: auto;
-        }
-        
-        .offers-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .offers-table th {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 15px;
-            text-align: left;
-        }
-        
-        .offers-table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .offers-table tr:hover {
-            background-color: rgba(72, 219, 251, 0.05);
-        }
-        
-        .offer-status {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 12px;
-            text-transform: uppercase;
-        }
-        
-        .status-pending {
-            background-color: #f39c12;
-            color: white;
-        }
-        
-        .status-accepted {
-            background-color: #2ecc71;
-            color: white;
-        }
-        
-        .status-rejected {
-            background-color: #e74c3c;
-            color: white;
-        }
-        
-        .status-closed {
-            background-color: #95a5a6;
-            color: white;
-        }
-        
-        .btn-edit {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            padding: 5px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: background-color 0.3s;
-        }
-        
-        .btn-edit:hover {
-            background-color: #2980b9;
-        }
-        
-        .btn-edit:disabled {
-            background-color: #95a5a6;
-            cursor: not-allowed;
-        }
-        
-        .alert-message {
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 25px;
-            text-align: center;
-            font-weight: 500;
-        }
-        
-        .alert-success {
-            background-color: rgba(46, 204, 113, 0.2);
-            color: #27ae60;
-        }
-        
-        .alert-error {
-            background-color: rgba(231, 76, 60, 0.2);
-            color: #c0392b;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 50px 20px;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            margin-bottom: 50px;
-        }
-        
-        .empty-state i {
-            font-size: 50px;
-            color: #95a5a6;
-            margin-bottom: 20px;
-        }
-        
-        .empty-state h3 {
-            color: var(--secondary-color);
-            margin-bottom: 10px;
-        }
-        
-        .empty-state p {
-            color: #666;
-        }
-        
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .modal-content {
-            background: #fff;
-            padding: 30px;
-            border-radius: 10px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 5px 25px rgba(0,0,0,0.2);
-            position: relative;
-        }
-        
-        .modal-header {
-            margin-bottom: 20px;
-        }
-        
-        .modal-header h3 {
-            color: var(--secondary-color);
-            font-size: 1.5rem;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-        
-        .form-control {
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        
-        .form-control-textarea {
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-            resize: vertical;
-        }
-        
-        .input-group {
-            display: flex;
-            align-items: center;
-        }
-        
-        .input-group-text {
-            padding: 10px;
-            background-color: #f5f5f5;
-            border: 1px solid #ddd;
-            border-right: none;
-            border-radius: 5px 0 0 5px;
-        }
-        
-        .input-group .form-control {
-            border-radius: 0 5px 5px 0;
-        }
-        
-        .btn-submit {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: 500;
-            font-size: 16px;
-            transition: background-color 0.3s;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        
-        .btn-submit:hover {
-            background-color: #3aa8d8;
-        }
-        
-        .btn-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            cursor: pointer;
-            color: #777;
-        }
-        
-        @media (max-width: 768px) {
-            .dashboard-container {
-                padding: 0 20px;
-            }
-            
-            .items-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .welcome-banner h1 {
-                font-size: 2rem;
-            }
-            
-            .offers-table th, .offers-table td {
-                padding: 8px;
-                font-size: 14px;
-            }
-        }
+        * user dashboard             */
+
+
     </style>
 </head>
 <body>
-    <nav class="navbar">
+    
+<nav class="navbar">
         <div class="inner-width">
-            <a href="../index.php" class="logo"></a>
+            <a href="index.php" class="logo"></a>
             <button class="menu-toggler">
                 <span></span>
                 <span></span>
                 <span></span>
             </button>
             <div class="navbar-menu">
-                <a href="../index.php">Home</a>
-                <a href="../index.php#about">About</a>
-                <a href="../index.php#contact">Contact</a>
-                <a href="logout.php">Logout</a>
+            <a href="../index.php">Home</a>
+            
+            <a href="../index.php#about">About</a>
+            <a href="../index.php#contact">Contact</a>
+            <a href="logout.php">Logout</a>
             </div>
         </div>
     </nav>
-
-    <div class="dashboard-container">
+    
+    <section id="home">
+        <div class="inner-width">
+        <div class="dashboard-container">
         <div class="welcome-banner">
             <h1>Welcome, <?php echo htmlspecialchars($_SESSION['username'] ?? 'User'); ?>!</h1>
             <p>Manage your offers, browse available items, and respond to admin buy requests</p>
             <a href="#your-offers" class="btn-view-offers"><i class="fas fa-handshake"></i> View Your Offers</a>
         </div>
+        </div>
+    </section>
+    
         
         <?php if (isset($_GET['success'])): ?>
             <div class="alert-message alert-success">

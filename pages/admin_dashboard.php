@@ -907,7 +907,7 @@ try {
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="../css/style.css">
-    <script src="../javaScript/scripts.js"></script>
+   
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -947,25 +947,26 @@ try {
     </div>
 
     <div class="admin-dashboard">
-        <!-- Sidebar -->
-        <!-- Sidebar -->
-<div class="sidebar">
-    <div class="logo">
-        <i class="fas fa-user-shield"></i>
-        <span>Admin Panel</span>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-user-shield"></i>
+            <span>Admin Panel</span>
+        </div>
+        <ul>
+            <li><a href="?action=dashboard"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a></li>
+            <li><a href="?action=post_sell"><i class="fas fa-tag"></i> <span>Post Sell</span></a></li>
+            <li><a href="?action=post_buy"><i class="fas fa-shopping-cart"></i> <span>Post Buy</span></a></li>
+            <li><a href="?action=items_for_sell"><i class="fas fa-box-open"></i> <span>Items</span></a></li>
+            <li><a href="?action=buy_requests"><i class="fas fa-hand-holding-usd"></i> <span>Buy Requests</span></a></li>
+            <li><a href="?action=offers"><i class="fas fa-exchange-alt"></i> <span>Offers</span></a></li>
+            <li><a href="?action=transactions"><i class="fas fa-receipt"></i> <span>Transactions</span></a></li>
+            <li><a href="?action=report"><i class="fas fa-chart-pie"></i> <span>Reports</span></a></li>
+            <li><a href="../logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a></li>
+        </ul>
     </div>
-    <ul>
-        <li><a href="?action=dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-        <li><a href="?action=post_sell"><i class="fas fa-tag"></i> Post Sell Item</a></li>
-        <li><a href="?action=post_buy"><i class="fas fa-shopping-cart"></i> Post Buy Item</a></li>
-        <li><a href="?action=items_for_sell"><i class="fas fa-box-open"></i> Items for Sale</a></li>
-        <li><a href="?action=buy_requests"><i class="fas fa-hand-holding-usd"></i> Active Buy Requests</a></li>
-        <li><a href="?action=offers"><i class="fas fa-exchange-alt"></i> Offers</a></li>
-        <li><a href="?action=transactions"><i class="fas fa-receipt"></i> Transactions</a></li>
-        <li><a href="?action=report"><i class="fas fa-chart-pie"></i> Reports</a></li>
-        <li><a href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-    </ul>
-</div>
+
+    
 
         <!-- Main Content -->
         <div class="main-content">
