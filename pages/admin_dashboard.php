@@ -911,104 +911,7 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <style>
-        .item-image, .request-image {
-            max-width: 100%;
-            max-height: 150px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            object-fit: cover;
-        }
-        .item-details {
-            margin-top: 10px;
-            padding: 10px;
-            border-top: 1px solid #ddd;
-        }
-        .item-actions a, .offer-actions a {
-            margin-right: 5px;
-        }
-        .closed-item {
-            background-color: #f8d7da;
-            opacity: 0.8;
-            position: relative;
-        }
-        .closed-item::after {
-            content: 'CLOSED';
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: #e74c3c;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-weight: bold;
-            font-size: 12px;
-        }
-        .admin-btn.reopen {
-            background-color: #2ecc71;
-        }
-        .admin-btn.reopen:hover {
-            background-color: #27ae60;
-        }
-        .offers-table-container, .report-table-container {
-            background: #fff;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            margin-bottom: 50px;
-            overflow-x: auto;
-        }
-        .offers-table, .report-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .offers-table th, .report-table th {
-            background-color: #48dbfb;
-            color: white;
-            padding: 15px;
-            text-align: left;
-        }
-        .offers-table td, .report-table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #eee;
-        }
-        .offers-table tr:hover, .report-table tr:hover {
-            background-color: rgba(72, 219, 251, 0.05);
-        }
-        .sort-form, .report-form {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        .sort-form select, .report-form select, .report-form input {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        .sort-form button, .report-form button {
-            padding: 8px 15px;
-            background-color: #48dbfb;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .sort-form button:hover, .report-form button:hover {
-            background-color: #3aa8d8;
-        }
-        .report-form button.export {
-            background-color: #2ecc71;
-        }
-        .report-form button.export:hover {
-            background-color: #27ae60;
-        }
-        .countdown {
-            color: #e74c3c;
-            font-weight: bold;
-        }
-    </style>
+    
 </head>
 
 <body>
@@ -1042,22 +945,22 @@ try {
     <div class="admin-dashboard">
         <!-- Sidebar -->
         <div class="sidebar">
-            <div class="logo">
-                <i class="fas fa-user-shield"></i>
-                <span>Admin Panel</span>
-            </div>
-            <ul>
-                <li><a href="?action=dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                <li><a href="?action=post_sell"><i class="fas fa-tag"></i> Post Sell Item</a></li>
-                <li><a href="?action=post_buy"><i class="fas fa-shopping-cart"></i> Post Buy Item</a></li>
-                <li><a href="?action=items_for_sell"><i class="fas fa-box-open"></i> Items for Sale</a></li>
-                <li><a href="?action=buy_requests"><i class="fas fa-hand-holding-usd"></i> Active Buy Requests</a></li>
-                <li><a href="?action=offers"><i class="fas fa-exchange-alt"></i> Offers</a></li>
-                <li><a href="?action=transactions"><i class="fas fa-receipt"></i> Transactions</a></li>
-                <li><a href="?action=report"><i class="fas fa-chart-pie"></i> Reports</a></li>
-                <li><a href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-            </ul>
-        </div>
+    <div class="logo">
+        <i class="fas fa-user-shield"></i>
+        <span>Admin Panel</span>
+    </div>
+    <ul>
+        <li><a href="?action=dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+        <li><a href="?action=post_sell"><i class="fas fa-tag"></i> Post Sell Item</a></li>
+        <li><a href="?action=post_buy"><i class="fas fa-shopping-cart"></i> Post Buy Item</a></li>
+        <li><a href="?action=items_for_sell"><i class="fas fa-box-open"></i> Items for Sale</a></li>
+        <li><a href="?action=buy_requests"><i class="fas fa-hand-holding-usd"></i> Active Buy Requests</a></li>
+        <li><a href="?action=offers"><i class="fas fa-exchange-alt"></i> Offers</a></li>
+        <li><a href="?action=transactions"><i class="fas fa-receipt"></i> Transactions</a></li>
+        <li><a href="?action=report"><i class="fas fa-chart-pie"></i> Reports</a></li>
+        <li><a href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+    </ul>
+</div>
 
         <!-- Main Content -->
         <div class="main-content">
