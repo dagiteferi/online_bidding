@@ -49,28 +49,22 @@ body {
     top: 0;
     z-index: 999;
     transition: 0.3s linear;
-  }
-  
-  .inner-width {
-    max-width: 1300px;
-    margin: auto;
-    padding: 0 40px;
-  }
-  
-  .navbar .inner-width {
+}
+
+.navbar .inner-width {
     display: flex;
     align-items: center;
     justify-content: space-between;
-  }
-  
-  .logo {
+}
+
+.logo {
     width: 64px;
     height: 32px;
     background-image: url(../img/logo.png);
     background-size: contain;
-  }
-  
-  .menu-toggler {
+}
+
+.menu-toggler {
     background: none;
     width: 50px;
     border: none;
@@ -79,53 +73,53 @@ body {
     outline: none;
     z-index: 999;
     display: none;
-  }
-  
-  .menu-toggler span {
+}
+
+.menu-toggler span {
     display: block;
     height: 3px;
     background-color: #fff;
     margin: 6px 0;
     position: relative;
     transition: 0.3s linear;
-  }
-  
-  .navbar-menu a {
+}
+
+.navbar-menu a {
     color: #fff;
     font-size: 15px;
     font-weight: 500;
     margin-left: 30px;
     transition: 0.2s linear;
-  }
-  
-  .navbar-menu a:hover {
+}
+
+.navbar-menu a:hover {
     color: #48dbfb !important;
-  }
-  
-  .sticky {
+}
+
+.sticky {
     background-color: #fff;
     padding: 18px 0;
-  }
-  
-  .sticky .logo {
+}
+
+.sticky .logo {
     background-image: url(../img/logo.png);
-  }
-  
-  .sticky .navbar-menu a {
+}
+
+.sticky .navbar-menu a {
     color: #111;
-  }
-  
-  .sticky .menu-toggler span {
+}
+
+.sticky .menu-toggler span {
     background-color: #111;
-  }
-  
-  
+}
+
 /* Admin Header */
 .admin-header {
     background: linear-gradient(110deg, #48dbfb 60%, #98e4f5 60%);
     color: #fff;
     padding: 2rem 0;
     text-align: center;
+    margin-left: 250px; /* Match sidebar width */
 }
 
 .admin-header h1 {
@@ -150,12 +144,14 @@ body {
 /* Sidebar styling */
 .sidebar {
     width: 250px;
-    background: #353b48;
+    background: #2c3e50; /* Use the darker shade for consistency */
     color: #fff;
     padding: 30px 20px;
-    
-    height: calc(100vh - 80px);
-    
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    overflow-y: auto;
     transition: transform 0.3s ease;
 }
 
@@ -168,6 +164,9 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    padding: 20px;
+    background: #1a252f;
+    border-bottom: 1px solid #34495e;
 }
 
 .sidebar .logo i {
@@ -177,20 +176,29 @@ body {
 
 .sidebar ul {
     list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
 .sidebar ul li {
+    display: block;
     margin-bottom: 10px;
+    padding: 15px 20px;
+    border-bottom: 1px solid #34495e;
+    background: #2c3e50;
 }
 
 .sidebar ul li a {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     padding: 12px 15px;
     color: #fff;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 500;
     border-radius: 20px;
     transition: 0.2s linear;
+    text-decoration: none;
 }
 
 .sidebar ul li a:hover,
@@ -200,6 +208,7 @@ body {
 }
 
 .sidebar ul li a i {
+    font-size: 18px;
     margin-right: 10px;
     width: 20px;
     text-align: center;
@@ -207,7 +216,7 @@ body {
 
 /* Main Content styling */
 .main-content {
-    margin-left: 450px;
+    margin-left: 250px; /* Match sidebar width */
     padding: 40px;
     width: calc(100% - 250px);
     background: #fff;
@@ -349,7 +358,7 @@ body {
     border-bottom: none;
 }
 
-
+/* Form Card */
 .form-card {
     max-width: 600px;
     margin: 30px auto;
@@ -422,35 +431,30 @@ body {
     font-size: 14px;
     transition: all 0.3s ease;
 }
+
 .input {
-    color: #333 !important; /* Dark text */
-    background: #fff !important; /* White background */
+    color: #333 !important;
+    background: #fff !important;
     border: 1px solid #ddd !important;
     padding: 10px !important;
     font-size: 16px !important;
 }
+
 .input:focus {
     outline: none !important;
-    border-color: #48dbfb !important; /* Highlight on focus */
+    border-color: #48dbfb !important;
     box-shadow: 0 0 5px rgba(72, 219, 251, 0.3) !important;
 }
+
 textarea.input {
-    resize: vertical !important; /* Allow vertical resize for textareas */
+    resize: vertical !important;
 }
 
-/* Removed duplicate placeholder styles and added a comment for clarity */
-.input::placeholder,
-.input::-webkit-input-placeholder,
-.input::-moz-placeholder,
-.input:-ms-input-placeholder,
-.input::-ms-input-placeholder {
-    color: #888 !important; /* Gray color for visibility */
-    opacity: 1 !important; /* Ensure full visibility */
-}
 .input::placeholder {
     color: #888;
     opacity: 1;
 }
+
 textarea {
     resize: vertical;
     min-height: 120px;
@@ -560,7 +564,7 @@ textarea {
     text-decoration: underline;
 }
 
-/* Responsive Adjustments */
+/* Responsive Adjustments for Form */
 @media (max-width: 640px) {
     .form-card {
         padding: 1.5rem;
@@ -576,6 +580,7 @@ textarea {
         padding: 0 15px;
     }
 }
+
 /* Item Cards */
 .item-card {
     background: #353b48;
@@ -699,6 +704,7 @@ footer .inner-width {
         width: 200px;
     }
 
+    .admin-header,
     .main-content {
         margin-left: 200px;
         width: calc(100% - 200px);
@@ -754,49 +760,13 @@ footer .inner-width {
     }
 
     .sidebar {
-    background: #2c3e50 !important; /* Dark background for consistency */
-    color: #fff !important;
-    width: 250px;
-    height: 100vh;
-    position: fixed;
-    top: 0;
-    left: 0;
-    overflow-y: auto; /* Allow scrolling if needed */
-}
-.sidebar ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-.sidebar ul li {
-    display: block !important; /* Ensure visibility */
-    padding: 15px 20px;
-    border-bottom: 1px solid #34495e !important;
-    background: #2c3e50 !important; /* Match other items */
-}
-.sidebar ul li a {
-    color: #fff !important;
-    text-decoration: none;
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.sidebar ul li a i {
-    font-size: 18px;
-}
-.sidebar ul li a:hover {
-    color: #48dbfb !important; /* Highlight on hover */
-}
-.sidebar .logo {
-    padding: 20px;
-    text-align: center;
-    background: #1a252f !important;
-    color: #fff !important;
-    font-size: 20px;
-    border-bottom: 1px solid #34495e;
-}
+        width: 100%;
+        height: auto;
+        position: static;
+        padding: 20px;
+    }
 
+    .admin-header,
     .main-content {
         margin-left: 0;
         width: 100%;
