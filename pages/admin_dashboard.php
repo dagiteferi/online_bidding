@@ -1368,10 +1368,10 @@ try {
                     </div>
                 <?php endif; ?>
 
-            <?php elseif ($_GET['action'] == 'view_offers' && isset($buy_request_offers)): ?>
+                <?php elseif ($_GET['action'] == 'view_offers' && isset($buy_request_offers)): ?>
                 <!-- View Offers for Buy Request -->
                 <h2><i class="fas fa-exchange-alt"></i> Offers for Buy Request</h2>
-                <? GRAVEphp if ($buy_request_offers): ?>
+                <?php if ($buy_request_offers): ?>
                     <div class="offers-table-container">
                         <table class="offers-table">
                             <thead>
@@ -1494,8 +1494,8 @@ try {
                     </div>
                 <?php endif; ?>
 
-                                <!-- Sell Offers (Offers on Buy Requests) -->
-                                <h3>Sell Offers (Offers on Your Buy Requests) (<?php echo count($sell_offers); ?>)</h3>
+                <!-- Sell Offers (Offers on Buy Requests) -->
+                <h3>Sell Offers (Offers on Your Buy Requests) (<?php echo count($sell_offers); ?>)</h3>
                 <div class="sort-form">
                     <form method="GET" action="admin_dashboard.php">
                         <input type="hidden" name="action" value="offers">
@@ -1799,7 +1799,7 @@ try {
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; <?php echo date('Y'); ?> Platform Name. All Rights Reserved.</p>
+                <p>© <?php echo date('Y'); ?> Platform Name. All Rights Reserved.</p>
             </div>
         </div>
     </footer>
