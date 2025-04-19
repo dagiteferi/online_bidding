@@ -1171,55 +1171,57 @@ try {
                     </form>
                 </div>
 
-            <?php elseif ($_GET['action'] == 'edit_item' && isset($item_to_edit)): ?>
-                <!-- Edit Item Form -->
-                <div class="form-card">
-                    <h2><i class="fas fa-edit"></i> Edit Item</h2>
-                    <form method="POST" enctype="multipart/form-data">
-                        <input type="hidden" name="existing_image" value="<?php echo htmlspecialchars($item_to_edit['image'] ?? ''); ?>">
-                        <div class="form-group">
-                            <label>Supplier Name:</label>
-                            <input type="text" name="supplier_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['supplier_name']); ?>" required />
-                        </div>
-                        <div class="form-group">
-                            <label>Item Name:</label>
-                            <input type="text" name="item_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['item_name']); ?>" required />
-                        </div>
-                        <div class="form-group">
-                            <label>Description:</label>
-                            <textarea name="description" class="input" rows="4" required><?php echo htmlspecialchars($item_to_edit['description']); ?></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>Price ($):</label>
-                            <input type="number" name="price" class="input" value="<?php echo htmlspecialchars($item_to_edit['price']); ?>" step="0.01" required />
-                        </div>
-                        <div class="form-group">
-                            <label>Quantity:</label>
-                            <input type="number" name="quantity" class="input" value="<?php echo htmlspecialchars($item_to_edit['quantity']); ?>" required />
-                        </div>
-                        <div class="form-group">
-                            <label>Close Time (optional):</label>
-                            <input type="datetime-local" name="close_time" id="close_time" class="input" value="<?php echo $item_to_edit['close_time'] ? date('Y-m-d\TH:i', strtotime($item_to_edit['close_time'])) : ''; ?>" />
-                        </div>
-                        <div class="form-group">
-                            <label>Current Image:</label>
-                            <?php if (!empty($item_to_edit['image'])): ?>
-                                <img src="../<?php echo htmlspecialchars($item_to_edit['image']); ?>" alt="Current Image" class="item-image">
-                            <?php else: ?>
-                                <p>No image uploaded.</p>
-                            <?php endif; ?>
-                            <label for="item_image">Upload New Image (optional):</label>
-                            <input type="file" name="image" id="item_image" class="input" accept="image/*" />
-                        </div>
-                        <button type="submit" class="admin-btn full-width">
-                            <i class="fas fa-save"></i> Update Item
-                        </button>
-                        <a href="?action=items_for_sell" class="admin-btn danger full-width">
-                            <i class="fas fa-arrow-left"></i> Cancel
-                        </a>
-                    </form>
-                </div>
-
+                <?php elseif ($_GET['action'] == 'edit_item' && isset($item_to_edit)): ?>
+    <!-- Edit Item Form -->
+<div class="form-card">
+    <h2><i class="fas fa-edit"></i> Edit Item</h2>
+    <?php if (isset($error)): ?>
+        <div class="error"><?php echo htmlspecialchars($error); ?></div>
+    <?php endif; ?>
+    <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="existing_image" value="<?php echo htmlspecialchars($item_to_edit['image'] ?? ''); ?>">
+        <div class="form-group">
+            <label>Supplier Name:</label>
+            <input type="text" name="supplier_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['supplier_name'] ?? ''); ?>" required />
+        </div>
+        <div class="form-group">
+            <label>Item Name:</label>
+            <input type="text" name="item_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['item_name'] ?? ''); ?>" required />
+        </div>
+        <div class="form-group">
+            <label>Description:</label>
+            <textarea name="description" class="input" rows="4" required><?php echo htmlspecialchars($item_to_edit['description'] ?? ''); ?></textarea>
+        </div>
+        <div class="form-group">
+            <label>Price ($):</label>
+            <input type="number" name="price" class="input" value="<?php echo htmlspecialchars($item_to_edit['price'] ?? 0); ?>" step="0.01" required />
+        </div>
+        <div class="form-group">
+            <label>Quantity:</label>
+            <input type="number" name="quantity" class="input" value="<?php echo htmlspecialchars($item_to_edit['quantity'] ?? 0); ?>" required />
+        </div>
+        <div class="form-group">
+            <label>Close Time (optional):</label>
+            <input type="datetime-local" name="close_time" id="close_time" class="input" value="<?php echo !empty($item_to_edit['close_time']) && strtotime($item_to_edit['close_time']) ? date('Y-m-d\TH:i', strtotime($item_to_edit['close_time'])) : ''; ?>" />
+        </div>
+        <div class="form-group">
+            <label>Current Image:</label>
+            <?php if (!empty($item_to_edit['image']) && file_exists('../' . $item_to_edit['image'])): ?>
+                <img src="../<?php echo htmlspecialchars($item_to_edit['image']); ?>" alt="Current Image" class="item-image" style="max-width: 200px;">
+            <?php else: ?>
+                <p>No image uploaded.</p>
+            <?php endif; ?>
+            <label for="item_image">Upload New Image (optional):</label>
+            <input type="file" name="image" id="item_image" class="input" accept="image/*" />
+        </div>
+        <button type="submit" class="admin-btn full-width">
+            <i class="fas fa-save"></i> Update Item
+        </button>
+        <a href="?action=items_for_sell" class="admin-btn danger full-width">
+            <i class="fas fa-arrow-left"></i> Cancel
+        </a>
+    </form>
+</div>
             <?php elseif ($_GET['action'] == 'post_buy'): ?>
                 <!-- Post Buy Item Form -->
                 <div class="form-card">
