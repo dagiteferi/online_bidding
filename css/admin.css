@@ -422,16 +422,40 @@ body {
     font-size: 14px;
     transition: all 0.3s ease;
 }
-
-.input:focus, textarea:focus {
-    border-color: #48dbfb;
-    background: #fff;
-    box-shadow: 0 0 0 3px rgba(72, 219, 251, 0.15);
+.input {
+    color: #333 !important; /* Dark text */
+    background: #fff !important; /* White background */
+    border: 1px solid #ddd !important;
+    padding: 10px !important;
+    font-size: 16px !important;
 }
-
-.input::placeholder, textarea::placeholder {
-    color: #94a3b8;
-    font-size: 14px;
+.input:focus {
+    outline: none !important;
+    border-color: #48dbfb !important; /* Highlight on focus */
+    box-shadow: 0 0 5px rgba(72, 219, 251, 0.3) !important;
+}
+textarea.input {
+    resize: vertical !important; /* Allow vertical resize for textareas */
+}
+.input::placeholder {
+    color: #888 !important; /* Gray color for visibility */
+    opacity: 1 !important; /* Ensure full visibility */
+}
+.input::-webkit-input-placeholder {
+    color: #888 !important;
+    opacity: 1 !important;
+}
+.input::-moz-placeholder {
+    color: #888 !important;
+    opacity: 1 !important;
+}
+.input:-ms-input-placeholder {
+    color: #888 !important;
+    opacity: 1 !important;
+}
+.input::-ms-input-placeholder {
+    color: #888 !important;
+    opacity: 1 !important;
 }
 
 textarea {
