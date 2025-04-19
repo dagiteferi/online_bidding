@@ -6,143 +6,112 @@
     font-family: "Ubuntu", sans-serif;
     box-sizing: border-box;
 }
-*{
-    margin: 0;
-    padding: 0;
-    text-decoration: none;
-    font-family: "Ubuntu",sans-serif;
-    box-sizing: border-box;
-  }
-  
-  html{
-    scroll-behavior: smooth; 
-  }
-  
-  ::selection{
-    background-color: #48dbfb60; /* Changes the background color of the text that has been selected */
-  }
-  
-  ::-webkit-scrollbar{
-    width: 10px; /* Changes the width of the scrollbar */
-    background-color: #f1f1f1; /* Changes the background color of the scrollbar */
-  }
-  
-  ::-webkit-scrollbar-thumb{
-    background-color: #353b48; /* Changes the color of the moving part of the scrollbar */
-  }
-
-  /* css/main.css */
-* {
-  margin: 0;
-  padding: 0;
-  text-decoration: none;
-  font-family: "Ubuntu", sans-serif;
-  box-sizing: border-box;
-}
 
 html {
-  scroll-behavior: smooth;
+    scroll-behavior: smooth;
 }
 
 ::selection {
-  background-color: #48dbfb60;
+    background-color: #48dbfb60;
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  background-color: #f1f1f1;
+    width: 10px;
+    background-color: #f1f1f1;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #353b48;
+    background-color: #353b48;
 }
 
-/* Navbar Styles */
+/* Navbar Styles - Fixed at top */
 .navbar {
-  position: fixed;
-  background-color: transparent;
-  width: 100%;
-  padding: 30px 0;
-  top: 0;
-  z-index: 999;
-  transition: 0.3s linear;
+    position: fixed;
+    background-color: #353b48; /* Changed from transparent to solid color */
+    width: 100%;
+    padding: 20px 0;
+    top: 0;
+    z-index: 999;
+    transition: 0.3s linear;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .inner-width {
-  max-width: 1300px;
-  margin: auto;
-  padding: 0 40px;
+    max-width: 1300px;
+    margin: auto;
+    padding: 0 40px;
 }
 
 .navbar .inner-width {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .logo {
-  width: 64px;
-  height: 32px;
-  background-image: url(../img/logo.png);
-  background-size: contain;
+    width: 64px;
+    height: 32px;
+    background-image: url(../img/logo.png);
+    background-size: contain;
 }
 
 .menu-toggler {
-  background: none;
-  width: 50px;
-  border: none;
-  cursor: pointer;
-  position: relative;
-  outline: none;
-  z-index: 999;
-  display: none;
+    background: none;
+    width: 50px;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    outline: none;
+    z-index: 999;
+    display: none;
 }
 
 .menu-toggler span {
-  display: block;
-  height: 3px;
-  background-color: #fff;
-  margin: 6px 0;
-  position: relative;
-  transition: 0.3s linear;
+    display: block;
+    height: 3px;
+    background-color: #fff;
+    margin: 6px 0;
+    position: relative;
+    transition: 0.3s linear;
 }
 
 .navbar-menu a {
-  color: #fff;
-  font-size: 15px;
-  font-weight: 500;
-  margin-left: 30px;
-  transition: 0.2s linear;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+    margin-left: 30px;
+    transition: 0.2s linear;
 }
 
 .navbar-menu a:hover {
-  color: #48dbfb !important;
+    color: #48dbfb !important;
 }
 
 .sticky {
-  background-color: #fff;
-  padding: 18px 0;
+    background-color: #fff;
+    padding: 15px 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .sticky .logo {
-  background-image: url(../img/logo.png);
+    background-image: url(../img/logo.png);
 }
 
 .sticky .navbar-menu a {
-  color: #111;
+    color: #111;
 }
 
 .sticky .menu-toggler span {
-  background-color: #111;
+    background-color: #111;
 }
-  
-  
-/* Admin Header */
+
+/* Admin Header - Adjusted to account for fixed navbar */
 .admin-header {
     background: linear-gradient(110deg, #48dbfb 60%, #98e4f5 60%);
     color: #fff;
-    padding: 2rem 0;
+    padding: 6rem 0 2rem; /* Increased top padding to account for navbar */
     text-align: center;
+    margin-top: 0; /* Removed previous margin-top */
 }
 
 .admin-header h1 {
@@ -157,23 +126,25 @@ html {
     opacity: 0.9;
 }
 
-/* Admin Dashboard Container */
+/* Admin Dashboard Container - Adjusted for fixed navbar */
 .admin-dashboard {
     display: flex;
     min-height: calc(100vh - 80px);
-    margin-top: 80px;
+    background: #f4f7fc;
+    margin-top: 80px; /* Added to account for fixed navbar */
 }
 
-/* Sidebar styling */
+/* Rest of your CSS remains exactly the same from the previous version */
+/* [Previous CSS code continues here without any changes] */
+
+/* Sidebar styling - Improved Version */
 .sidebar {
     width: 250px;
     background: #353b48;
     color: #fff;
     padding: 30px 20px;
-    height: calc(100vh - 80px);
-    position: fixed;
-    overflow-y: auto;
-    transition: transform 0.3s ease;
+    flex-shrink: 0;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar .logo {
@@ -199,7 +170,7 @@ html {
 }
 
 .sidebar ul li {
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 .sidebar ul li a {
@@ -209,8 +180,8 @@ html {
     color: #fff;
     font-size: 15px;
     font-weight: 500;
-    border-radius: 20px;
-    transition: 0.2s linear;
+    border-radius: 8px;
+    transition: all 0.3s ease;
     text-decoration: none;
 }
 
@@ -218,10 +189,11 @@ html {
 .sidebar ul li a.active {
     background: #48dbfb;
     color: #fff;
+    transform: translateX(5px);
 }
 
 .sidebar ul li a i {
-    margin-right: 10px;
+    margin-right: 12px;
     width: 20px;
     text-align: center;
     font-size: 16px;
@@ -229,12 +201,13 @@ html {
 
 /* Main Content styling */
 .main-content {
-    margin-left: 250px;
+    flex-grow: 1;
     padding: 40px;
-    width: calc(100% - 250px);
     background: #fff;
     min-height: calc(100vh - 80px);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
 }
+
 .main-content h1 {
     font-size: 24px;
     font-weight: normal;
@@ -368,7 +341,7 @@ html {
     border-bottom: none;
 }
 
-
+/* Form Card */
 .form-card {
     max-width: 600px;
     margin: 30px auto;
@@ -441,102 +414,6 @@ html {
     font-size: 14px;
     transition: all 0.3s ease;
 }
-.item-image, .request-image {
-    max-width: 100%;
-    max-height: 150px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    object-fit: cover;
-}
-.item-details {
-    margin-top: 10px;
-    padding: 10px;
-    border-top: 1px solid #ddd;
-}
-.item-actions a, .offer-actions a {
-    margin-right: 5px;
-}
-.closed-item {
-    background-color: #f8d7da;
-    opacity: 0.8;
-    position: relative;
-}
-.closed-item::after {
-    content: 'CLOSED';
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background-color: #e74c3c;
-    color: white;
-    padding: 5px 10px;
-    border-radius: 5px;
-    font-weight: bold;
-    font-size: 12px;
-}
-.admin-btn.reopen {
-    background-color: #2ecc71;
-}
-.admin-btn.reopen:hover {
-    background-color: #27ae60;
-}
-.offers-table-container, .report-table-container {
-    background: #fff;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    margin-bottom: 50px;
-    overflow-x: auto;
-}
-.offers-table, .report-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-.offers-table th, .report-table th {
-    background-color: #48dbfb;
-    color: white;
-    padding: 15px;
-    text-align: left;
-}
-.offers-table td, .report-table td {
-    padding: 12px 15px;
-    border-bottom: 1px solid #eee;
-}
-.offers-table tr:hover, .report-table tr:hover {
-    background-color: rgba(72, 219, 251, 0.05);
-}
-.sort-form, .report-form {
-    margin-bottom: 20px;
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-.sort-form select, .report-form select, .report-form input {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-}
-.sort-form button, .report-form button {
-    padding: 8px 15px;
-    background-color: #48dbfb;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-.sort-form button:hover, .report-form button:hover {
-    background-color: #3aa8d8;
-}
-.report-form button.export {
-    background-color: #2ecc71;
-}
-.report-form button.export:hover {
-    background-color: #27ae60;
-}
-.countdown {
-    color: #e74c3c;
-    font-weight: bold;
-}
 
 .input:focus, textarea:focus {
     border-color: #48dbfb;
@@ -556,7 +433,83 @@ textarea {
     line-height: 1.5;
 }
 
-/* Enhanced Button Styles */
+/* Item Cards */
+.item-card {
+    background: #353b48;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.26);
+    transition: transform 0.3s ease;
+}
+
+.item-card:hover {
+    transform: translateY(-3px);
+}
+
+.item-card h3 {
+    font-size: 20px;
+    font-weight: normal;
+    margin-bottom: 10px;
+}
+
+.item-card p {
+    font-size: 14px;
+    opacity: 0.8;
+    margin-bottom: 5px;
+}
+
+.item-card .price {
+    font-weight: 700;
+    color: #48dbfb;
+    font-size: 1.2rem;
+}
+
+.item-card .quantity {
+    font-weight: 700;
+    color: #fff;
+    font-size: 1rem;
+}
+
+.item-image, .request-image {
+    max-width: 100%;
+    max-height: 150px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    object-fit: cover;
+}
+
+.item-details {
+    margin-top: 10px;
+    padding: 10px;
+    border-top: 1px solid #ddd;
+}
+
+.item-actions a, .offer-actions a {
+    margin-right: 5px;
+}
+
+.closed-item {
+    background-color: #f8d7da;
+    opacity: 0.8;
+    position: relative;
+}
+
+.closed-item::after {
+    content: 'CLOSED';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #e74c3c;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+/* Button Styles */
 .admin-btn {
     display: inline-flex;
     align-items: center;
@@ -639,86 +592,84 @@ textarea {
     box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
 }
 
-/* Form Footer */
-.form-footer {
-    margin-top: 2rem;
-    text-align: center;
-    font-size: 14px;
-    color: #64748b;
+.admin-btn.reopen {
+    background-color: #2ecc71;
 }
 
-.form-footer a {
-    color: #48dbfb;
-    font-weight: 500;
-    text-decoration: none;
-    transition: color 0.2s ease;
+.admin-btn.reopen:hover {
+    background-color: #27ae60;
 }
 
-.form-footer a:hover {
-    color: #3ac8e6;
-    text-decoration: underline;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 640px) {
-    .form-card {
-        padding: 1.5rem;
-        margin: 20px 15px;
-    }
-    
-    .form-card h2 {
-        font-size: 1.5rem;
-    }
-    
-    .input, textarea {
-        height: 44px;
-        padding: 0 15px;
-    }
-}
-/* Item Cards */
-.item-card {
-    background: #353b48;
+/* Tables */
+.offers-table-container, .report-table-container {
+    background: #fff;
     border-radius: 10px;
-    padding: 20px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    margin-bottom: 50px;
+    overflow-x: auto;
+}
+
+.offers-table, .report-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.offers-table th, .report-table th {
+    background-color: #48dbfb;
+    color: white;
+    padding: 15px;
+    text-align: left;
+}
+
+.offers-table td, .report-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.offers-table tr:hover, .report-table tr:hover {
+    background-color: rgba(72, 219, 251, 0.05);
+}
+
+/* Forms */
+.sort-form, .report-form {
     margin-bottom: 20px;
-    color: #fff;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.26);
-    transition: transform 0.3s ease;
-}
-
-.item-card:hover {
-    transform: translateY(-3px);
-}
-
-.item-card h3 {
-    font-size: 20px;
-    font-weight: normal;
-    margin-bottom: 10px;
-}
-
-.item-card p {
-    font-size: 14px;
-    opacity: 0.8;
-    margin-bottom: 5px;
-}
-
-.item-card .price {
-    font-weight: 700;
-    color: #48dbfb;
-    font-size: 1.2rem;
-}
-
-.item-card .quantity {
-    font-weight: 700;
-    color: #fff;
-    font-size: 1rem;
-}
-
-.item-actions, .offer-actions {
-    margin-top: 15px;
     display: flex;
-    gap: 10px;
+    gap: 15px;
     flex-wrap: wrap;
+    align-items: center;
+}
+
+.sort-form select, .report-form select, .report-form input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.sort-form button, .report-form button {
+    padding: 8px 15px;
+    background-color: #48dbfb;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.sort-form button:hover, .report-form button:hover {
+    background-color: #3aa8d8;
+}
+
+.report-form button.export {
+    background-color: #2ecc71;
+}
+
+.report-form button.export:hover {
+    background-color: #27ae60;
+}
+
+.countdown {
+    color: #e74c3c;
+    font-weight: bold;
 }
 
 /* No Data Section */
@@ -746,14 +697,6 @@ textarea {
 .quick-actions .admin-btn {
     flex: 1;
     max-width: 200px;
-}
-
-/* Report Actions */
-.report-actions {
-    display: flex;
-    gap: 20px;
-    justify-content: center;
-    margin-top: 20px;
 }
 
 /* Footer styling */
@@ -801,6 +744,37 @@ footer .inner-width {
     .main-content {
         margin-left: 200px;
         width: calc(100% - 200px);
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .admin-dashboard {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        padding: 20px;
+    }
+    
+    .sidebar ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .sidebar ul li {
+        margin-bottom: 0;
+    }
+    
+    .sidebar ul li a {
+        padding: 10px 15px;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 20px;
     }
 }
 
@@ -852,23 +826,6 @@ footer .inner-width {
         font-size: 1rem;
     }
 
-    .sidebar {
-        transform: translateX(-100%);
-        width: 250px;
-        z-index: 998;
-    }
-
-    .sidebar.active {
-        transform: translateX(0);
-    }
-
-    .main-content {
-        margin-left: 0;
-        width: 100%;
-        padding: 20px;
-        margin: 20px;
-    }
-
     .row {
         grid-template-columns: 1fr;
     }
@@ -886,12 +843,36 @@ footer .inner-width {
         max-width: 100%;
     }
 
-    .report-actions {
-        flex-direction: column;
-        align-items: center;
+    .sidebar ul li a span {
+        display: none;
     }
+    
+    .sidebar ul li a i {
+        margin-right: 0;
+        font-size: 18px;
+    }
+    
+    .sidebar ul li a {
+        width: 40px;
+        height: 40px;
+        justify-content: center;
+        padding: 0;
+        border-radius: 50%;
+    }
+}
 
-    .admin-btn.full-width {
-        width: 100%;
+@media (max-width: 640px) {
+    .form-card {
+        padding: 1.5rem;
+        margin: 20px 15px;
+    }
+    
+    .form-card h2 {
+        font-size: 1.5rem;
+    }
+    
+    .input, textarea {
+        height: 44px;
+        padding: 0 15px;
     }
 }
