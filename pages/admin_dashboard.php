@@ -920,9 +920,9 @@ try {
     
 
 <!-- Navbar -->
-    <nav class="navbar">
+<nav class="navbar">
         <div class="inner-width">
-            <a href="../index.php" class="logo"></a>
+            <a href="index.php" class="logo"></a>
             <button class="menu-toggler">
                 <span></span>
                 <span></span>
@@ -947,26 +947,25 @@ try {
     </div>
 
     <div class="admin-dashboard">
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="logo">
-            <i class="fas fa-user-shield"></i>
-            <span>Admin Panel</span>
-        </div>
-        <ul>
-            <li><a href="?action=dashboard"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a></li>
-            <li><a href="?action=post_sell"><i class="fas fa-tag"></i> <span>Post Sell</span></a></li>
-            <li><a href="?action=post_buy"><i class="fas fa-shopping-cart"></i> <span>Post Buy</span></a></li>
-            <li><a href="?action=items_for_sell"><i class="fas fa-box-open"></i> <span>Items</span></a></li>
-            <li><a href="?action=buy_requests"><i class="fas fa-hand-holding-usd"></i> <span>Buy Requests</span></a></li>
-            <li><a href="?action=offers"><i class="fas fa-exchange-alt"></i> <span>Offers</span></a></li>
-            <li><a href="?action=transactions"><i class="fas fa-receipt"></i> <span>Transactions</span></a></li>
-            <li><a href="?action=report"><i class="fas fa-chart-pie"></i> <span>Reports</span></a></li>
-            <li><a href="../logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a></li>
-        </ul>
+        <!-- Sidebar -->
+        <!-- Sidebar -->
+<div class="sidebar">
+    <div class="logo">
+        <i class="fas fa-user-shield"></i>
+        <span>Admin Panel</span>
     </div>
-
-    
+    <ul>
+        <li><a href="?action=dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+        <li><a href="?action=post_sell"><i class="fas fa-tag"></i> Post Sell Item</a></li>
+        <li><a href="?action=post_buy"><i class="fas fa-shopping-cart"></i> Post Buy Item</a></li>
+        <li><a href="?action=items_for_sell"><i class="fas fa-box-open"></i> Items for Sale</a></li>
+        <li><a href="?action=buy_requests"><i class="fas fa-hand-holding-usd"></i> Active Buy Requests</a></li>
+        <li><a href="?action=offers"><i class="fas fa-exchange-alt"></i> Offers</a></li>
+        <li><a href="?action=transactions"><i class="fas fa-receipt"></i> Transactions</a></li>
+        <li><a href="?action=report"><i class="fas fa-chart-pie"></i> Reports</a></li>
+        <li><a href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+    </ul>
+</div>
 
         <!-- Main Content -->
         <div class="main-content">
