@@ -911,14 +911,15 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <style>
-      
-        
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script src="../javaScript/scripts.js"></script>
+
 </head>
 
 <body>
-    <!-- Navbar -->
+    
+
+<!-- Navbar -->
     <nav class="navbar">
         <div class="inner-width">
             <a href="../index.php" class="logo"></a>
@@ -928,7 +929,7 @@ try {
                 <span></span>
             </button>
             <div class="navbar-menu">
-                <a href="../index.php">Home</a>
+            <a href="../index.php">Home</a>
                 <a href="../index.php#about">About</a>
                 <a href="../index.php#contact">Contact</a>
                 <a href="admin_dashboard.php" class="active">Dashboard</a>
@@ -1686,30 +1687,15 @@ try {
 
     <!-- Footer -->
     <footer>
-        <div class="inner-width">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>About Us</h3>
-                    <p>We are a platform dedicated to connecting suppliers and buyers efficiently.</p>
-                </div>
-                <div class="footer-section">
-                    <h3>Quick Links</h3>
-                    <ul>
-                        <li><a href="../index.php">Home</a></li>
-                        <li><a href="../index.php#about">About</a></li>
-                        <li><a href="../index.php#contact">Contact</a></li>
-                        <li><a href="../logout.php">Logout</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Contact Info</h3>
-                    <p>Email: support@platform.com</p>
-                    <p>Phone: +123-456-7890</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>© <?php echo date('Y'); ?> Platform Name. All Rights Reserved.</p>
-            </div>
+        <div class="copyright">
+            © 2024 | Created & Designed By <a href="#home">Group 8</a>
+        </div>
+        <div class="sm">
+            <a href="#/"><i class="fa fa-facebook" style="font-size:24px"></i></a>
+            <a href="#/"><i class="fa fa-instagram" style="font-size:24px"></i></a>
+            <a href="#/"><i class="fa fa-linkedin" style="font-size:24px"></i></a>
+            <a href="#"><i class="fa fa-telegram" style="font-size:24px"></i></a>
+            <a href="#"><i class="fa fa-github" style="font-size:24px"></i></a>
         </div>
     </footer>
 

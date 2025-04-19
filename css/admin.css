@@ -6,118 +6,135 @@
     font-family: "Ubuntu", sans-serif;
     box-sizing: border-box;
 }
+*{
+    margin: 0;
+    padding: 0;
+    text-decoration: none;
+    font-family: "Ubuntu",sans-serif;
+    box-sizing: border-box;
+  }
+  
+  html{
+    scroll-behavior: smooth; 
+  }
+  
+  ::selection{
+    background-color: #48dbfb60; /* Changes the background color of the text that has been selected */
+  }
+  
+  ::-webkit-scrollbar{
+    width: 10px; /* Changes the width of the scrollbar */
+    background-color: #f1f1f1; /* Changes the background color of the scrollbar */
+  }
+  
+  ::-webkit-scrollbar-thumb{
+    background-color: #353b48; /* Changes the color of the moving part of the scrollbar */
+  }
 
-/* Smooth scrolling and selection */
+  /* css/main.css */
+* {
+  margin: 0;
+  padding: 0;
+  text-decoration: none;
+  font-family: "Ubuntu", sans-serif;
+  box-sizing: border-box;
+}
+
 html {
-    scroll-behavior: smooth;
+  scroll-behavior: smooth;
 }
 
 ::selection {
-    background-color: #48dbfb60;
+  background-color: #48dbfb60;
 }
 
 ::-webkit-scrollbar {
-    width: 10px;
-    background-color: #f1f1f1;
+  width: 10px;
+  background-color: #f1f1f1;
 }
 
 ::-webkit-scrollbar-thumb {
-    background-color: #353b48;
-}
-
-/* Body styling */
-body {
-    background-color: #f4f7fc;
-    color: #333;
-    line-height: 1.6;
-    overflow-x: hidden;
-}
-
-/* Inner width for consistent layout */
-.inner-width {
-    max-width: 1300px;
-    margin: auto;
-    padding: 0 40px;
+  background-color: #353b48;
 }
 
 /* Navbar Styles */
 .navbar {
-    position: fixed;
-    background-color: transparent;
-    width: 100%;
-    padding: 30px 0;
-    top: 0;
-    z-index: 999;
-    transition: 0.3s linear;
-  }
-  
-  .inner-width {
-    max-width: 1300px;
-    margin: auto;
-    padding: 0 40px;
-  }
-  
-  .navbar .inner-width {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  
-  .logo {
-    width: 64px;
-    height: 32px;
-    background-image: url(../img/logo.png);
-    background-size: contain;
-  }
-  
-  .menu-toggler {
-    background: none;
-    width: 50px;
-    border: none;
-    cursor: pointer;
-    position: relative;
-    outline: none;
-    z-index: 999;
-    display: none;
-  }
-  
-  .menu-toggler span {
-    display: block;
-    height: 3px;
-    background-color: #fff;
-    margin: 6px 0;
-    position: relative;
-    transition: 0.3s linear;
-  }
-  
-  .navbar-menu a {
-    color: #fff;
-    font-size: 15px;
-    font-weight: 500;
-    margin-left: 30px;
-    transition: 0.2s linear;
-  }
-  
-  .navbar-menu a:hover {
-    color: #48dbfb !important;
-  }
-  
-  .sticky {
-    background-color: #fff;
-    padding: 18px 0;
-  }
-  
-  .sticky .logo {
-    background-image: url(../img/logo.png);
-  }
-  
-  .sticky .navbar-menu a {
-    color: #111;
-  }
-  
-  .sticky .menu-toggler span {
-    background-color: #111;
-  }
+  position: fixed;
+  background-color: transparent;
+  width: 100%;
+  padding: 30px 0;
+  top: 0;
+  z-index: 999;
+  transition: 0.3s linear;
+}
+
+.inner-width {
+  max-width: 1300px;
+  margin: auto;
+  padding: 0 40px;
+}
+
+.navbar .inner-width {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  width: 64px;
+  height: 32px;
+  background-image: url(../img/logo.png);
+  background-size: contain;
+}
+
+.menu-toggler {
+  background: none;
+  width: 50px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  outline: none;
+  z-index: 999;
+  display: none;
+}
+
+.menu-toggler span {
+  display: block;
+  height: 3px;
+  background-color: #fff;
+  margin: 6px 0;
+  position: relative;
+  transition: 0.3s linear;
+}
+
+.navbar-menu a {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  margin-left: 30px;
+  transition: 0.2s linear;
+}
+
+.navbar-menu a:hover {
+  color: #48dbfb !important;
+}
+
+.sticky {
+  background-color: #fff;
+  padding: 18px 0;
+}
+
+.sticky .logo {
+  background-image: url(../img/logo.png);
+}
+
+.sticky .navbar-menu a {
+  color: #111;
+}
+
+.sticky .menu-toggler span {
+  background-color: #111;
+}
   
   
 /* Admin Header */
