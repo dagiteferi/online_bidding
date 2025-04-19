@@ -1,4 +1,4 @@
-
+/* Reset default styles */
 * {
     margin: 0;
     padding: 0;
@@ -6,8 +6,6 @@
     font-family: "Ubuntu", sans-serif;
     box-sizing: border-box;
 }
-
-
 
 /* Smooth scrolling and selection */
 html {
@@ -51,22 +49,28 @@ body {
     top: 0;
     z-index: 999;
     transition: 0.3s linear;
-}
-
-.navbar .inner-width {
+  }
+  
+  .inner-width {
+    max-width: 1300px;
+    margin: auto;
+    padding: 0 40px;
+  }
+  
+  .navbar .inner-width {
     display: flex;
     align-items: center;
     justify-content: space-between;
-}
-
-.logo {
+  }
+  
+  .logo {
     width: 64px;
     height: 32px;
     background-image: url(../img/logo.png);
     background-size: contain;
-}
-
-.menu-toggler {
+  }
+  
+  .menu-toggler {
     background: none;
     width: 50px;
     border: none;
@@ -75,53 +79,53 @@ body {
     outline: none;
     z-index: 999;
     display: none;
-}
-
-.menu-toggler span {
+  }
+  
+  .menu-toggler span {
     display: block;
     height: 3px;
     background-color: #fff;
     margin: 6px 0;
     position: relative;
     transition: 0.3s linear;
-}
-
-.navbar-menu a {
+  }
+  
+  .navbar-menu a {
     color: #fff;
     font-size: 15px;
     font-weight: 500;
     margin-left: 30px;
     transition: 0.2s linear;
-}
-
-.navbar-menu a:hover {
+  }
+  
+  .navbar-menu a:hover {
     color: #48dbfb !important;
-}
-
-.sticky {
+  }
+  
+  .sticky {
     background-color: #fff;
     padding: 18px 0;
-}
-
-.sticky .logo {
+  }
+  
+  .sticky .logo {
     background-image: url(../img/logo.png);
-}
-
-.sticky .navbar-menu a {
+  }
+  
+  .sticky .navbar-menu a {
     color: #111;
-}
-
-.sticky .menu-toggler span {
+  }
+  
+  .sticky .menu-toggler span {
     background-color: #111;
-}
-
+  }
+  
+  
 /* Admin Header */
 .admin-header {
     background: linear-gradient(110deg, #48dbfb 60%, #98e4f5 60%);
     color: #fff;
     padding: 2rem 0;
     text-align: center;
-    margin-left: 250px; /* Match sidebar width */
 }
 
 .admin-header h1 {
@@ -146,13 +150,11 @@ body {
 /* Sidebar styling */
 .sidebar {
     width: 250px;
-    background: #2c3e50; /* Use the darker shade for consistency */
+    background: #353b48;
     color: #fff;
     padding: 30px 20px;
-    height: 100vh;
+    height: calc(100vh - 80px);
     position: fixed;
-    top: 0;
-    left: 0;
     overflow-y: auto;
     transition: transform 0.3s ease;
 }
@@ -166,9 +168,6 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 20px;
-    background: #1a252f;
-    border-bottom: 1px solid #34495e;
 }
 
 .sidebar .logo i {
@@ -183,20 +182,15 @@ body {
 }
 
 .sidebar ul li {
-    display: block;
     margin-bottom: 10px;
-    padding: 15px 20px;
-    border-bottom: 1px solid #34495e;
-    background: #2c3e50;
 }
 
 .sidebar ul li a {
     display: flex;
     align-items: center;
-    gap: 10px;
     padding: 12px 15px;
     color: #fff;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 500;
     border-radius: 20px;
     transition: 0.2s linear;
@@ -210,23 +204,20 @@ body {
 }
 
 .sidebar ul li a i {
-    font-size: 18px;
     margin-right: 10px;
     width: 20px;
     text-align: center;
+    font-size: 16px;
 }
 
 /* Main Content styling */
 .main-content {
-    margin-left: 250px; /* Match sidebar width */
+    margin-left: 250px;
     padding: 40px;
     width: calc(100% - 250px);
     background: #fff;
-    margin: 40px;
-    border-radius: 10px;
-    box-shadow: 0 0 40px 20px rgba(0, 0, 0, 0.26);
+    min-height: calc(100vh - 80px);
 }
-
 .main-content h1 {
     font-size: 24px;
     font-weight: normal;
@@ -360,7 +351,7 @@ body {
     border-bottom: none;
 }
 
-/* Form Card */
+
 .form-card {
     max-width: 600px;
     margin: 30px auto;
@@ -433,34 +424,119 @@ body {
     font-size: 14px;
     transition: all 0.3s ease;
 }
-
-.input {
-    color: #333 !important;
-    background: #fff !important;
-    border: 1px solid #ddd !important;
-    padding: 10px !important;
-    font-size: 16px !important;
+.item-image, .request-image {
+    max-width: 100%;
+    max-height: 150px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    object-fit: cover;
+}
+.item-details {
+    margin-top: 10px;
+    padding: 10px;
+    border-top: 1px solid #ddd;
+}
+.item-actions a, .offer-actions a {
+    margin-right: 5px;
+}
+.closed-item {
+    background-color: #f8d7da;
+    opacity: 0.8;
+    position: relative;
+}
+.closed-item::after {
+    content: 'CLOSED';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #e74c3c;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 12px;
+}
+.admin-btn.reopen {
+    background-color: #2ecc71;
+}
+.admin-btn.reopen:hover {
+    background-color: #27ae60;
+}
+.offers-table-container, .report-table-container {
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    margin-bottom: 50px;
+    overflow-x: auto;
+}
+.offers-table, .report-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.offers-table th, .report-table th {
+    background-color: #48dbfb;
+    color: white;
+    padding: 15px;
+    text-align: left;
+}
+.offers-table td, .report-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+}
+.offers-table tr:hover, .report-table tr:hover {
+    background-color: rgba(72, 219, 251, 0.05);
+}
+.sort-form, .report-form {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.sort-form select, .report-form select, .report-form input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+.sort-form button, .report-form button {
+    padding: 8px 15px;
+    background-color: #48dbfb;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.sort-form button:hover, .report-form button:hover {
+    background-color: #3aa8d8;
+}
+.report-form button.export {
+    background-color: #2ecc71;
+}
+.report-form button.export:hover {
+    background-color: #27ae60;
+}
+.countdown {
+    color: #e74c3c;
+    font-weight: bold;
 }
 
-.input:focus {
-    outline: none !important;
-    border-color: #48dbfb !important;
-    box-shadow: 0 0 5px rgba(72, 219, 251, 0.3) !important;
+.input:focus, textarea:focus {
+    border-color: #48dbfb;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(72, 219, 251, 0.15);
 }
 
-textarea.input {
-    resize: vertical !important;
-}
-
-.input::placeholder {
-    color: #888;
-    opacity: 1;
+.input::placeholder, textarea::placeholder {
+    color: #94a3b8;
+    font-size: 14px;
 }
 
 textarea {
     resize: vertical;
     min-height: 120px;
     padding: 15px 18px;
+    line-height: 1.5;
 }
 
 /* Enhanced Button Styles */
@@ -566,7 +642,7 @@ textarea {
     text-decoration: underline;
 }
 
-/* Responsive Adjustments for Form */
+/* Responsive Adjustments */
 @media (max-width: 640px) {
     .form-card {
         padding: 1.5rem;
@@ -582,7 +658,6 @@ textarea {
         padding: 0 15px;
     }
 }
-
 /* Item Cards */
 .item-card {
     background: #353b48;
@@ -706,7 +781,6 @@ footer .inner-width {
         width: 200px;
     }
 
-    .admin-header,
     .main-content {
         margin-left: 200px;
         width: calc(100% - 200px);
@@ -762,13 +836,15 @@ footer .inner-width {
     }
 
     .sidebar {
-        width: 100%;
-        height: auto;
-        position: static;
-        padding: 20px;
+        transform: translateX(-100%);
+        width: 250px;
+        z-index: 998;
     }
 
-    .admin-header,
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
     .main-content {
         margin-left: 0;
         width: 100%;
