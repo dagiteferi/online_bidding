@@ -110,7 +110,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
     }
 
     if (isset($success_msg)) {
-        // Check if dashboard.php exists
         if (file_exists(__DIR__ . '/dashboard.php')) {
             header("Location: dashboard.php?success=" . urlencode($success_msg));
             exit();
@@ -192,9 +191,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_offer'])) {
     }
 }
 
-// Fetch all admin-posted items
+// Fetch all admin-posted items with close_time
 try {
-    $stmt = $pdo->prepare("SELECT i.id, i.item_name AS title, i.description, i.price, 'for_sale' AS item_type, i.status, i.created_at, i.image, u.username AS admin_name 
+    $stmt = $pdo->prepare("SELECT i.id, i.item_name AS title, i.description, i.price, 'for_sale' AS item_type, i.status, i.created_at, i.image, u.username AS admin_name, i.close_time 
                            FROM items i 
                            JOIN users u ON i.posted_by = u.id 
                            WHERE u.is_admin = 1");
@@ -206,9 +205,9 @@ try {
     $items = [];
 }
 
-// Fetch all admin-posted buy requests
+// Fetch all admin-posted buy requests with close_time
 try {
-    $stmt = $pdo->prepare("SELECT br.id, br.item_name, br.description, br.max_price, br.quantity, br.status, br.created_at, br.image, u.username AS admin_name 
+    $stmt = $pdo->prepare("SELECT br.id, br.item_name, br.description, br.max_price, br.quantity, br.status, br.created_at, br.image, u.username AS admin_name, br.close_time 
                            FROM buy_requests br 
                            JOIN users u ON br.user_id = u.id 
                            WHERE u.is_admin = 1");
@@ -239,28 +238,92 @@ try {
 }
 ?>
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Dashboard - Offer System</title>
-    <!-- <link rel="stylesheet" href="../css/admin.css"> -->
-    <link rel="stylesheet" href="../css/style.css">
+    <title>Admin Dashboard</title>
     <link rel="stylesheet" href="../css/user_dashboard.css">
+    <link rel="stylesheet" href="../css/style.css">
+   
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <script src="../javaScript/scripts.js"></script>
     <style>
-     
-
-
+         /* Countdown Timer Styles */
+         .countdown-container {
+            margin: 10px 0;
+            padding: 8px 12px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            font-size: 14px;
+        }
+        
+        .countdown-icon {
+            margin-right: 8px;
+            color: #e74c3c;
+        }
+        
+        .countdown-timer {
+            display: flex;
+            align-items: center;
+        }
+        
+        .countdown-segment {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 3px;
+        }
+        
+        .countdown-value {
+            background-color: #e74c3c;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            min-width: 24px;
+            text-align: center;
+            font-size: 12px;
+        }
+        
+        .countdown-unit {
+            font-size: 9px;
+            color: #6c757d;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+        
+        .countdown-separator {
+            margin: 0 2px;
+            font-weight: bold;
+            color: #495057;
+            font-size: 12px;
+        }
+        
+        .countdown-expired {
+            color: #e74c3c;
+            font-weight: bold;
+            font-size: 13px;
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .countdown-expired i {
+            margin-right: 6px;
+        }
+        
+        
     </style>
 </head>
 <body>
-    
 <nav class="navbar">
         <div class="inner-width">
             <a href="index.php" class="logo"></a>
@@ -270,27 +333,27 @@ try {
                 <span></span>
             </button>
             <div class="navbar-menu">
-            <a href="../index.php">Home</a>
-            
-            <a href="../index.php#about">About</a>
-            <a href="../index.php#contact">Contact</a>
-            <a href="logout.php">Logout</a>
+                <a href="../index.php">Home</a>
+                <a href="../index.php#about">About</a>
+                <a href="../index.php#contact">Contact</a>
+                <a href="logout.php">Logout</a>
             </div>
         </div>
     </nav>
     
     <section id="home">
         <div class="inner-width">
-        <div class="dashboard-container">
-        <div class="welcome-banner">
-            <h1>Welcome, <?php echo htmlspecialchars($_SESSION['username'] ?? 'User'); ?>!</h1>
-            <p>Manage your offers, browse available items, and respond to admin buy requests</p>
-            <a href="#your-offers" class="btn-view-offers"><i class="fas fa-handshake"></i> View Your Offers</a>
-        </div>
+            <div class="dashboard-container">
+                <div class="welcome-banner">
+                    <h1>Welcome, <?php echo htmlspecialchars($_SESSION['username'] ?? 'User'); ?>!</h1>
+                    <p>Manage your offers, browse available items, and respond to admin buy requests</p>
+                    <a href="#your-offers" class="btn-view-offers"><i class="fas fa-handshake"></i> View Your Offers</a>
+                </div>
+            </div>
         </div>
     </section>
     
-        
+    <div class="dashboard-content">
         <?php if (isset($_GET['success'])): ?>
             <div class="alert-message alert-success">
                 <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($_GET['success']); ?>
@@ -333,15 +396,49 @@ try {
                             <p class="item-desc"><?php echo htmlspecialchars($item['description'] ?? 'No description provided'); ?></p>
                             <p class="item-admin"><i class="fas fa-user-tie"></i> <?php echo htmlspecialchars($item['admin_name']); ?></p>
                             
-                            <?php if ($item['status'] == 'open'): ?>
-                                <button class="btn-offer" onclick="openOfferModal(<?php echo $item['id']; ?>, null, '<?php echo $item['item_type'] == 'for_sale' ? 'buy' : 'sell'; ?>', '<?php echo htmlspecialchars($item['title']); ?>')">
-                                    <i class="fas fa-handshake"></i> Make Offer
-                                </button>
-                            <?php else: ?>
-                                <button class="btn-offer btn-disabled" disabled>
-                                    <i class="fas fa-lock"></i> Closed
-                                </button>
-                            <?php endif; ?>
+                            <div class="item-footer">
+                                <?php if (!empty($item['close_time']) && $item['status'] === 'open'): ?>
+                                    <div class="countdown-container">
+                                        <i class="fas fa-clock countdown-icon"></i>
+                                        <div class="countdown-timer" data-close-time="<?php echo htmlspecialchars($item['close_time']); ?>">
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value days">00</span>
+                                                <span class="countdown-unit">days</span>
+                                            </div>
+                                            <span class="countdown-separator">:</span>
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value hours">00</span>
+                                                <span class="countdown-unit">hours</span>
+                                            </div>
+                                            <span class="countdown-separator">:</span>
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value minutes">00</span>
+                                                <span class="countdown-unit">mins</span>
+                                            </div>
+                                            <span class="countdown-separator">:</span>
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value seconds">00</span>
+                                                <span class="countdown-unit">secs</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php elseif (!empty($item['close_time'])): ?>
+                                    <div class="countdown-expired">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        Closed at: <?php echo date('M j, Y g:i A', strtotime($item['close_time'])); ?>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if ($item['status'] == 'open'): ?>
+                                    <button class="btn-offer" onclick="openOfferModal(<?php echo $item['id']; ?>, null, '<?php echo $item['item_type'] == 'for_sale' ? 'buy' : 'sell'; ?>', '<?php echo htmlspecialchars($item['title']); ?>')">
+                                        <i class="fas fa-handshake"></i> Make Offer
+                                    </button>
+                                <?php else: ?>
+                                    <button class="btn-offer btn-disabled" disabled>
+                                        <i class="fas fa-lock"></i> Closed
+                                    </button>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -379,15 +476,49 @@ try {
                             <p class="item-desc"><?php echo htmlspecialchars($request['description'] ?? 'No description provided'); ?></p>
                             <p class="item-admin"><i class="fas fa-user-tie"></i> <?php echo htmlspecialchars($request['admin_name']); ?> | Qty: <?php echo htmlspecialchars($request['quantity']); ?></p>
                             
-                            <?php if ($request['status'] == 'open'): ?>
-                                <button class="btn-offer" onclick="openOfferModal(null, <?php echo $request['id']; ?>, 'sell', '<?php echo htmlspecialchars($request['item_name']); ?>')">
-                                    <i class="fas fa-handshake"></i> Make Offer
-                                </button>
-                            <?php else: ?>
-                                <button class="btn-offer btn-disabled" disabled>
-                                    <i class="fas fa-lock"></i> Closed
-                                </button>
-                            <?php endif; ?>
+                            <div class="item-footer">
+                                <?php if (!empty($request['close_time']) && $request['status'] === 'open'): ?>
+                                    <div class="countdown-container">
+                                        <i class="fas fa-clock countdown-icon"></i>
+                                        <div class="countdown-timer" data-close-time="<?php echo htmlspecialchars($request['close_time']); ?>">
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value days">00</span>
+                                                <span class="countdown-unit">days</span>
+                                            </div>
+                                            <span class="countdown-separator">:</span>
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value hours">00</span>
+                                                <span class="countdown-unit">hours</span>
+                                            </div>
+                                            <span class="countdown-separator">:</span>
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value minutes">00</span>
+                                                <span class="countdown-unit">mins</span>
+                                            </div>
+                                            <span class="countdown-separator">:</span>
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value seconds">00</span>
+                                                <span class="countdown-unit">secs</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php elseif (!empty($request['close_time'])): ?>
+                                    <div class="countdown-expired">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        Closed at: <?php echo date('M j, Y g:i A', strtotime($request['close_time'])); ?>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if ($request['status'] == 'open'): ?>
+                                    <button class="btn-offer" onclick="openOfferModal(null, <?php echo $request['id']; ?>, 'sell', '<?php echo htmlspecialchars($request['item_name']); ?>')">
+                                        <i class="fas fa-handshake"></i> Make Offer
+                                    </button>
+                                <?php else: ?>
+                                    <button class="btn-offer btn-disabled" disabled>
+                                        <i class="fas fa-lock"></i> Closed
+                                    </button>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -552,7 +683,47 @@ try {
         </div>
     </footer>
 
+
     <script>
+        // Enhanced Countdown Timer
+        function updateCountdown() {
+            const countdownElements = document.querySelectorAll('.countdown-timer');
+            
+            countdownElements.forEach(element => {
+                const closeTime = new Date(element.getAttribute('data-close-time')).getTime();
+                const now = new Date().getTime();
+                const distance = closeTime - now;
+
+                if (distance <= 0) {
+                    // Replace with expired message
+                    const container = element.closest('.countdown-container');
+                    if (container) {
+                        container.innerHTML = `
+                            <div class="countdown-expired">
+                                <i class="fas fa-exclamation-circle"></i>
+                                This item has closed
+                            </div>
+                        `;
+                    }
+                } else {
+                    // Calculate time units
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                    // Update display
+                    if (element.querySelector('.days')) {
+                        element.querySelector('.days').textContent = days.toString().padStart(2, '0');
+                        element.querySelector('.hours').textContent = hours.toString().padStart(2, '0');
+                        element.querySelector('.minutes').textContent = minutes.toString().padStart(2, '0');
+                        element.querySelector('.seconds').textContent = seconds.toString().padStart(2, '0');
+                    }
+                }
+            });
+        }
+
+        // Modal Functions
         function openOfferModal(itemId, requestId, offerType, title) {
             document.getElementById('modalItemId').value = itemId !== null ? itemId : '';
             document.getElementById('modalRequestId').value = requestId !== null ? requestId : '';
@@ -579,18 +750,36 @@ try {
             document.getElementById(modalId).style.display = 'none';
         }
 
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal-overlay')) {
-                closeModal(event.target.id);
-            }
-        }
+        // Initialize and update countdown every second
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
 
-        setTimeout(function() {
-            var alerts = document.querySelectorAll('.alert-message');
-            alerts.forEach(function(alert) {
-                alert.style.display = 'none';
+            // Event delegation for offer buttons
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('btn-offer') && !e.target.disabled) {
+                    const itemCard = e.target.closest('.item-card');
+                    const itemId = itemCard.dataset.itemId || null;
+                    const requestId = itemCard.dataset.requestId || null;
+                    const offerType = itemCard.dataset.offerType;
+                    const title = itemCard.querySelector('.item-title').textContent;
+                    openOfferModal(itemId, requestId, offerType, title);
+                }
             });
-        }, 5000);
+
+            window.onclick = function(event) {
+                if (event.target.classList.contains('modal-overlay')) {
+                    closeModal(event.target.id);
+                }
+            }
+
+            setTimeout(function() {
+                var alerts = document.querySelectorAll('.alert-message');
+                alerts.forEach(function(alert) {
+                    alert.style.display = 'none';
+                });
+            }, 5000);
+        });
     </script>
 </body>
 </html>
