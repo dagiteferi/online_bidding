@@ -5,6 +5,7 @@ require_once '../config/db_connect.php';
 
 // Check if user is logged in and is not an admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['is_admin']) || $_SESSION['is_admin']) {
+    error_log("Session validation failed: user_id or is_admin not set, or user is admin. Redirecting to login.");
     header("Location: ../login.php");
     exit();
 }
@@ -15,6 +16,7 @@ try {
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch();
     if (!$user) {
+        error_log("User validation failed: No matching user found for user_id {$_SESSION['user_id']}. Destroying session.");
         session_destroy();
         header("Location: ../login.php?error=invalid_user");
         exit();
@@ -30,6 +32,9 @@ try {
 
 // Handle offer submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
+    error_log("Offer submission POST data: " . print_r($_POST, true));
+    error_log("Request headers: " . print_r(getallheaders(), true));
+
     $item_id = isset($_POST['item_id']) && $_POST['item_id'] !== '' ? intval($_POST['item_id']) : null;
     $request_id = isset($_POST['request_id']) && $_POST['request_id'] !== '' ? intval($_POST['request_id']) : null;
     $offer_type = trim($_POST['offer_type'] ?? '');
@@ -38,6 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
     $description = trim($_POST['description'] ?? '');
     $buyer_name = trim($_POST['buyer_name'] ?? '');
 
+    error_log("Parsed values - item_id: " . ($item_id ?? 'null') . ", request_id: " . ($request_id ?? 'null') . ", offer_type: $offer_type");
+
     if (empty($buyer_name)) {
         $error_msg = "Please enter your buyer name.";
     } elseif (empty($offered_price) || !is_numeric($offered_price) || $offered_price <= 0) {
@@ -45,9 +52,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
     } elseif (empty($quantity) || !is_numeric($quantity) || $quantity <= 0) {
         $error_msg = "Please enter a valid quantity (greater than 0).";
     } elseif ($item_id === null && $request_id === null) {
-        $error_msg = "Invalid item or request ID.";
+        $error_msg = "Invalid item or request ID. Please select an item or buy request to make an offer.";
+        error_log("Invalid submission: Both item_id and request_id are null.");
     } elseif (!in_array($offer_type, ['buy', 'sell'])) {
         $error_msg = "Invalid offer type.";
+        error_log("Invalid offer type: $offer_type");
     } else {
         try {
             $pdo->beginTransaction();
@@ -62,10 +71,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
                 } elseif ($item['status'] != 'open') {
                     $error_msg = "This item is no longer available for offers.";
                 } else {
-                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM offers WHERE item_id = ? AND user_id = ? AND request_id IS NULL");
+                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM offers WHERE item_id = ? AND user_id = ? AND request_id IS NULL AND status IN ('pending', 'accepted', 'rejected')");
                     $stmt->execute([$item_id, $_SESSION['user_id']]);
                     if ($stmt->fetchColumn() > 0) {
-                        $error_msg = "You have already submitted an offer for this item.";
+                        $error_msg = "You have already submitted an offer for this item. You cannot submit another offer until the current one is closed.";
                     }
                 }
             } elseif ($request_id !== null) {
@@ -78,10 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
                 } elseif ($request['status'] != 'open') {
                     $error_msg = "This buy request is no longer available for offers.";
                 } else {
-                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM offers WHERE request_id = ? AND user_id = ? AND item_id IS NULL");
+                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM offers WHERE request_id = ? AND user_id = ? AND item_id IS NULL AND status IN ('pending', 'accepted', 'rejected')");
                     $stmt->execute([$request_id, $_SESSION['user_id']]);
                     if ($stmt->fetchColumn() > 0) {
-                        $error_msg = "You have already submitted an offer for this buy request.";
+                        $error_msg = "You have already submitted an offer for this buy request. You cannot submit another offer until the current one is closed.";
                     }
                 }
             }
@@ -199,6 +208,10 @@ try {
                            WHERE u.is_admin = 1");
     $stmt->execute();
     $items = $stmt->fetchAll();
+    error_log("Fetched " . count($items) . " admin-posted items.");
+    foreach ($items as $item) {
+        error_log("Item ID: " . $item['id']);
+    }
 } catch (PDOException $e) {
     $error_msg = "Error fetching items: " . $e->getMessage();
     error_log("Items fetch failed: " . $e->getMessage());
@@ -213,24 +226,39 @@ try {
                            WHERE u.is_admin = 1");
     $stmt->execute();
     $buy_requests = $stmt->fetchAll();
+    error_log("Fetched " . count($buy_requests) . " admin-posted buy requests.");
+    foreach ($buy_requests as $request) {
+        error_log("Buy Request ID: " . $request['id']);
+    }
 } catch (PDOException $e) {
     $error_msg = "Error fetching buy requests: " . $e->getMessage();
     error_log("Buy requests fetch failed: " . $e->getMessage());
     $buy_requests = [];
 }
 
-// Fetch user's offers
+// Fetch user's offers with associated item/buy request status
 $user_offers = [];
 try {
+    error_log("Attempting to fetch offers for user_id: {$_SESSION['user_id']}");
+    $stmt = $pdo->prepare("SELECT * FROM offers WHERE user_id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $raw_offers = $stmt->fetchAll();
+    error_log("Raw offers fetched from offers table: " . count($raw_offers));
+    error_log("Raw offers data: " . print_r($raw_offers, true));
+
     $stmt = $pdo->prepare("SELECT o.id, o.item_id, o.request_id, o.offer_type, o.offered_price, o.quantity, o.description, o.buyer_name, o.status, o.created_at, 
-                           COALESCE(i.item_name, br.item_name) AS item_name 
+                           COALESCE(i.item_name, br.item_name) AS item_name,
+                           COALESCE(i.status, br.status) AS assoc_status
                            FROM offers o 
                            LEFT JOIN items i ON o.item_id = i.id 
                            LEFT JOIN buy_requests br ON o.request_id = br.id 
                            WHERE o.user_id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user_offers = $stmt->fetchAll();
-    error_log("Fetched " . count($user_offers) . " offers for user_id: {$_SESSION['user_id']}");
+    error_log("Fetched " . count($user_offers) . " offers with joins for user_id: {$_SESSION['user_id']}");
+    if (count($user_offers) === 0 && count($raw_offers) > 0) {
+        error_log("Discrepancy detected: Raw offers exist but join query returned 0. Possible issue with items or buy_requests tables.");
+    }
 } catch (PDOException $e) {
     $error_msg = "Error fetching offers: " . $e->getMessage();
     error_log("Offer fetch failed: " . $e->getMessage());
@@ -238,21 +266,20 @@ try {
 }
 ?>
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
+    <title>User Dashboard</title>
     <link rel="stylesheet" href="../css/user_dashboard.css">
     <link rel="stylesheet" href="../css/style.css">
-   
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    <script src="../javaScript/scripts.js"></script>
+    <!-- Temporarily removed to rule out interference -->
+    <!-- <script src="../javaScript/scripts.js"></script> -->
     <style>
          /* Countdown Timer Styles */
          .countdown-container {
@@ -319,468 +346,525 @@ try {
         .countdown-expired i {
             margin-right: 6px;
         }
-        
-        
     </style>
 </head>
 <body>
 <nav class="navbar">
-        <div class="inner-width">
-            <a href="index.php" class="logo"></a>
-            <button class="menu-toggler">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-            <div class="navbar-menu">
-                <a href="../index.php">Home</a>
-                <a href="../index.php#about">About</a>
-                <a href="../index.php#contact">Contact</a>
-                <a href="logout.php">Logout</a>
+    <div class="inner-width">
+        <a href="index.php" class="logo"></a>
+        <button class="menu-toggler">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <div class="navbar-menu">
+            <a href="../index.php">Home</a>
+            <a href="../index.php#about">About</a>
+            <a href="../index.php#contact">Contact</a>
+            <a href="logout.php">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<section id="home">
+    <div class="inner-width">
+        <div class="dashboard-container">
+            <div class="welcome-banner">
+                <h1>Welcome, <?php echo htmlspecialchars($_SESSION['username'] ?? 'User'); ?>!</h1>
+                <p>Manage your offers, browse available items, and respond to admin buy requests</p>
+                <a href="#your-offers" class="btn-view-offers"><i class="fas fa-handshake"></i> View Your Offers</a>
             </div>
         </div>
-    </nav>
+    </div>
+</section>
+
+<div class="dashboard-content">
+    <?php if (isset($_GET['success'])): ?>
+        <div class="alert-message alert-success">
+            <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($_GET['success']); ?>
+        </div>
+    <?php endif; ?>
+    <?php if (isset($error_msg)): ?>
+        <div class="alert-message alert-error">
+            <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error_msg); ?>
+        </div>
+    <?php endif; ?>
     
-    <section id="home">
-        <div class="inner-width">
-            <div class="dashboard-container">
-                <div class="welcome-banner">
-                    <h1>Welcome, <?php echo htmlspecialchars($_SESSION['username'] ?? 'User'); ?>!</h1>
-                    <p>Manage your offers, browse available items, and respond to admin buy requests</p>
-                    <a href="#your-offers" class="btn-view-offers"><i class="fas fa-handshake"></i> View Your Offers</a>
+    <h2 class="section-title"><i class="fas fa-box-open"></i> Available Items</h2>
+    
+    <?php if (empty($items)): ?>
+        <div class="empty-state">
+            <i class="fas fa-box-open"></i>
+            <h3>No Items Available</h3>
+            <p>There are currently no items posted by admins. Please check back later.</p>
+        </div>
+    <?php else: ?>
+        <div class="items-grid">
+            <?php foreach ($items as $item): ?>
+                <?php 
+                $item_id = isset($item['id']) && is_numeric($item['id']) ? $item['id'] : null;
+                if ($item_id === null) {
+                    error_log("Invalid item ID for item: " . print_r($item, true));
+                    continue;
+                }
+                ?>
+                <div class="item-card">
+                    <div class="item-img-container">
+                        <?php if (!empty($item['image'])): ?>
+                            <img src="../<?php echo htmlspecialchars($item['image']); ?>" class="item-img" alt="<?php echo htmlspecialchars($item['title']); ?>">
+                        <?php else: ?>
+                            <div class="no-image">
+                                <i class="fas fa-image fa-3x"></i>
+                                <p>No Image Available</p>
+                            </div>
+                        <?php endif; ?>
+                        <span class="item-status <?php echo $item['status'] == 'open' ? 'status-open' : 'status-closed'; ?>">
+                            <?php echo htmlspecialchars($item['status']); ?>
+                        </span>
+                    </div>
+                    <div class="item-body">
+                        <h3 class="item-title"><?php echo htmlspecialchars($item['title']); ?></h3>
+                        <div class="item-price">$<?php echo number_format($item['price'], 2); ?></div>
+                        <p class="item-desc"><?php echo htmlspecialchars($item['description'] ?? 'No description provided'); ?></p>
+                        <p class="item-admin"><i class="fas fa-user-tie"></i> <?php echo htmlspecialchars($item['admin_name']); ?></p>
+                        
+                        <div class="item-footer">
+                            <?php if (!empty($item['close_time']) && $item['status'] === 'open'): ?>
+                                <div class="countdown-container">
+                                    <i class="fas fa-clock countdown-icon"></i>
+                                    <div class="countdown-timer" data-close-time="<?php echo htmlspecialchars($item['close_time']); ?>">
+                                        <div class="countdown-segment">
+                                            <span class="countdown-value days">00</span>
+                                            <span class="countdown-unit">days</span>
+                                        </div>
+                                        <span class="countdown-separator">:</span>
+                                        <div class="countdown-segment">
+                                            <span class="countdown-value hours">00</span>
+                                            <span class="countdown-unit">hours</span>
+                                        </div>
+                                        <span class="countdown-separator">:</span>
+                                        <div class="countdown-segment">
+                                            <span class="countdown-value minutes">00</span>
+                                            <span class="countdown-unit">mins</span>
+                                        </div>
+                                        <span class="countdown-separator">:</span>
+                                        <div class="countdown-segment">
+                                            <span class="countdown-value seconds">00</span>
+                                            <span class="countdown-unit">secs</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php elseif (!empty($item['close_time'])): ?>
+                                <div class="countdown-expired">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    Closed at: <?php echo date('M j, Y g:i A', strtotime($item['close_time'])); ?>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <?php if ($item['status'] == 'open'): ?>
+                                <button class="btn-offer" onclick="openOfferModal(<?php echo $item_id; ?>, null, '<?php echo $item['item_type'] == 'for_sale' ? 'buy' : 'sell'; ?>', '<?php echo htmlspecialchars($item['title']); ?>')">
+                                    <i class="fas fa-handshake"></i> Make Offer
+                                </button>
+                            <?php else: ?>
+                                <button class="btn-offer btn-disabled" disabled>
+                                    <i class="fas fa-lock"></i> Closed
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            <?php endforeach; ?>
         </div>
-    </section>
+    <?php endif; ?>
     
-    <div class="dashboard-content">
-        <?php if (isset($_GET['success'])): ?>
-            <div class="alert-message alert-success">
-                <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($_GET['success']); ?>
-            </div>
-        <?php endif; ?>
-        <?php if (isset($error_msg)): ?>
-            <div class="alert-message alert-error">
-                <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error_msg); ?>
-            </div>
-        <?php endif; ?>
-        
-        <h2 class="section-title"><i class="fas fa-box-open"></i> Available Items</h2>
-        
-        <?php if (empty($items)): ?>
-            <div class="empty-state">
-                <i class="fas fa-box-open"></i>
-                <h3>No Items Available</h3>
-                <p>There are currently no items posted by admins. Please check back later.</p>
-            </div>
-        <?php else: ?>
-            <div class="items-grid">
-                <?php foreach ($items as $item): ?>
-                    <div class="item-card">
-                        <div class="item-img-container">
-                            <?php if (!empty($item['image'])): ?>
-                                <img src="../<?php echo htmlspecialchars($item['image']); ?>" class="item-img" alt="<?php echo htmlspecialchars($item['title']); ?>">
-                            <?php else: ?>
-                                <div class="no-image">
-                                    <i class="fas fa-image fa-3x"></i>
-                                    <p>No Image Available</p>
-                                </div>
-                            <?php endif; ?>
-                            <span class="item-status <?php echo $item['status'] == 'open' ? 'status-open' : 'status-closed'; ?>">
-                                <?php echo htmlspecialchars($item['status']); ?>
-                            </span>
-                        </div>
-                        <div class="item-body">
-                            <h3 class="item-title"><?php echo htmlspecialchars($item['title']); ?></h3>
-                            <div class="item-price">$<?php echo number_format($item['price'], 2); ?></div>
-                            <p class="item-desc"><?php echo htmlspecialchars($item['description'] ?? 'No description provided'); ?></p>
-                            <p class="item-admin"><i class="fas fa-user-tie"></i> <?php echo htmlspecialchars($item['admin_name']); ?></p>
-                            
-                            <div class="item-footer">
-                                <?php if (!empty($item['close_time']) && $item['status'] === 'open'): ?>
-                                    <div class="countdown-container">
-                                        <i class="fas fa-clock countdown-icon"></i>
-                                        <div class="countdown-timer" data-close-time="<?php echo htmlspecialchars($item['close_time']); ?>">
-                                            <div class="countdown-segment">
-                                                <span class="countdown-value days">00</span>
-                                                <span class="countdown-unit">days</span>
-                                            </div>
-                                            <span class="countdown-separator">:</span>
-                                            <div class="countdown-segment">
-                                                <span class="countdown-value hours">00</span>
-                                                <span class="countdown-unit">hours</span>
-                                            </div>
-                                            <span class="countdown-separator">:</span>
-                                            <div class="countdown-segment">
-                                                <span class="countdown-value minutes">00</span>
-                                                <span class="countdown-unit">mins</span>
-                                            </div>
-                                            <span class="countdown-separator">:</span>
-                                            <div class="countdown-segment">
-                                                <span class="countdown-value seconds">00</span>
-                                                <span class="countdown-unit">secs</span>
-                                            </div>
+    <h2 class="section-title"><i class="fas fa-hand-holding-usd"></i> Purchase Inquiries</h2>
+    
+    <?php if (empty($buy_requests)): ?>
+        <div class="empty-state">
+            <i class="fas fa-hand-holding-usd"></i>
+            <h3>No Buy Requests Available</h3>
+            <p>There are currently no buy requests posted by admins. Please check back later.</p>
+        </div>
+    <?php else: ?>
+        <div class="items-grid">
+            <?php foreach ($buy_requests as $request): ?>
+                <?php 
+                $request_id = isset($request['id']) && is_numeric($request['id']) ? $request['id'] : null;
+                if ($request_id === null) {
+                    error_log("Invalid buy request ID for request: " . print_r($request, true));
+                    continue;
+                }
+                ?>
+                <div class="item-card">
+                    <div class="item-img-container">
+                        <?php if (!empty($request['image'])): ?>
+                            <img src="../<?php echo htmlspecialchars($request['image']); ?>" class="item-img" alt="<?php echo htmlspecialchars($request['item_name']); ?>">
+                        <?php else: ?>
+                            <div class="no-image">
+                                <i class="fas fa-image fa-3x"></i>
+                                <p>No Image Available</p>
+                            </div>
+                        <?php endif; ?>
+                        <span class="item-status <?php echo $request['status'] == 'open' ? 'status-open' : 'status-closed'; ?>">
+                            <?php echo htmlspecialchars($request['status']); ?>
+                        </span>
+                    </div>
+                    <div class="item-body">
+                        <h3 class="item-title"><?php echo htmlspecialchars($request['item_name']); ?></h3>
+                        <div class="item-price">Max Price: $<?php echo number_format($request['max_price'], 2); ?></div>
+                        <p class="item-desc"><?php echo htmlspecialchars($request['description'] ?? 'No description provided'); ?></p>
+                        <p class="item-admin"><i class="fas fa-user-tie"></i> <?php echo htmlspecialchars($request['admin_name']); ?> | Qty: <?php echo htmlspecialchars($request['quantity']); ?></p>
+                        
+                        <div class="item-footer">
+                            <?php if (!empty($request['close_time']) && $request['status'] === 'open'): ?>
+                                <div class="countdown-container">
+                                    <i class="fas fa-clock countdown-icon"></i>
+                                    <div class="countdown-timer" data-close-time="<?php echo htmlspecialchars($request['close_time']); ?>">
+                                        <div class="countdown-segment">
+                                            <span class="countdown-value days">00</span>
+                                            <span class="countdown-unit">days</span>
+                                        </div>
+                                        <span class="countdown-separator">:</span>
+                                        <div class="countdown-segment">
+                                            <span class="countdown-value hours">00</span>
+                                            <span class="countdown-unit">hours</span>
+                                        </div>
+                                        <span class="countdown-separator">:</span>
+                                        <div class="countdown-segment">
+                                            <span class="countdown-value minutes">00</span>
+                                            <span class="countdown-unit">mins</span>
+                                        </div>
+                                        <span class="countdown-separator">:</span>
+                                        <div class="countdown-segment">
+                                            <span class="countdown-value seconds">00</span>
+                                            <span class="countdown-unit">secs</span>
                                         </div>
                                     </div>
-                                <?php elseif (!empty($item['close_time'])): ?>
-                                    <div class="countdown-expired">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        Closed at: <?php echo date('M j, Y g:i A', strtotime($item['close_time'])); ?>
-                                    </div>
-                                <?php endif; ?>
-                                
-                                <?php if ($item['status'] == 'open'): ?>
-                                    <button class="btn-offer" onclick="openOfferModal(<?php echo $item['id']; ?>, null, '<?php echo $item['item_type'] == 'for_sale' ? 'buy' : 'sell'; ?>', '<?php echo htmlspecialchars($item['title']); ?>')">
-                                        <i class="fas fa-handshake"></i> Make Offer
-                                    </button>
-                                <?php else: ?>
-                                    <button class="btn-offer btn-disabled" disabled>
-                                        <i class="fas fa-lock"></i> Closed
-                                    </button>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-        
-        <h2 class="section-title"><i class="fas fa-hand-holding-usd"></i> Purchase Inquiries</h2>
-        
-        <?php if (empty($buy_requests)): ?>
-            <div class="empty-state">
-                <i class="fas fa-hand-holding-usd"></i>
-                <h3>No Buy Requests Available</h3>
-                <p>There are currently no buy requests posted by admins. Please check back later.</p>
-            </div>
-        <?php else: ?>
-            <div class="items-grid">
-                <?php foreach ($buy_requests as $request): ?>
-                    <div class="item-card">
-                        <div class="item-img-container">
-                            <?php if (!empty($request['image'])): ?>
-                                <img src="../<?php echo htmlspecialchars($request['image']); ?>" class="item-img" alt="<?php echo htmlspecialchars($request['item_name']); ?>">
-                            <?php else: ?>
-                                <div class="no-image">
-                                    <i class="fas fa-image fa-3x"></i>
-                                    <p>No Image Available</p>
+                                </div>
+                            <?php elseif (!empty($request['close_time'])): ?>
+                                <div class="countdown-expired">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    Closed at: <?php echo date('M j, Y g:i A', strtotime($request['close_time'])); ?>
                                 </div>
                             <?php endif; ?>
-                            <span class="item-status <?php echo $request['status'] == 'open' ? 'status-open' : 'status-closed'; ?>">
-                                <?php echo htmlspecialchars($request['status']); ?>
-                            </span>
-                        </div>
-                        <div class="item-body">
-                            <h3 class="item-title"><?php echo htmlspecialchars($request['item_name']); ?></h3>
-                            <div class="item-price">Max Price: $<?php echo number_format($request['max_price'], 2); ?></div>
-                            <p class="item-desc"><?php echo htmlspecialchars($request['description'] ?? 'No description provided'); ?></p>
-                            <p class="item-admin"><i class="fas fa-user-tie"></i> <?php echo htmlspecialchars($request['admin_name']); ?> | Qty: <?php echo htmlspecialchars($request['quantity']); ?></p>
                             
-                            <div class="item-footer">
-                                <?php if (!empty($request['close_time']) && $request['status'] === 'open'): ?>
-                                    <div class="countdown-container">
-                                        <i class="fas fa-clock countdown-icon"></i>
-                                        <div class="countdown-timer" data-close-time="<?php echo htmlspecialchars($request['close_time']); ?>">
-                                            <div class="countdown-segment">
-                                                <span class="countdown-value days">00</span>
-                                                <span class="countdown-unit">days</span>
-                                            </div>
-                                            <span class="countdown-separator">:</span>
-                                            <div class="countdown-segment">
-                                                <span class="countdown-value hours">00</span>
-                                                <span class="countdown-unit">hours</span>
-                                            </div>
-                                            <span class="countdown-separator">:</span>
-                                            <div class="countdown-segment">
-                                                <span class="countdown-value minutes">00</span>
-                                                <span class="countdown-unit">mins</span>
-                                            </div>
-                                            <span class="countdown-separator">:</span>
-                                            <div class="countdown-segment">
-                                                <span class="countdown-value seconds">00</span>
-                                                <span class="countdown-unit">secs</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                <?php elseif (!empty($request['close_time'])): ?>
-                                    <div class="countdown-expired">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        Closed at: <?php echo date('M j, Y g:i A', strtotime($request['close_time'])); ?>
-                                    </div>
-                                <?php endif; ?>
-                                
-                                <?php if ($request['status'] == 'open'): ?>
-                                    <button class="btn-offer" onclick="openOfferModal(null, <?php echo $request['id']; ?>, 'sell', '<?php echo htmlspecialchars($request['item_name']); ?>')">
-                                        <i class="fas fa-handshake"></i> Make Offer
-                                    </button>
-                                <?php else: ?>
-                                    <button class="btn-offer btn-disabled" disabled>
-                                        <i class="fas fa-lock"></i> Closed
-                                    </button>
-                                <?php endif; ?>
-                            </div>
+                            <?php if ($request['status'] == 'open'): ?>
+                                <button class="btn-offer" onclick="openOfferModal(null, <?php echo $request_id; ?>, 'sell', '<?php echo htmlspecialchars($request['item_name']); ?>')">
+                                    <i class="fas fa-handshake"></i> Make Offer
+                                </button>
+                            <?php else: ?>
+                                <button class="btn-offer btn-disabled" disabled>
+                                    <i class="fas fa-lock"></i> Closed
+                                </button>
+                            <?php endif; ?>
                         </div>
                     </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-        
-        <h2 class="section-title" id="your-offers"><i class="fas fa-handshake"></i> Your Offers (<?php echo count($user_offers); ?>)</h2>
-        
-        <?php if (empty($user_offers)): ?>
-            <div class="empty-state">
-                <i class="fas fa-handshake"></i>
-                <h3>No Offers Yet</h3>
-                <p>You haven't made any offers yet. Browse the available items or buy requests above to get started.</p>
-            </div>
-        <?php else: ?>
-            <div class="offers-table-container">
-                <table class="offers-table">
-                    <thead>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+    
+    <h2 class="section-title" id="your-offers"><i class="fas fa-handshake"></i> Your Offers (<?php echo count($user_offers); ?>)</h2>
+    
+    <?php if (empty($user_offers)): ?>
+        <div class="empty-state">
+            <i class="fas fa-handshake"></i>
+            <h3>No Offers Yet</h3>
+            <p>You haven't made any offers yet. Browse the available items or buy requests above to get started.</p>
+        </div>
+    <?php else: ?>
+        <div class="offers-table-container">
+            <table class="offers-table">
+                <thead>
+                    <tr>
+                        <th>Item/Request</th>
+                        <th>Buyer Name</th>
+                        <th>Type</th>
+                        <th>Your Price</th>
+                        <th>Qty</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($user_offers as $offer): ?>
                         <tr>
-                            <th>Item/Request</th>
-                            <th>Buyer Name</th>
-                            <th>Type</th>
-                            <th>Your Price</th>
-                            <th>Qty</th>
-                            <th>Description</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th>Actions</th>
+                            <td><?php echo htmlspecialchars($offer['item_name'] ?? 'Item/Request Deleted'); ?></td>
+                            <td><?php echo htmlspecialchars($offer['buyer_name'] ?? 'N/A'); ?></td>
+                            <td><?php echo ucfirst(htmlspecialchars($offer['offer_type'] ?? 'Unknown')); ?></td>
+                            <td>$<?php echo number_format($offer['offered_price'] ?? 0, 2); ?></td>
+                            <td><?php echo htmlspecialchars($offer['quantity'] ?? 'N/A'); ?></td>
+                            <td><?php echo htmlspecialchars($offer['description'] ?? 'No description provided'); ?></td>
+                            <td>
+                                <span class="offer-status 
+                                    <?php 
+                                    $status = strtolower($offer['status'] ?? 'pending');
+                                    if ($status == 'pending') echo 'status-pending';
+                                    elseif ($status == 'accepted') echo 'status-accepted';
+                                    elseif ($status == 'rejected') echo 'status-rejected';
+                                    else echo 'status-closed';
+                                    ?>">
+                                    <?php echo htmlspecialchars(ucfirst($offer['status'] ?? 'Pending')); ?>
+                                </span>
+                            </td>
+                            <td><?php echo date('M j, Y', strtotime($offer['created_at'] ?? 'now')); ?></td>
+                            <td>
+                                <button class="btn-edit" 
+                                        onclick="openEditModal(<?php echo $offer['id']; ?>, '<?php echo htmlspecialchars($offer['item_name'] ?? 'Item/Request Deleted'); ?>', '<?php echo htmlspecialchars($offer['buyer_name']); ?>', <?php echo $offer['offered_price']; ?>, <?php echo $offer['quantity']; ?>, '<?php echo htmlspecialchars($offer['description'] ?? ''); ?>')"
+                                        <?php echo ($offer['status'] != 'pending' || ($offer['assoc_status'] ?? 'closed') != 'open') ? 'disabled' : ''; ?>>
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($user_offers as $offer): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($offer['item_name'] ?? 'Unknown'); ?></td>
-                                <td><?php echo htmlspecialchars($offer['buyer_name'] ?? 'N/A'); ?></td>
-                                <td><?php echo ucfirst(htmlspecialchars($offer['offer_type'] ?? 'Unknown')); ?></td>
-                                <td>$<?php echo number_format($offer['offered_price'] ?? 0, 2); ?></td>
-                                <td><?php echo htmlspecialchars($offer['quantity'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($offer['description'] ?? 'No description provided'); ?></td>
-                                <td>
-                                    <span class="offer-status 
-                                        <?php 
-                                        $status = strtolower($offer['status'] ?? 'pending');
-                                        if ($status == 'pending') echo 'status-pending';
-                                        elseif ($status == 'accepted') echo 'status-accepted';
-                                        elseif ($status == 'rejected') echo 'status-rejected';
-                                        else echo 'status-closed';
-                                        ?>">
-                                        <?php echo htmlspecialchars(ucfirst($offer['status'] ?? 'Pending')); ?>
-                                    </span>
-                                </td>
-                                <td><?php echo date('M j, Y', strtotime($offer['created_at'] ?? 'now')); ?></td>
-                                <td>
-                                    <button class="btn-edit" 
-                                            onclick="openEditModal(<?php echo $offer['id']; ?>, '<?php echo htmlspecialchars($offer['item_name']); ?>', '<?php echo htmlspecialchars($offer['buyer_name']); ?>', <?php echo $offer['offered_price']; ?>, <?php echo $offer['quantity']; ?>, '<?php echo htmlspecialchars($offer['description'] ?? ''); ?>')"
-                                            <?php echo $offer['status'] != 'pending' ? 'disabled' : ''; ?>>
-                                        <i class="fas fa-edit"></i> Edit
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
-    </div>
-
-    <div class="modal-overlay" id="offerModal">
-        <div class="modal-content">
-            <button class="btn-close" onclick="closeModal('offerModal')">×</button>
-            <div class="modal-header">
-                <h3 id="modalTitle">Make Offer</h3>
-            </div>
-            <form method="POST" id="offerForm">
-                <input type="hidden" name="item_id" id="modalItemId">
-                <input type="hidden" name="request_id" id="modalRequestId">
-                <input type="hidden" name="offer_type" id="modalOfferType">
-                
-                <div class="form-group">
-                    <label for="buyer_name">Buyer Name</label>
-                    <input type="text" class="form-control" name="buyer_name" id="buyer_name" value="<?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?>" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="offered_price">Your Offer Price</label>
-                    <div class="input-group">
-                        <span class="input-group-text">$</span>
-                        <input type="number" class="form-control" name="offered_price" id="offered_price" placeholder="0.00" step="0.01" min="0.01" required>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="quantity">Quantity</label>
-                    <input type="number" class="form-control" name="quantity" id="quantity" placeholder="1" min="1" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="description">Offer Description (Optional)</label>
-                    <textarea class="form-control-textarea" name="description" id="description" rows="3" placeholder="Add any details about your offer (e.g., condition, delivery terms)"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <button type="submit" name="submit_offer" class="btn-submit">
-                        <i class="fas fa-paper-plane"></i> Submit Offer
-                    </button>
-                </div>
-            </form>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
-    </div>
+    <?php endif; ?>
+</div>
 
-    <div class="modal-overlay" id="editOfferModal">
-        <div class="modal-content">
-            <button class="btn-close" onclick="closeModal('editOfferModal')">×</button>
-            <div class="modal-header">
-                <h3 id="editModalTitle">Edit Offer</h3>
-            </div>
-            <form method="POST" id="editOfferForm">
-                <input type="hidden" name="offer_id" id="editModalOfferId">
-                
-                <div class="form-group">
-                    <label for="edit_buyer_name">Buyer Name</label>
-                    <input type="text" class="form-control" name="buyer_name" id="edit_buyer_name" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="edit_offered_price">Your Offer Price</label>
-                    <div class="input-group">
-                        <span class="input-group-text">$</span>
-                        <input type="number" class="form-control" name="offered_price" id="edit_offered_price" step="0.01" min="0.01" required>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="edit_quantity">Quantity</label>
-                    <input type="number" class="form-control" name="quantity" id="edit_quantity" min="1" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="edit_description">Offer Description (Optional)</label>
-                    <textarea class="form-control-textarea" name="description" id="edit_description" rows="3" placeholder="Add any details about your offer (e.g., condition, delivery terms)"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <button type="submit" name="edit_offer" class="btn-submit">
-                        <i class="fas fa-save"></i> Update Offer
-                    </button>
-                </div>
-            </form>
+<div class="modal-overlay" id="offerModal">
+    <div class="modal-content">
+        <button class="btn-close" onclick="closeModal('offerModal')">×</button>
+        <div class="modal-header">
+            <h3 id="modalTitle">Make Offer</h3>
         </div>
-    </div>
-
-    <footer>
-        <div class="copyright">
-            © <?php echo date('Y'); ?> | Created & Designed By <a href="#">Group 8</a>
-        </div>
-        <div class="sm">
-            <a href="#"><i class="fab fa-facebook-f"></i></a>
-            <a href="#"><i class="fab fa-instagram"></i></a>
-            <a href="#"><i class="fab fa-linkedin-in"></i></a>
-            <a href="#"><i class="fab fa-telegram"></i></a>
-            <a href="#"><i class="fab fa-github"></i></a>
-        </div>
-    </footer>
-
-
-    <script>
-        // Enhanced Countdown Timer
-        function updateCountdown() {
-            const countdownElements = document.querySelectorAll('.countdown-timer');
+        <form method="POST" id="offerForm" onsubmit="return validateOfferForm()">
+            <input type="hidden" name="item_id" id="modalItemId" readonly>
+            <input type="hidden" name="request_id" id="modalRequestId" readonly>
+            <input type="hidden" name="offer_type" id="modalOfferType">
             
-            countdownElements.forEach(element => {
-                const closeTime = new Date(element.getAttribute('data-close-time')).getTime();
-                const now = new Date().getTime();
-                const distance = closeTime - now;
+            <div class="form-group">
+                <label for="buyer_name">Buyer Name</label>
+                <input type="text" class="form-control" name="buyer_name" id="buyer_name" value="<?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?>" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="offered_price">Your Offer Price</label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" class="form-control" name="offered_price" id="offered_price" placeholder="0.00" step="0.01" min="0.01" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="quantity">Quantity</label>
+                <input type="number" class="form-control" name="quantity" id="quantity" placeholder="1" min="1" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Offer Description (Optional)</label>
+                <textarea class="form-control-textarea" name="description" id="description" rows="3" placeholder="Add any details about your offer (e.g., condition, delivery terms)"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" name="submit_offer" class="btn-submit">
+                    <i class="fas fa-paper-plane"></i> Submit Offer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
-                if (distance <= 0) {
-                    // Replace with expired message
-                    const container = element.closest('.countdown-container');
-                    if (container) {
-                        container.innerHTML = `
-                            <div class="countdown-expired">
-                                <i class="fas fa-exclamation-circle"></i>
-                                This item has closed
-                            </div>
-                        `;
-                    }
-                } else {
-                    // Calculate time units
-                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+<div class="modal-overlay" id="editOfferModal">
+    <div class="modal-content">
+        <button class="btn-close" onclick="closeModal('editOfferModal')">×</button>
+        <div class="modal-header">
+            <h3 id="editModalTitle">Edit Offer</h3>
+        </div>
+        <form method="POST" id="editOfferForm">
+            <input type="hidden" name="offer_id" id="editModalOfferId">
+            
+            <div class="form-group">
+                <label for="edit_buyer_name">Buyer Name</label>
+                <input type="text" class="form-control" name="buyer_name" id="edit_buyer_name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_offered_price">Your Offer Price</label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" class="form-control" name="offered_price" id="edit_offered_price" step="0.01" min="0.01" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_quantity">Quantity</label>
+                <input type="number" class="form-control" name="quantity" id="edit_quantity" min="1" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_description">Offer Description (Optional)</label>
+                <textarea class="form-control-textarea" name="description" id="edit_description" rows="3" placeholder="Add any details about your offer (e.g., condition, delivery terms)"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" name="edit_offer" class="btn-submit">
+                    <i class="fas fa-save"></i> Update Offer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
-                    // Update display
-                    if (element.querySelector('.days')) {
-                        element.querySelector('.days').textContent = days.toString().padStart(2, '0');
-                        element.querySelector('.hours').textContent = hours.toString().padStart(2, '0');
-                        element.querySelector('.minutes').textContent = minutes.toString().padStart(2, '0');
-                        element.querySelector('.seconds').textContent = seconds.toString().padStart(2, '0');
-                    }
+<footer>
+    <div class="copyright">
+        © <?php echo date('Y'); ?> | Created & Designed By <a href="#">Group 8</a>
+    </div>
+    <div class="sm">
+        <a href="#"><i class="fab fa-facebook-f"></i></a>
+        <a href="#"><i class="fab fa-instagram"></i></a>
+        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+        <a href="#"><i class="fab fa-telegram"></i></a>
+        <a href="#"><i class="fab fa-github"></i></a>
+    </div>
+</footer>
+
+<script>
+    // Enhanced Countdown Timer
+    function updateCountdown() {
+        const countdownElements = document.querySelectorAll('.countdown-timer');
+        
+        countdownElements.forEach(element => {
+            const closeTime = new Date(element.getAttribute('data-close-time')).getTime();
+            const now = new Date().getTime();
+            const distance = closeTime - now;
+
+            if (distance <= 0) {
+                const container = element.closest('.countdown-container');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="countdown-expired">
+                            <i class="fas fa-exclamation-circle"></i>
+                            This item has closed
+                        </div>
+                    `;
                 }
-            });
-        }
+            } else {
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        // Modal Functions
-        function openOfferModal(itemId, requestId, offerType, title) {
-            document.getElementById('modalItemId').value = itemId !== null ? itemId : '';
-            document.getElementById('modalRequestId').value = requestId !== null ? requestId : '';
-            document.getElementById('modalOfferType').value = offerType;
-            document.getElementById('modalTitle').textContent = 'Make Offer for ' + title;
-            document.getElementById('offered_price').value = '';
-            document.getElementById('quantity').value = '';
-            document.getElementById('description').value = '';
-            document.getElementById('buyer_name').value = '<?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?>';
-            document.getElementById('offerModal').style.display = 'flex';
-        }
-
-        function openEditModal(offerId, itemName, buyerName, offeredPrice, quantity, description) {
-            document.getElementById('editModalOfferId').value = offerId;
-            document.getElementById('editModalTitle').textContent = 'Edit Offer for ' + itemName;
-            document.getElementById('edit_buyer_name').value = buyerName;
-            document.getElementById('edit_offered_price').value = offeredPrice;
-            document.getElementById('edit_quantity').value = quantity;
-            document.getElementById('edit_description').value = description;
-            document.getElementById('editOfferModal').style.display = 'flex';
-        }
-
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-
-        // Initialize and update countdown every second
-        document.addEventListener('DOMContentLoaded', function() {
-            updateCountdown();
-            setInterval(updateCountdown, 1000);
-
-            // Event delegation for offer buttons
-            document.addEventListener('click', function(e) {
-                if (e.target.classList.contains('btn-offer') && !e.target.disabled) {
-                    const itemCard = e.target.closest('.item-card');
-                    const itemId = itemCard.dataset.itemId || null;
-                    const requestId = itemCard.dataset.requestId || null;
-                    const offerType = itemCard.dataset.offerType;
-                    const title = itemCard.querySelector('.item-title').textContent;
-                    openOfferModal(itemId, requestId, offerType, title);
-                }
-            });
-
-            window.onclick = function(event) {
-                if (event.target.classList.contains('modal-overlay')) {
-                    closeModal(event.target.id);
+                if (element.querySelector('.days')) {
+                    element.querySelector('.days').textContent = days.toString().padStart(2, '0');
+                    element.querySelector('.hours').textContent = hours.toString().padStart(2, '0');
+                    element.querySelector('.minutes').textContent = minutes.toString().padStart(2, '0');
+                    element.querySelector('.seconds').textContent = seconds.toString().padStart(2, '0');
                 }
             }
-
-            setTimeout(function() {
-                var alerts = document.querySelectorAll('.alert-message');
-                alerts.forEach(function(alert) {
-                    alert.style.display = 'none';
-                });
-            }, 5000);
         });
-    </script>
+    }
+
+    // Validate offer form before submission
+    function validateOfferForm() {
+        const itemId = document.getElementById('modalItemId').value;
+        const requestId = document.getElementById('modalRequestId').value;
+
+        console.log('Validating form before submission - itemId:', itemId, 'requestId:', requestId);
+
+        if (!itemId && !requestId) {
+            console.log('Validation failed: Both itemId and requestId are empty.');
+            alert('Please select an item or buy request to make an offer.');
+            return false;
+        }
+
+        console.log('Validation passed: Proceeding with form submission.');
+        return true;
+    }
+
+    // Modal Functions
+    function openOfferModal(itemId, requestId, offerType, title) {
+        console.log('openOfferModal called with - itemId:', itemId, 'requestId:', requestId, 'offerType:', offerType, 'title:', title);
+
+        // Store values in variables to protect them
+        const modalItemId = itemId || '';
+        const modalRequestId = requestId || '';
+
+        // Set the form inputs
+        const itemIdInput = document.getElementById('modalItemId');
+        const requestIdInput = document.getElementById('modalRequestId');
+
+        itemIdInput.value = modalItemId;
+        requestIdInput.value = modalRequestId;
+        document.getElementById('modalOfferType').value = offerType || '';
+        document.getElementById('modalTitle').textContent = 'Make Offer for ' + (title || 'Unknown Item');
+        document.getElementById('offered_price').value = '';
+        document.getElementById('quantity').value = '';
+        document.getElementById('description').value = '';
+        document.getElementById('buyer_name').value = '<?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?>';
+
+        console.log('Modal values set - itemId:', itemIdInput.value, 'requestId:', requestIdInput.value, 'offerType:', document.getElementById('modalOfferType').value);
+
+        document.getElementById('offerModal').style.display = 'flex';
+    }
+
+    function openEditModal(offerId, itemName, buyerName, offeredPrice, quantity, description) {
+        document.getElementById('editModalOfferId').value = offerId;
+        document.getElementById('editModalTitle').textContent = 'Edit Offer for ' + itemName;
+        document.getElementById('edit_buyer_name').value = buyerName;
+        document.getElementById('edit_offered_price').value = offeredPrice;
+        document.getElementById('edit_quantity').value = quantity;
+        document.getElementById('edit_description').value = description;
+        document.getElementById('editOfferModal').style.display = 'flex';
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    // Initialize and update countdown every second
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+
+        // Prevent form reset
+        const offerForm = document.getElementById('offerForm');
+        offerForm.addEventListener('reset', function(e) {
+            e.preventDefault();
+            console.log('Form reset prevented.');
+        });
+
+        // Monitor changes to hidden inputs
+        const itemIdInput = document.getElementById('modalItemId');
+        const requestIdInput = document.getElementById('modalRequestId');
+
+        itemIdInput.addEventListener('change', function() {
+            console.log('modalItemId changed to:', this.value);
+        });
+
+        requestIdInput.addEventListener('change', function() {
+            console.log('modalRequestId changed to:', this.value);
+        });
+
+        // Debug form submission
+        offerForm.addEventListener('submit', function(e) {
+            const formData = new FormData(this);
+            console.log('Form submission triggered. Form data:');
+            for (let [key, value] of formData.entries()) {
+                console.log(key + ': ' + value);
+            }
+
+            // Log DOM state right before submission
+            console.log('DOM state before submission - itemId:', itemIdInput.value, 'requestId:', requestIdInput.value);
+        });
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                closeModal(event.target.id);
+            }
+        }
+
+        setTimeout(function() {
+            var alerts = document.querySelectorAll('.alert-message');
+            alerts.forEach(function(alert) {
+                alert.style.display = 'none';
+            });
+        }, 5000);
+    });
+</script>
 </body>
 </html>
 <?php ob_end_flush(); ?>
