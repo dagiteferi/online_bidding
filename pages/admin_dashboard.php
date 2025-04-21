@@ -1056,7 +1056,7 @@ try {
                         <input type="text" name="item_name" class="input" placeholder="Item Name" required />
                     </div>
                     <div class="form-group">
-                        <label for="item_type">Item Type:</label>
+                        <!-- <label for="item_type">Item Type:</label> -->
                         <input type="text" name="item_type" id="item_type" class="input" placeholder="Enter Item Type" required />
                     </div>
                     <div class="form-group">

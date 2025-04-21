@@ -1,4 +1,44 @@
-/* Reset default styles */
+/* Form Inputs - Increased specificity and added fallbacks */
+.form-group .input, .form-group textarea {
+    width: 100%;
+    background: #ffffff !important; /* Force white background */
+    border: 2px solid #e2e8f0 !important; /* Ensure border is visible */
+    margin: 4px 0;
+    height: 48px;
+    border-radius: 12px;
+    padding: 0 18px;
+    box-sizing: border-box;
+    outline: none;
+    color: #000000 !important; /* Force black text color */
+    font-size: 14px;
+    opacity: 1 !important; /* Prevent any transparency */
+    -webkit-text-fill-color: #000000 !important; /* Ensure text color for WebKit browsers */
+    transition: all 0.3s ease;
+}
+
+/* Ensure focus state maintains visibility */
+.form-group .input:focus, .form-group textarea:focus {
+    border-color: #48dbfb !important;
+    background: #ffffff !important;
+    box-shadow: 0 0 0 3px rgba(72, 219, 251, 0.15);
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+}
+
+/* Placeholder styling */
+.form-group .input::placeholder, .form-group textarea::placeholder {
+    color: #666666 !important; /* Darker gray for placeholder */
+    font-size: 14px;
+    opacity: 1 !important; /* Ensure placeholder is fully visible */
+}
+
+/* Textarea-specific styling */
+.form-group textarea {
+    resize: vertical;
+    min-height: 120px;
+    padding: 15px 18px;
+    line-height: 1.5;
+}
 * {
     margin: 0;
     padding: 0;
@@ -134,8 +174,7 @@ html {
     margin-top: 80px; /* Added to account for fixed navbar */
 }
 
-/* Rest of your CSS remains exactly the same from the previous version */
-/* [Previous CSS code continues here without any changes] */
+
 
 /* Sidebar styling - Improved Version */
 .sidebar {
@@ -402,7 +441,7 @@ html {
 
 .input, textarea {
     width: 100%;
-    background: #f8fafc;
+    background: #ffffff; /* Changed to pure white for better contrast */
     border: 2px solid #e2e8f0;
     margin: 4px 0;
     height: 48px;
@@ -410,19 +449,19 @@ html {
     padding: 0 18px;
     box-sizing: border-box;
     outline: none;
-    color: #353b48;
+    color: #000000; /* Changed to black for maximum contrast */
     font-size: 14px;
     transition: all 0.3s ease;
 }
 
 .input:focus, textarea:focus {
     border-color: #48dbfb;
-    background: #fff;
+    background: #ffffff; /* Ensure background remains white on focus */
     box-shadow: 0 0 0 3px rgba(72, 219, 251, 0.15);
 }
 
 .input::placeholder, textarea::placeholder {
-    color: #94a3b8;
+    color: #666666; /* Darker gray for better visibility */
     font-size: 14px;
 }
 
