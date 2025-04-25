@@ -1184,7 +1184,7 @@ try {
 
         <?php elseif ($_GET['action'] == 'post_sell'): ?>
             <!-- Post Sell Item Form -->
-            <div class="form-card" style="background: #f8f9fa; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div class="form-card" style="background: #f8f9fa; padding: 25px; border-radius: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <h2 style="color: #2c3e50; margin-bottom: 25px; text-align: center; font-size: 24px;"><i class="fas fa-tag"></i> Post Item for Sale</h2>
                 <form method="POST" enctype="multipart/form-data" style="max-width: 700px; margin: 0 auto;">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
@@ -1192,19 +1192,19 @@ try {
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Supplier Name</label>
                         <input type="text" name="supplier_name" class="input" placeholder="Enter supplier name" required 
-                            style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; background: #fff;" />
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Name</label>
                         <input type="text" name="item_name" class="input" placeholder="Enter item name" required 
-                            style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; background: #fff;" />
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Type</label>
                         <select name="item_type" id="item_type" class="input" required 
-                            style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; background: #fff;">
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;">
                             <option value="">Select Item Type</option>
                             <?php
                             $stmt = $pdo->query("SELECT type_name FROM item_types");
@@ -1318,21 +1318,21 @@ try {
 
         <?php elseif ($_GET['action'] == 'post_buy'): ?>
             <!-- Post Buy Item Form -->
-            <div class="form-card" style="background: #f8f9fa; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <h2 style="color: #2c3e50; margin-bottom: 25px; text-align: center; font-size: 24px;"><i class="fas fa-hand-holding-usd"></i> Post Buy Request</h2>
-                <form method="POST" enctype="multipart/form-data" style="max-width: 700px; margin: 0 auto;">
+            <div class="form-card" style="background: #f8f9fa; padding: 25px; border-radius: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h2 style="color: #2c3e50; margin-bottom: 25px; text-align: center; font-size: 24px;"><i class="fas fa-shopping-cart"></i> Post Buy Request</h2>
+                <form method="POST" style="max-width: 700px; margin: 0 auto;">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
                     
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Name</label>
                         <input type="text" name="item_name" class="input" placeholder="Enter item name" required 
-                            style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; background: #fff;" />
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Type</label>
                         <select name="item_type" id="item_type" class="input" required 
-                            style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; background: #fff;">
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;">
                             <option value="">Select Item Type</option>
                             <?php
                             $stmt = $pdo->query("SELECT type_name FROM item_types");
@@ -1346,38 +1346,32 @@ try {
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Description</label>
                         <textarea name="description" class="input" placeholder="Enter item description" rows="4" required 
-                            style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; background: #fff;"></textarea>
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;"></textarea>
                     </div>
                     
                     <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
                         <div class="form-group" style="flex: 1;">
-                            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Max Price ($)</label>
-                            <input type="number" name="max_price" class="input" placeholder="Enter max price" step="0.01" required 
-                                style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; background: #fff;" />
+                            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Maximum Price ($)</label>
+                            <input type="number" name="max_price" class="input" placeholder="Enter maximum price" step="0.01" required 
+                                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
                         </div>
                         
                         <div class="form-group" style="flex: 1;">
                             <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Quantity</label>
                             <input type="number" name="quantity" class="input" placeholder="Enter quantity" required 
-                                style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; background: #fff;" />
+                                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
                         </div>
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Close Time (optional)</label>
                         <input type="datetime-local" name="close_time" id="close_time" class="input" 
-                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 12px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Upload Image (optional)</label>
-                        <input type="file" name="image" id="buy_image" class="input" accept="image/*" 
-                            style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; background: #fff;" />
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
                     </div>
                     
                     <button type="submit" class="admin-btn" 
                         style="width: 100%; padding: 12px; background: #48dbfb; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; transition: background 0.3s;">
-                        <i class="fas fa-paper-plane"></i> Submit Request
+                        <i class="fas fa-save"></i> Submit Buy Request
                     </button>
                 </form>
             </div>
