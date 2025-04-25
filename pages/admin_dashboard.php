@@ -1238,7 +1238,7 @@ try {
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Close Time (optional)</label>
                         <input type="datetime-local" name="close_time" id="close_time" class="input" 
-                            style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; background: #fff;" />
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 12px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 20px;">
@@ -1248,7 +1248,7 @@ try {
                     </div>
                     
                     <button type="submit" class="admin-btn" 
-                        style="width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; transition: background 0.3s;">
+                        style="width: 100%; padding: 12px; background: #48dbfb; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; transition: background 0.3s;">
                         <i class="fas fa-save"></i> Submit Item
                     </button>
                 </form>
@@ -1366,7 +1366,7 @@ try {
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Close Time (optional)</label>
                         <input type="datetime-local" name="close_time" id="close_time" class="input" 
-                            style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; background: #fff;" />
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 12px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 20px;">
@@ -1376,7 +1376,7 @@ try {
                     </div>
                     
                     <button type="submit" class="admin-btn" 
-                        style="width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; transition: background 0.3s;">
+                        style="width: 100%; padding: 12px; background: #48dbfb; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; transition: background 0.3s;">
                         <i class="fas fa-paper-plane"></i> Submit Request
                     </button>
                 </form>
@@ -1716,11 +1716,13 @@ try {
                 <form method="POST" action="?action=report&generate_report=1">
                     <div class="form-group">
                         <label for="start_date">Start Date:</label>
-                        <input type="date" name="start_date" id="start_date" class="input" />
+                        <input type="date" name="start_date" id="start_date" class="input" 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 12px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
                     </div>
                     <div class="form-group">
                         <label for="end_date">End Date:</label>
-                        <input type="date" name="end_date" id="end_date" class="input" />
+                        <input type="date" name="end_date" id="end_date" class="input" 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 12px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
                     </div>
                     <div class="form-group">
                         <label for="transaction_type">Transaction Type:</label>
