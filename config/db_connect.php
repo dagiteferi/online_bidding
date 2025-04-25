@@ -1,3 +1,6 @@
+
+
+<?php
 /**
  * Database Connection and Table Management
  * 
@@ -47,7 +50,6 @@
  * @package OnlineBidding
  */
 
-<?php
 // Database connection parameters
 $host = 'localhost';
 $dbname = 'online_bidding';

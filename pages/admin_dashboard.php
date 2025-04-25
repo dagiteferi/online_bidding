@@ -117,8 +117,10 @@ if (isset($_GET['action']) && $_GET['action'] == 'post_sell') {
             // Validate required fields
             if (empty($supplier_name) || empty($item_name) || empty($item_type) || empty($description) || $price <= 0 || $quantity <= 0) {
                 $error = "All fields are required, and price/quantity must be positive.";
+                error_log("Validation failed: supplier_name='$supplier_name', item_name='$item_name', item_type='$item_type', description='$description', price=$price, quantity=$quantity");
             } elseif ($close_time && $close_time <= date('Y-m-d H:i:s')) {
                 $error = "Close time must be in the future.";
+                error_log("Close time validation failed: close_time='$close_time'");
             } else {
                 // Handle image upload
                 if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
@@ -132,15 +134,19 @@ if (isset($_GET['action']) && $_GET['action'] == 'post_sell') {
                     if (!is_dir($upload_dir)) {
                         if (!mkdir($upload_dir, 0775, true)) {
                             $error = "Failed to create uploads directory.";
+                            error_log("Failed to create uploads directory: $upload_dir");
                         }
                     }
 
                     if (!isset($error) && !in_array($file_type, $allowed_types)) {
                         $error = "Only JPEG, PNG, and GIF images are allowed.";
+                        error_log("Invalid image type: $file_type");
                     } elseif (!isset($error) && $_FILES['image']['size'] > $max_size) {
                         $error = "Image size must be less than 5MB.";
+                        error_log("Image size too large: {$_FILES['image']['size']} bytes");
                     } elseif (!isset($error) && !move_uploaded_file($_FILES['image']['tmp_name'], $file_path)) {
                         $error = "Failed to upload image.";
+                        error_log("Failed to upload image to $file_path");
                     } else {
                         $image_path = 'uploads/' . $file_name;
                     }
@@ -151,11 +157,12 @@ if (isset($_GET['action']) && $_GET['action'] == 'post_sell') {
                     $result = $stmt->execute([$user_id, $supplier_name, $item_name, $item_type, $description, $price, $quantity, $image_path, $close_time]);
                     if ($result) {
                         $success = "Item posted for sale successfully!";
-                        error_log("Item inserted: $item_name, posted_by: $user_id");
+                        error_log("Item inserted: $item_name, item_type: $item_type, posted_by: $user_id");
                         header("Location: admin_dashboard.php?action=items_for_sell");
                         exit();
                     } else {
                         $error = "Failed to insert item into database.";
+                        error_log("Failed to insert item: $item_name, item_type: $item_type");
                     }
                 }
             }
@@ -197,8 +204,10 @@ if (isset($_GET['action']) && $_GET['action'] == 'post_buy') {
 
             if (empty($item_name) || empty($item_type) || empty($description) || $max_price <= 0 || $quantity <= 0) {
                 $error = "All fields are required, and max price/quantity must be positive.";
+                error_log("Buy request validation failed: item_name='$item_name', item_type='$item_type', description='$description', max_price=$max_price, quantity=$quantity");
             } elseif ($close_time && $close_time <= date('Y-m-d H:i:s')) {
                 $error = "Close time must be in the future.";
+                error_log("Buy request close time validation failed: close_time='$close_time'");
             } else {
                 if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
                     $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
@@ -211,15 +220,19 @@ if (isset($_GET['action']) && $_GET['action'] == 'post_buy') {
                     if (!is_dir($upload_dir)) {
                         if (!mkdir($upload_dir, 0775, true)) {
                             $error = "Failed to create uploads directory.";
+                            error_log("Failed to create uploads directory: $upload_dir");
                         }
                     }
 
                     if (!isset($error) && !in_array($file_type, $allowed_types)) {
                         $error = "Only JPEG, PNG, and GIF images are allowed.";
+                        error_log("Invalid image type: $file_type");
                     } elseif (!isset($error) && $_FILES['image']['size'] > $max_size) {
                         $error = "Image size must be less than 5MB.";
+                        error_log("Image size too large: {$_FILES['image']['size']} bytes");
                     } elseif (!isset($error) && !move_uploaded_file($_FILES['image']['tmp_name'], $file_path)) {
                         $error = "Failed to upload image.";
+                        error_log("Failed to upload image to $file_path");
                     } else {
                         $image_path = 'uploads/' . $file_name;
                     }
@@ -229,12 +242,14 @@ if (isset($_GET['action']) && $_GET['action'] == 'post_buy') {
                     $stmt = $pdo->prepare("INSERT INTO buy_requests (user_id, item_name, item_type, description, max_price, quantity, status, image, close_time, created_at) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, NOW())");
                     $stmt->execute([$user_id, $item_name, $item_type, $description, $max_price, $quantity, $image_path, $close_time]);
                     $success = "Buy request posted successfully!";
+                    error_log("Buy request inserted: $item_name, item_type: $item_type, user_id: $user_id");
                     header("Location: admin_dashboard.php?action=buy_requests");
                     exit();
                 }
             }
         } catch (PDOException $e) {
             $error = "Error posting buy request: " . $e->getMessage();
+            error_log("Error posting buy request: " . $e->getMessage());
         }
     }
 }
@@ -266,8 +281,10 @@ if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($_GET['ite
             // Validate required fields
             if (empty($supplier_name) || empty($item_name) || empty($item_type) || empty($description) || $price <= 0 || $quantity < 0) {
                 $error = "All fields are required, and price must be positive, quantity must be non-negative.";
+                error_log("Edit validation failed: supplier_name='$supplier_name', item_name='$item_name', item_type='$item_type', description='$description', price=$price, quantity=$quantity");
             } elseif ($close_time && $close_time <= date('Y-m-d H:i:s')) {
                 $error = "Close time must be in the future.";
+                error_log("Edit close time validation failed: close_time='$close_time'");
             } else {
                 // Handle image upload (if a new image is provided)
                 if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
@@ -281,15 +298,19 @@ if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($_GET['ite
                     if (!is_dir($upload_dir)) {
                         if (!mkdir($upload_dir, 0775, true)) {
                             $error = "Failed to create uploads directory.";
+                            error_log("Failed to create uploads directory: $upload_dir");
                         }
                     }
 
                     if (!isset($error) && !in_array($file_type, $allowed_types)) {
                         $error = "Only JPEG, PNG, and GIF images are allowed.";
+                        error_log("Invalid image type: $file_type");
                     } elseif (!isset($error) && $_FILES['image']['size'] > $max_size) {
                         $error = "Image size must be less than 5MB.";
+                        error_log("Image size too large: {$_FILES['image']['size']} bytes");
                     } elseif (!isset($error) && !move_uploaded_file($_FILES['image']['tmp_name'], $file_path)) {
                         $error = "Failed to upload image.";
+                        error_log("Failed to upload image to $file_path");
                     } else {
                         $image_path = 'uploads/' . $file_name;
                         // Delete old image if it exists
@@ -307,8 +328,10 @@ if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($_GET['ite
                     $stmt->execute([$supplier_name, $item_name, $item_type, $description, $price, $quantity, $image_path, $close_time, $item_id, $_SESSION['user_id']]);
                     if ($stmt->rowCount() > 0) {
                         $success = "Item updated successfully!";
+                        error_log("Item updated: ID $item_id, item_name: $item_name, item_type: $item_type");
                     } else {
                         $error = "Item not found or you don't have permission to edit it.";
+                        error_log("Item update failed: ID $item_id, no rows affected");
                     }
                     header("Location: admin_dashboard.php?action=items_for_sell");
                     exit();
@@ -316,6 +339,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($_GET['ite
             }
         } catch (PDOException $e) {
             $error = "Error updating item: " . $e->getMessage();
+            error_log("Error updating item: " . $e->getMessage());
         }
     } else {
         // Fetch the item for editing
@@ -325,9 +349,11 @@ if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($_GET['ite
             $item_to_edit = $stmt->fetch();
             if (!$item_to_edit) {
                 $error = "Item not found or you don't have permission to edit it.";
+                error_log("Item fetch failed: ID $item_id, user_id {$_SESSION['user_id']}");
             }
         } catch (PDOException $e) {
             $error = "Error fetching item: " . $e->getMessage();
+            error_log("Error fetching item: " . $e->getMessage());
         }
     }
 }
@@ -1142,7 +1168,7 @@ try {
                         <input type="text" name="item_name" class="input" placeholder="Item Name" required />
                     </div>
                     <div class="form-group">
-                        <input type="text" name="item_type" id="item_type" class="input" placeholder="Enter Item Type" required />
+                        <input type="text" name="item_type" id="item_type" class="input" placeholder="Item Type (e.g., car, pc, desktop)" required />
                     </div>
                     <div class="form-group">
                         <textarea name="description" class="input" placeholder="Item Description" rows="4" required></textarea>
@@ -1186,7 +1212,7 @@ try {
                     </div>
                     <div class="form-group">
                         <label for="item_type">Item Type:</label>
-                        <input type="text" name="item_type" id="item_type" class="input" value="<?php echo htmlspecialchars($item_to_edit['item_type'] ?? ''); ?>" required />
+                        <input type="text" name="item_type" id="item_type" class="input" value="<?php echo htmlspecialchars($item_to_edit['item_type'] ?? ''); ?>" placeholder="Item Type (e.g., car, pc, desktop)" required />
                     </div>
                     <div class="form-group">
                         <label>Description:</label>
@@ -1232,8 +1258,7 @@ try {
                         <input type="text" name="item_name" class="input" placeholder="Item Name" required />
                     </div>
                     <div class="form-group">
-                        <label for="item_type">Item Type:</label>
-                        <input type="text" name="item_type" id="item_type" class="input" placeholder="Enter Item Type" required />
+                        <input type="text" name="item_type" id="item_type" class="input" placeholder="Item Type (e.g., car, pc, desktop)" required />
                     </div>
                     <div class="form-group">
                         <textarea name="description" class="input" placeholder="Item Description" rows="4" required></textarea>
@@ -1415,385 +1440,388 @@ try {
                                             <i class="fas fa-times-circle"></i> Close
                                         </a>
                                         <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this offer? This action cannot be undone.');">
-    <i class="fas fa-trash"></i> Delete
-</a>
-</td>
-</tr>
-<?php endforeach; ?>
-</tbody>
-</table>
-</div>
-<?php else: ?>
-<div class="no-data">
-    <i class="fas fa-exchange-alt"></i>
-    <p>No offers available for this buy request.</p>
-    <a href="?action=buy_requests" class="admin-btn">
-        <i class="fas fa-arrow-left"></i> Back to Buy Requests
-    </a>
-</div>
-<?php endif; ?>
+                                            <i class="fas fa-trash"></i> Delete
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <div class="no-data">
+                    <i class="fas fa-exchange-alt"></i>
+                    <p>No offers available for this buy request.</p>
+                    <a href="?action=buy_requests" class="admin-btn">
+                        <i class="fas fa-arrow-left"></i> Back to Buy Requests
+                    </a>
+                </div>
+            <?php endif; ?>
 
-<?php elseif ($_GET['action'] == 'offers'): ?>
-    <!-- Pending Offers -->
-    <h2><i class="fas fa-exchange-alt"></i> Pending Offers (<?php echo $pending_offers; ?>)</h2>
-    
-    <!-- Buy Offers (Offers on Items for Sale) -->
-    <h3>Buy Offers (On Your Items for Sale)</h3>
-    <div class="sort-options">
-        <form method="GET" class="sort-form">
-            <input type="hidden" name="action" value="offers">
-            <label for="buy_sort_field">Sort By:</label>
-            <select name="buy_sort_field" id="buy_sort_field">
-                <option value="offered_price" <?php echo $buy_sort_field == 'offered_price' ? 'selected' : ''; ?>>Price</option>
-                <option value="created_at" <?php echo $buy_sort_field == 'created_at' ? 'selected' : ''; ?>>Date</option>
-            </select>
-            <label for="buy_sort_order">Order:</label>
-            <select name="buy_sort_order" id="buy_sort_order">
-                <option value="ASC" <?php echo $buy_sort_order == 'ASC' ? 'selected' : ''; ?>>Ascending</option>
-                <option value="DESC" <?php echo $buy_sort_order == 'DESC' ? 'selected' : ''; ?>>Descending</option>
-            </select>
-            <button type="submit" class="admin-btn small"><i class="fas fa-sort"></i> Sort</button>
-        </form>
-    </div>
-    <?php if ($buy_offers): ?>
-        <div class="offers-table-container">
-            <table class="offers-table">
-                <thead>
-                    <tr>
-                        <th>From</th>
-                        <th>Item Name</th>
-                        <th>Offered Price ($)</th>
-                        <th>Quantity</th>
-                        <th>Description</th>
-                        <th>Offer Time</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($buy_offers as $offer): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($offer['username']); ?></td>
-                            <td><?php echo htmlspecialchars($offer['item_name']); ?></td>
-                            <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
-                            <td><?php echo htmlspecialchars($offer['quantity']); ?></td>
-                            <td><?php echo htmlspecialchars($offer['description'] ?? 'N/A'); ?></td>
-                            <td><?php echo htmlspecialchars($offer['created_at']); ?></td>
-                            <td class="offer-actions">
-                                <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=accept" class="admin-btn success">
-                                    <i class="fas fa-check"></i> Accept
-                                </a>
-                                <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=reject" class="admin-btn danger">
-                                    <i class="fas fa-times"></i> Reject
-                                </a>
-                                <a href="?action=close_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');">
-                                    <i class="fas fa-times-circle"></i> Close
-                                </a>
-                                <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this offer? This action cannot be undone.');">
-                                    <i class="fas fa-trash"></i> Delete
-                                </a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php else: ?>
-        <div class="no-data">
-            <i class="fas fa-exchange-alt"></i>
-            <p>No pending buy offers on your items.</p>
-        </div>
-    <?php endif; ?>
-    
-    <!-- Sell Offers (Offers on Buy Requests) -->
-    <h3>Sell Offers (On Your Buy Requests)</h3>
-    <div class="sort-options">
-        <form method="GET" class="sort-form">
-            <input type="hidden" name="action" value="offers">
-            <label for="sell_sort_field">Sort By:</label>
-            <select name="sell_sort_field" id="sell_sort_field">
-                <option value="offered_price" <?php echo $sell_sort_field == 'offered_price' ? 'selected' : ''; ?>>Price</option>
-                <option value="created_at" <?php echo $sell_sort_field == 'created_at' ? 'selected' : ''; ?>>Date</option>
-            </select>
-            <label for="sell_sort_order">Order:</label>
-            <select name="sell_sort_order" id="sell_sort_order">
-                <option value="ASC" <?php echo $sell_sort_order == 'ASC' ? 'selected' : ''; ?>>Ascending</option>
-                <option value="DESC" <?php echo $sell_sort_order == 'DESC' ? 'selected' : ''; ?>>Descending</option>
-            </select>
-            <button type="submit" class="admin-btn small"><i class="fas fa-sort"></i> Sort</button>
-        </form>
-    </div>
-    <?php if ($sell_offers): ?>
-        <div class="offers-table-container">
-            <table class="offers-table">
-                <thead>
-                    <tr>
-                        <th>From</th>
-                        <th>Item Name</th>
-                        <th>Offered Price ($)</th>
-                        <th>Quantity</th>
-                        <th>Description</th>
-                        <th>Offer Time</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($sell_offers as $offer): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($offer['username']); ?></td>
-                            <td><?php echo htmlspecialchars($offer['item_name']); ?></td>
-                            <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
-                            <td><?php echo htmlspecialchars($offer['quantity']); ?></td>
-                            <td><?php echo htmlspecialchars($offer['description'] ?? 'N/A'); ?></td>
-                            <td><?php echo htmlspecialchars($offer['created_at']); ?></td>
-                            <td class="offer-actions">
-                                <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=accept" class="admin-btn success">
-                                    <i class="fas fa-check"></i> Accept
-                                </a>
-                                <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=reject" class="admin-btn danger">
-                                    <i class="fas fa-times"></i> Reject
-                                </a>
-                                <a href="?action=close_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');">
-                                    <i class="fas fa-times-circle"></i> Close
-                                </a>
-                                <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this offer? This action cannot be undone.');">
-                                    <i class="fas fa-trash"></i> Delete
-                                </a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php else: ?>
-        <div class="no-data">
-            <i class="fas fa-exchange-alt"></i>
-            <p>No pending sell offers on your buy requests.</p>
-        </div>
-    <?php endif; ?>
-
-<?php elseif ($_GET['action'] == 'transactions'): ?>
-    <!-- Transactions -->
-    <h2><i class="fas fa-receipt"></i> Transactions (<?php echo count($transactions); ?>)</h2>
-    <?php if ($transactions): ?>
-        <div class="transactions-table-container">
-            <table class="transactions-table">
-                <thead>
-                    <tr>
-                        <th>Transaction ID</th>
-                        <th>Item Name</th>
-                        <th>Type</th>
-                        <th>Buyer</th>
-                        <th>Seller</th>
-                        <th>Final Price ($)</th>
-                        <th>Quantity</th>
-                        <th>Total Amount ($)</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($transactions as $t): ?>
-                        <?php 
-                        $item_name = $t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A';
-                        $type = $t['item_id'] ? 'Sell' : 'Buy';
-                        $total_amount = $t['final_price'] * $t['quantity'];
-                        ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($t['id']); ?></td>
-                            <td><?php echo htmlspecialchars($item_name); ?></td>
-                            <td><?php echo htmlspecialchars($type); ?></td>
-                            <td><?php echo htmlspecialchars($t['buyer']); ?></td>
-                            <td><?php echo htmlspecialchars($t['seller']); ?></td>
-                            <td>$<?php echo number_format($t['final_price'], 2); ?></td>
-                            <td><?php echo htmlspecialchars($t['quantity']); ?></td>
-                            <td>$<?php echo number_format($total_amount, 2); ?></td>
-                            <td><?php echo htmlspecialchars($t['created_at']); ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php else: ?>
-        <div class="no-data">
-            <i class="fas fa-receipt"></i>
-            <p>No transactions available.</p>
-        </div>
-    <?php endif; ?>
-
-<?php elseif ($_GET['action'] == 'report'): ?>
-    <!-- Reports -->
-    <h2><i class="fas fa-chart-pie"></i> Generate Report</h2>
-    <div class="form-card">
-        <form method="POST" action="?action=report&generate_report=1">
-            <div class="form-group">
-                <label for="start_date">Start Date:</label>
-                <input type="date" name="start_date" id="start_date" class="input" />
+        <?php elseif ($_GET['action'] == 'offers'): ?>
+            <!-- Pending Offers -->
+            <h2><i class="fas fa-exchange-alt"></i> Pending Offers (<?php echo $pending_offers; ?>)</h2>
+            
+            <!-- Buy Offers (Offers on Items for Sale) -->
+            <h3>Buy Offers (On Your Items for Sale)</h3>
+            <div class="sort-options">
+                <form method="GET" class="sort-form">
+                    <input type="hidden" name="action" value="offers">
+                    <label for="buy_sort_field">Sort By:</label>
+                    <select name="buy_sort_field" id="buy_sort_field">
+                        <option value="offered_price" <?php echo $buy_sort_field == 'offered_price' ? 'selected' : ''; ?>>Price</option>
+                        <option value="created_at" <?php echo $buy_sort_field == 'created_at' ? 'selected' : ''; ?>>Date</option>
+                    </select>
+                    <label for="buy_sort_order">Order:</label>
+                    <select name="buy_sort_order" id="buy_sort_order">
+                        <option value="ASC" <?php echo $buy_sort_order == 'ASC' ? 'selected' : ''; ?>>Ascending</option>
+                        <option value="DESC" <?php echo $buy_sort_order == 'DESC' ? 'selected' : ''; ?>>Descending</option>
+                    </select>
+                    <button type="submit" class="admin-btn small"><i class="fas fa-sort"></i> Sort</button>
+                </form>
             </div>
-            <div class="form-group">
-                <label for="end_date">End Date:</label>
-                <input type="date" name="end_date" id="end_date" class="input" />
-            </div>
-            <div class="form-group">
-                <label for="transaction_type">Transaction Type:</label>
-                <select name="transaction_type" id="transaction_type" class="input">
-                    <option value="all">All</option>
-                    <option value="sell">Sell Transactions</option>
-                    <option value="buy">Buy Transactions</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="status">Status:</label>
-                <select name="status" id="status" class="input">
-                    <option value="all">All</option>
-                    <option value="open">Open</option>
-                    <option value="closed">Closed</option>
-                </select>
-            </div>
-            <button type="submit" name="generate_report" class="admin-btn">
-                <i class="fas fa-chart-line"></i> Generate Report
-            </button>
-            <button type="submit" name="export_csv" class="admin-btn">
-                <i class="fas fa-download"></i> Export to CSV
-            </button>
-        </form>
-    </div>
-
-    <?php if (isset($report_transactions)): ?>
-        <h3>Transactions Report</h3>
-        <?php if ($report_transactions): ?>
-            <div class="transactions-table-container">
-                <table class="transactions-table">
-                    <thead>
-                        <tr>
-                            <th>Transaction ID</th>
-                            <th>Item Name</th>
-                            <th>Type</th>
-                            <th>Buyer</th>
-                            <th>Seller</th>
-                            <th>Supplier</th>
-                            <th>Original Price/Max Price ($)</th>
-                            <th>Final Price ($)</th>
-                            <th>Quantity</th>
-                            <th>Total Amount ($)</th>
-                            <th>Description</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($report_transactions as $t): ?>
-                            <?php 
-                            $item_name = $t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A';
-                            $type = $t['item_id'] ? 'Sell' : 'Buy';
-                            $supplier = $t['supplier_name_sell'] ?? 'N/A';
-                            $original_price = $t['item_id'] ? ($t['original_price_sell'] ?? 'N/A') : ($t['max_price_buy'] ?? 'N/A');
-                            $description = $t['description_sell'] ?? $t['description_buy'] ?? 'N/A';
-                            $total_amount = $t['final_price'] * $t['quantity'];
-                            ?>
+            <?php if ($buy_offers): ?>
+                <div class="offers-table-container">
+                    <table class="offers-table">
+                        <thead>
                             <tr>
-                                <td><?php echo htmlspecialchars($t['id']); ?></td>
-                                <td><?php echo htmlspecialchars($item_name); ?></td>
-                                <td><?php echo htmlspecialchars($type); ?></td>
-                                <td><?php echo htmlspecialchars($t['buyer']); ?></td>
-                                <td><?php echo htmlspecialchars($t['seller']); ?></td>
-                                <td><?php echo htmlspecialchars($supplier); ?></td>
-                                <td>$<?php echo htmlspecialchars($original_price); ?></td>
-                                <td>$<?php echo number_format($t['final_price'], 2); ?></td>
-                                <td><?php echo htmlspecialchars($t['quantity']); ?></td>
-                                <td>$<?php echo number_format($total_amount, 2); ?></td>
-                                <td><?php echo htmlspecialchars($description); ?></td>
-                                <td><?php echo htmlspecialchars($t['created_at']); ?></td>
+                                <th>From</th>
+                                <th>Item Name</th>
+                                <th>Offered Price ($)</th>
+                                <th>Quantity</th>
+                                <th>Description</th>
+                                <th>Offer Time</th>
+                                <th>Actions</th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php else: ?>
-            <div class="no-data">
-                <i class="fas fa-receipt"></i>
-                <p>No transactions match the selected criteria.</p>
-            </div>
-        <?php endif; ?>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($buy_offers as $offer): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($offer['username']); ?></td>
+                                    <td><?php echo htmlspecialchars($offer['item_name']); ?></td>
+                                    <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
+                                    <td><?php echo htmlspecialchars($offer['quantity']); ?></td>
+                                    <td><?php echo htmlspecialchars($offer['description'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($offer['created_at']); ?></td>
+                                    <td class="offer-actions">
+                                        <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=accept" class="admin-btn success" onclick="return confirm('Are you sure you want to accept this offer?');">
+                                            <i class="fas fa-check"></i> Accept
+                                        </a>
+                                        <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=reject" class="admin-btn danger" onclick="return confirm('Are you sure you want to reject this offer?');">
+                                            <i class="fas fa-times"></i> Reject
+                                        </a>
+                                        <a href="?action=close_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');">
+                                            <i class="fas fa-times-circle"></i> Close
+                                        </a>
+                                        <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this offer? This action cannot be undone.');">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <div class="no-data">
+                    <i class="fas fa-exchange-alt"></i>
+                    <p>No pending buy offers on your items for sale.</p>
+                </div>
+            <?php endif; ?>
 
-        <h3>Inventory Report</h3>
-        <?php if ($report_items): ?>
-            <div class="items-table-container">
-                <table class="items-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Item Name</th>
-                            <th>Supplier</th>
-                            <th>Description</th>
-                            <th>Price ($)</th>
-                            <th>Quantity</th>
-                            <th>Status</th>
-                            <th>Posted By</th>
-                            <th>Created At</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($report_items as $item): ?>
+            <!-- Sell Offers (Offers on Buy Requests) -->
+            <h3>Sell Offers (On Your Buy Requests)</h3>
+            <div class="sort-options">
+                <form method="GET" class="sort-form">
+                    <input type="hidden" name="action" value="offers">
+                    <label for="sell_sort_field">Sort By:</label>
+                    <select name="sell_sort_field" id="sell_sort_field">
+                        <option value="offered_price" <?php echo $sell_sort_field == 'offered_price' ? 'selected' : ''; ?>>Price</option>
+                        <option value="created_at" <?php echo $sell_sort_field == 'created_at' ? 'selected' : ''; ?>>Date</option>
+                    </select>
+                    <label for="sell_sort_order">Order:</label>
+                    <select name="sell_sort_order" id="sell_sort_order">
+                        <option value="ASC" <?php echo $sell_sort_order == 'ASC' ? 'selected' : ''; ?>>Ascending</option>
+                        <option value="DESC" <?php echo $sell_sort_order == 'DESC' ? 'selected' : ''; ?>>Descending</option>
+                    </select>
+                    <button type="submit" class="admin-btn small"><i class="fas fa-sort"></i> Sort</button>
+                </form>
+            </div>
+            <?php if ($sell_offers): ?>
+                <div class="offers-table-container">
+                    <table class="offers-table">
+                        <thead>
                             <tr>
-                                <td><?php echo htmlspecialchars($item['id']); ?></td>
-                                <td><?php echo htmlspecialchars($item['item_name']); ?></td>
-                                <td><?php echo htmlspecialchars($item['supplier_name'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($item['description']); ?></td>
-                                <td>$<?php echo number_format($item['price'], 2); ?></td>
-                                <td><?php echo htmlspecialchars($item['quantity']); ?></td>
-                                <td><?php echo htmlspecialchars($item['status']); ?></td>
-                                <td><?php echo htmlspecialchars($item['posted_by_name']); ?></td>
-                                <td><?php echo htmlspecialchars($item['created_at']); ?></td>
+                                <th>From</th>
+                                <th>Item Name</th>
+                                <th>Offered Price ($)</th>
+                                <th>Quantity</th>
+                                <th>Description</th>
+                                <th>Offer Time</th>
+                                <th>Actions</th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php else: ?>
-            <div class="no-data">
-                <i class="fas fa-box-open"></i>
-                <p>No items match the selected criteria.</p>
-            </div>
-        <?php endif; ?>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($sell_offers as $offer): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($offer['username']); ?></td>
+                                    <td><?php echo htmlspecialchars($offer['item_name']); ?></td>
+                                    <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
+                                    <td><?php echo htmlspecialchars($offer['quantity']); ?></td>
+                                    <td><?php echo htmlspecialchars($offer['description'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($offer['created_at']); ?></td>
+                                    <td class="offer-actions">
+                                        <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=accept" class="admin-btn success" onclick="return confirm('Are you sure you want to accept this offer?');">
+                                            <i class="fas fa-check"></i> Accept
+                                        </a>
+                                        <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=reject" class="admin-btn danger" onclick="return confirm('Are you sure you want to reject this offer?');">
+                                            <i class="fas fa-times"></i> Reject
+                                        </a>
+                                        <a href="?action=close_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');">
+                                            <i class="fas fa-times-circle"></i> Close
+                                        </a>
+                                        <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this offer? This action cannot be undone.');">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <div class="no-data">
+                    <i class="fas fa-exchange-alt"></i>
+                    <p>No pending sell offers on your buy requests.</p>
+                </div>
+            <?php endif; ?>
 
-        <h3>Buy Requests Report</h3>
-        <?php if ($report_requests): ?>
-            <div class="requests-table-container">
-                <table class="requests-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Item Name</th>
-                            <th>Description</th>
-                            <th>Max Price ($)</th>
-                            <th>Quantity</th>
-                            <th>Status</th>
-                            <th>User</th>
-                            <th>Created At</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($report_requests as $request): ?>
+        <?php elseif ($_GET['action'] == 'transactions'): ?>
+            <!-- Transactions -->
+            <h2><i class="fas fa-receipt"></i> Transactions (<?php echo count($transactions); ?>)</h2>
+            <?php if ($transactions): ?>
+                <div class="transactions-table-container">
+                    <table class="transactions-table">
+                        <thead>
                             <tr>
-                                <td><?php echo htmlspecialchars($request['id']); ?></td>
-                                <td><?php echo htmlspecialchars($request['item_name']); ?></td>
-                                <td><?php echo htmlspecialchars($request['description']); ?></td>
-                                <td>$<?php echo number_format($request['max_price'], 2); ?></td>
-                                <td><?php echo htmlspecialchars($request['quantity']); ?></td>
-                                <td><?php echo htmlspecialchars($request['status']); ?></td>
-                                <td><?php echo htmlspecialchars($request['username']); ?></td>
-                                <td><?php echo htmlspecialchars($request['created_at']); ?></td>
+                                <th>Transaction ID</th>
+                                <th>Item Name</th>
+                                <th>Type</th>
+                                <th>Buyer</th>
+                                <th>Seller</th>
+                                <th>Final Price ($)</th>
+                                <th>Quantity</th>
+                                <th>Total Amount ($)</th>
+                                <th>Date</th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($transactions as $t): ?>
+                                <?php
+                                    $item_name = $t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A';
+                                    $type = $t['item_id'] ? 'Sell' : 'Buy';
+                                    $total_amount = $t['final_price'] * $t['quantity'];
+                                ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($t['id']); ?></td>
+                                    <td><?php echo htmlspecialchars($item_name); ?></td>
+                                    <td><?php echo htmlspecialchars($type); ?></td>
+                                    <td><?php echo htmlspecialchars($t['buyer']); ?></td>
+                                    <td><?php echo htmlspecialchars($t['seller']); ?></td>
+                                    <td>$<?php echo number_format($t['final_price'], 2); ?></td>
+                                    <td><?php echo htmlspecialchars($t['quantity']); ?></td>
+                                    <td>$<?php echo number_format($total_amount, 2); ?></td>
+                                    <td><?php echo htmlspecialchars($t['created_at']); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <div class="no-data">
+                    <i class="fas fa-receipt"></i>
+                    <p>No transactions available.</p>
+                </div>
+            <?php endif; ?>
+
+        <?php elseif ($_GET['action'] == 'report'): ?>
+            <!-- Reports -->
+            <h2><i class="fas fa-chart-pie"></i> Generate Reports</h2>
+            <div class="form-card">
+                <form method="POST" action="?action=report&generate_report=1">
+                    <div class="form-group">
+                        <label for="start_date">Start Date:</label>
+                        <input type="date" name="start_date" id="start_date" class="input" value="<?php echo htmlspecialchars($_POST['start_date'] ?? ''); ?>" />
+                    </div>
+                    <div class="form-group">
+                        <label for="end_date">End Date:</label>
+                        <input type="date" name="end_date" id="end_date" class="input" value="<?php echo htmlspecialchars($_POST['end_date'] ?? ''); ?>" />
+                    </div>
+                    <div class="form-group">
+                        <label for="transaction_type">Transaction Type:</label>
+                        <select name="transaction_type" id="transaction_type" class="input">
+                            <option value="all" <?php echo ($transaction_type == 'all') ? 'selected' : ''; ?>>All</option>
+                            <option value="sell" <?php echo ($transaction_type == 'sell') ? 'selected' : ''; ?>>Sell</option>
+                            <option value="buy" <?php echo ($transaction_type == 'buy') ? 'selected' : ''; ?>>Buy</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="status">Status:</label>
+                        <select name="status" id="status" class="input">
+                            <option value="all" <?php echo ($status == 'all') ? 'selected' : ''; ?>>All</option>
+                            <option value="open" <?php echo ($status == 'open') ? 'selected' : ''; ?>>Open</option>
+                            <option value="closed" <?php echo ($status == 'closed') ? 'selected' : ''; ?>>Closed</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="admin-btn">
+                        <i class="fas fa-search"></i> Generate Report
+                    </button>
+                    <button type="submit" name="export_csv" value="1" class="admin-btn">
+                        <i class="fas fa-download"></i> Export to CSV
+                    </button>
+                </form>
             </div>
-        <?php else: ?>
-            <div class="no-data">
-                <i class="fas fa-hand-holding-usd"></i>
-                <p>No buy requests match the selected criteria.</p>
-            </div>
+
+            <?php if (isset($report_transactions)): ?>
+                <!-- Transactions Report -->
+                <h3>Transactions Report</h3>
+                <?php if ($report_transactions): ?>
+                    <div class="transactions-table-container">
+                        <table class="transactions-table">
+                            <thead>
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Item Name</th>
+                                    <th>Type</th>
+                                    <th>Buyer</th>
+                                    <th>Seller</th>
+                                    <th>Supplier</th>
+                                    <th>Original Price/Max Price ($)</th>
+                                    <th>Final Price ($)</th>
+                                    <th>Quantity</th>
+                                    <th>Total Amount ($)</th>
+                                    <th>Description</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($report_transactions as $t): ?>
+                                    <?php
+                                        $item_name = $t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A';
+                                        $type = $t['item_id'] ? 'Sell' : 'Buy';
+                                        $supplier = $t['supplier_name_sell'] ?? 'N/A';
+                                        $original_price = $t['item_id'] ? ($t['original_price_sell'] ?? 'N/A') : ($t['max_price_buy'] ?? 'N/A');
+                                        $description = $t['description_sell'] ?? $t['description_buy'] ?? 'N/A';
+                                        $total_amount = $t['final_price'] * $t['quantity'];
+                                    ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($t['id']); ?></td>
+                                        <td><?php echo htmlspecialchars($item_name); ?></td>
+                                        <td><?php echo htmlspecialchars($type); ?></td>
+                                        <td><?php echo htmlspecialchars($t['buyer']); ?></td>
+                                        <td><?php echo htmlspecialchars($t['seller']); ?></td>
+                                        <td><?php echo htmlspecialchars($supplier); ?></td>
+                                        <td>$<?php echo htmlspecialchars($original_price); ?></td>
+                                        <td>$<?php echo number_format($t['final_price'], 2); ?></td>
+                                        <td><?php echo htmlspecialchars($t['quantity']); ?></td>
+                                        <td>$<?php echo number_format($total_amount, 2); ?></td>
+                                        <td><?php echo htmlspecialchars($description); ?></td>
+                                        <td><?php echo htmlspecialchars($t['created_at']); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <div class="no-data">
+                        <i class="fas fa-receipt"></i>
+                        <p>No transactions match the selected criteria.</p>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Inventory Report -->
+                <h3>Inventory Report</h3>
+                <?php if ($report_items): ?>
+                    <div class="items-table-container">
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th>Item ID</th>
+                                    <th>Item Name</th>
+                                    <th>Supplier</th>
+                                    <th>Description</th>
+                                    <th>Price ($)</th>
+                                    <th>Quantity</th>
+                                    <th>Status</th>
+                                    <th>Posted By</th>
+                                    <th>Created At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($report_items as $item): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($item['id']); ?></td>
+                                        <td><?php echo htmlspecialchars($item['item_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($item['supplier_name'] ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($item['description']); ?></td>
+                                        <td>$<?php echo number_format($item['price'], 2); ?></td>
+                                        <td><?php echo htmlspecialchars($item['quantity']); ?></td>
+                                        <td><?php echo htmlspecialchars($item['status']); ?></td>
+                                        <td><?php echo htmlspecialchars($item['posted_by_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($item['created_at']); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <div class="no-data">
+                        <i class="fas fa-box-open"></i>
+                        <p>No items match the selected criteria.</p>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Buy Requests Report -->
+                <h3>Buy Requests Report</h3>
+                <?php if ($report_requests): ?>
+                    <div class="requests-table-container">
+                        <table class="requests-table">
+                            <thead>
+                                <tr>
+                                    <th>Request ID</th>
+                                    <th>Item Name</th>
+                                    <th>Description</th>
+                                    <th>Max Price ($)</th>
+                                    <th>Quantity</th>
+                                    <th>Status</th>
+                                    <th>User</th>
+                                    <th>Created At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($report_requests as $request): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($request['id']); ?></td>
+                                        <td><?php echo htmlspecialchars($request['item_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($request['description']); ?></td>
+                                        <td>$<?php echo number_format($request['max_price'], 2); ?></td>
+                                        <td><?php echo htmlspecialchars($request['quantity']); ?></td>
+                                        <td><?php echo htmlspecialchars($request['status']); ?></td>
+                                        <td><?php echo htmlspecialchars($request['username']); ?></td>
+                                        <td><?php echo htmlspecialchars($request['created_at']); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <div class="no-data">
+                        <i class="fas fa-hand-holding-usd"></i>
+                        <p>No buy requests match the selected criteria.</p>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
         <?php endif; ?>
-    <?php endif; ?>
-<?php endif; ?>
     </div>
 </div>
 
@@ -1803,7 +1831,7 @@ try {
         <div class="footer-content">
             <div class="footer-section">
                 <h3>About Us</h3>
-                <p>We are a platform dedicated to connecting buyers and sellers for efficient transactions.</p>
+                <p>We are a platform dedicated to facilitating buying and selling of items efficiently and securely.</p>
             </div>
             <div class="footer-section">
                 <h3>Quick Links</h3>
@@ -1811,27 +1839,36 @@ try {
                     <li><a href="../index.php">Home</a></li>
                     <li><a href="../index.php#about">About</a></li>
                     <li><a href="../index.php#contact">Contact</a></li>
+                    <li><a href="admin_dashboard.php">Dashboard</a></li>
                 </ul>
             </div>
             <div class="footer-section">
                 <h3>Contact Us</h3>
                 <p>Email: support@example.com</p>
-                <p>Phone: (123) 456-7890</p>
+                <p>Phone: +123 456 7890</p>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                </div>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; <?php echo date('Y'); ?> Marketplace. All rights reserved.</p>
+            <p>&copy; <?php echo date('Y'); ?> Trading Platform. All rights reserved.</p>
         </div>
     </div>
 </footer>
 
 <script>
-    // Countdown timer for close times
-    document.querySelectorAll('.countdown').forEach(function(element) {
+// Countdown Timer for Close Time
+document.addEventListener('DOMContentLoaded', function() {
+    const countdownElements = document.querySelectorAll('.countdown');
+
+    countdownElements.forEach(element => {
         const closeTime = new Date(element.getAttribute('data-close-time')).getTime();
         const timerElement = element.querySelector('.countdown-timer');
 
-        function updateCountdown() {
+        function updateTimer() {
             const now = new Date().getTime();
             const distance = closeTime - now;
 
@@ -1849,9 +1886,11 @@ try {
             timerElement.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
         }
 
-        updateCountdown();
-        setInterval(updateCountdown, 1000);
+        updateTimer();
+        setInterval(updateTimer, 1000);
     });
+});
 </script>
+
 </body>
 </html>

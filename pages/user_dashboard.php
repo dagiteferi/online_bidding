@@ -212,20 +212,10 @@ try {
     $stmt->execute();
     $items = $stmt->fetchAll();
     error_log("Fetched " . count($items) . " admin-posted items.");
-
-    // Fetch unique item_types for items
-    $stmt = $pdo->prepare("SELECT DISTINCT item_type 
-                           FROM items i 
-                           JOIN users u ON i.posted_by = u.id 
-                           WHERE u.is_admin = 1 AND item_type IS NOT NULL");
-    $stmt->execute();
-    $item_types_for_sale = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    error_log("Fetched unique item_types for sale: " . print_r($item_types_for_sale, true));
 } catch (PDOException $e) {
     $error_msg = "Error fetching items: " . $e->getMessage();
     error_log("Items fetch failed: " . $e->getMessage());
     $items = [];
-    $item_types_for_sale = [];
 }
 
 // Fetch all admin-posted buy requests with close_time, quantity, and item_type
@@ -237,20 +227,59 @@ try {
     $stmt->execute();
     $buy_requests = $stmt->fetchAll();
     error_log("Fetched " . count($buy_requests) . " admin-posted buy requests.");
+} catch (PDOException $e) {
+    $error_msg = "Error fetching buy requests: " . $e->getMessage();
+    error_log("Buy requests fetch failed: " . $e->getMessage());
+    $buy_requests = [];
+}
 
-    // Fetch unique item_types for buy requests
+// Fetch distinct item_types from both items and buy_requests, then reorder them
+try {
+    // Fetch distinct item_types from items
+    $stmt = $pdo->prepare("SELECT DISTINCT item_type 
+                           FROM items i 
+                           JOIN users u ON i.posted_by = u.id 
+                           WHERE u.is_admin = 1 AND item_type IS NOT NULL");
+    $stmt->execute();
+    $item_types_from_items = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    // Fetch distinct item_types from buy_requests
     $stmt = $pdo->prepare("SELECT DISTINCT item_type 
                            FROM buy_requests br 
                            JOIN users u ON br.user_id = u.id 
                            WHERE u.is_admin = 1 AND item_type IS NOT NULL");
     $stmt->execute();
-    $item_types_for_buy = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    error_log("Fetched unique item_types for buy: " . print_r($item_types_for_buy, true));
+    $item_types_from_buy_requests = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    // Combine and get distinct item_types from both sources
+    $all_item_types = array_unique(array_merge($item_types_from_items, $item_types_from_buy_requests));
+
+    // Define the desired order for specific item_types
+    $desired_order = ['pc', 'desktop', 'ball'];
+
+    // Reorder item_types: prioritize "pc", "desktop", "ball" in that order, then append others
+    $reordered_item_types = [];
+    foreach ($desired_order as $type) {
+        if (in_array($type, $all_item_types)) {
+            $reordered_item_types[] = $type;
+        }
+    }
+    // Add remaining item_types that are not in the desired order
+    foreach ($all_item_types as $type) {
+        if (!in_array($type, $desired_order)) {
+            $reordered_item_types[] = $type;
+        }
+    }
+
+    // Since the dropdown is populated dynamically via JavaScript for both items and buy requests,
+    // we'll use the same reordered list for both
+    $item_types_for_sale = $item_types_for_buy = $reordered_item_types;
+
+    error_log("Reordered item_types: " . print_r($reordered_item_types, true));
 } catch (PDOException $e) {
-    $error_msg = "Error fetching buy requests: " . $e->getMessage();
-    error_log("Buy requests fetch failed: " . $e->getMessage());
-    $buy_requests = [];
-    $item_types_for_buy = [];
+    $error_msg = "Error fetching item types: " . $e->getMessage();
+    error_log("Item types fetch failed: " . $e->getMessage());
+    $item_types_for_sale = $item_types_for_buy = [];
 }
 
 // Fetch user's offers with associated item/buy request status
@@ -917,3 +946,4 @@ try {
 </body>
 </html>
 <?php ob_end_flush(); ?>
+
