@@ -122,8 +122,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
     }
 
     if (isset($success_msg)) {
-        if (file_exists(__DIR__ . '/dashboard.php')) {
-            header("Location: dashboard.php?success=" . urlencode($success_msg));
+        // Assuming dashboard.php is in the same directory (C:\xampp\htdocs\e commerce project\online_bidding\pages)
+        $dashboard_path = __DIR__ . '/dashboard.php';
+        if (file_exists($dashboard_path)) {
+            // Use an absolute URL path for the redirect to ensure it works regardless of the current URL
+            $base_url = "/e%20commerce%20project/online_bidding/pages/dashboard.php";
+            header("Location: $base_url?success=" . urlencode($success_msg));
             exit();
         } else {
             $error_msg = "Error: dashboard.php not found in " . __DIR__;
@@ -185,7 +189,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_offer'])) {
                     error_log("Offer updated - offer_id: $offer_id, user_id: {$_SESSION['user_id']}, price: $offered_price, quantity: $quantity, buyer_name: $buyer_name");
                     $pdo->commit();
                     if (file_exists(__DIR__ . '/dashboard.php')) {
-                        header("Location: dashboard.php?success=" . urlencode($success_msg));
+                        $base_url = "/e%20commerce%20project/online_bidding/pages/dashboard.php";
+                        header("Location: $base_url?success=" . urlencode($success_msg));
                         exit();
                     } else {
                         $error_msg = "Error: dashboard.php not found in " . __DIR__;
@@ -946,4 +951,5 @@ try {
 </body>
 </html>
 <?php ob_end_flush(); ?>
+
 
