@@ -1,44 +1,50 @@
-/* Form Inputs - Increased specificity and added fallbacks */
-.form-group .input, .form-group textarea {
-    width: 100%;
-    background: #ffffff !important; /* Force white background */
-    border: 2px solid #e2e8f0 !important; /* Ensure border is visible */
-    margin: 4px 0;
-    height: 48px;
-    border-radius: 12px;
-    padding: 0 18px;
-    box-sizing: border-box;
-    outline: none;
-    color: #000000 !important; /* Force black text color */
-    font-size: 14px;
-    opacity: 1 !important; /* Prevent any transparency */
-    -webkit-text-fill-color: #000000 !important; /* Ensure text color for WebKit browsers */
-    transition: all 0.3s ease;
-}
+/**
+ * Admin Dashboard Styles
+ * 
+ * This file contains all the styles for the admin dashboard interface.
+ * It uses a modern, clean design with responsive layouts and interactive elements.
+ * 
+ * Main Components:
+ * 1. Layout
+ *    - Admin header
+ *    - Sidebar navigation
+ *    - Main content area
+ *    - Responsive grid system
+ * 
+ * 2. Forms
+ *    - Input fields
+ *    - Buttons
+ *    - Form cards
+ *    - Validation states
+ * 
+ * 3. Cards
+ *    - Item cards
+ *    - Stat cards
+ *    - Alert cards
+ *    - Form cards
+ * 
+ * 4. Tables
+ *    - Data tables
+ *    - Sortable columns
+ *    - Responsive tables
+ * 
+ * 5. Item Types Management
+ *    - Add type form
+ *    - Type list
+ *    - Type table
+ * 
+ * Color Scheme:
+ * - Primary: #48dbfb (Light Blue)
+ * - Secondary: #353b48 (Dark Blue)
+ * - Success: #10b981 (Green)
+ * - Danger: #ef4444 (Red)
+ * - Warning: #f59e0b (Yellow)
+ * 
+ * @author Your Name
+ * @version 1.0
+ */
 
-/* Ensure focus state maintains visibility */
-.form-group .input:focus, .form-group textarea:focus {
-    border-color: #48dbfb !important;
-    background: #ffffff !important;
-    box-shadow: 0 0 0 3px rgba(72, 219, 251, 0.15);
-    color: #000000 !important;
-    -webkit-text-fill-color: #000000 !important;
-}
-
-/* Placeholder styling */
-.form-group .input::placeholder, .form-group textarea::placeholder {
-    color: #666666 !important; /* Darker gray for placeholder */
-    font-size: 14px;
-    opacity: 1 !important; /* Ensure placeholder is fully visible */
-}
-
-/* Textarea-specific styling */
-.form-group textarea {
-    resize: vertical;
-    min-height: 120px;
-    padding: 15px 18px;
-    line-height: 1.5;
-}
+/* Base Styles */
 * {
     margin: 0;
     padding: 0;
@@ -173,8 +179,6 @@ html {
     background: #f4f7fc;
     margin-top: 80px; /* Added to account for fixed navbar */
 }
-
-
 
 /* Sidebar styling - Improved Version */
 .sidebar {
@@ -914,4 +918,51 @@ footer .inner-width {
         height: 44px;
         padding: 0 15px;
     }
+}
+
+/* Item Types Management Styles */
+.add-type-form {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.add-type-form h3 {
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.item-types-list {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.item-types-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.item-types-table th,
+.item-types-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.item-types-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.item-types-table tr:hover {
+    background-color: #f8f9fa;
+}
+
+.item-types-table .admin-btn {
+    padding: 0.5rem 1rem;
 }

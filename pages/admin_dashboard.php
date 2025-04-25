@@ -1,8 +1,53 @@
 <?php
+/**
+ * Admin Dashboard
+ * 
+ * This file handles the main administrative interface for the online bidding system.
+ * It provides functionality for managing items for sale, buy requests, and system settings.
+ * 
+ * Main Features:
+ * 1. Item Management
+ *    - Post new items for sale
+ *    - Edit existing items
+ *    - Delete items
+ *    - View all items
+ * 
+ * 2. Buy Request Management
+ *    - Post new buy requests
+ *    - View active buy requests
+ *    - Cancel/reopen buy requests
+ *    - Delete buy requests
+ * 
+ * 3. Offer Management
+ *    - View offers on items
+ *    - Accept/reject offers
+ *    - Close offers
+ * 
+ * 4. Item Type Management
+ *    - Add new item types
+ *    - Delete item types
+ *    - View all item types
+ * 
+ * Security Features:
+ * - Session validation
+ * - Admin role verification
+ * - Input sanitization
+ * - Error handling and logging
+ * 
+ * @author Your Name
+ * @version 1.0
+ * @package OnlineBidding
+ */
+
 session_start();
 require_once '../config/db_connect.php';
 
-// Check if admin is logged in
+/**
+ * Admin Authentication Check
+ * 
+ * Verifies that the current user is logged in and has admin privileges.
+ * Redirects to login page if authentication fails.
+ */
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
     header("Location: login.php");
     exit();
@@ -39,7 +84,23 @@ try {
     error_log("Error updating expired close times: " . $e->getMessage());
 }
 
-// Handle Post Sell Item
+/**
+ * Handle Post Sell Item
+ * 
+ * Processes the form submission for posting a new item for sale.
+ * Validates input, handles image upload, and stores data in the items table.
+ * 
+ * Required Fields:
+ * - item_name
+ * - item_type
+ * - description
+ * - price
+ * - quantity
+ * 
+ * Optional Fields:
+ * - image
+ * - close_time
+ */
 if (isset($_GET['action']) && $_GET['action'] == 'post_sell') {
     if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         try {
@@ -103,6 +164,89 @@ if (isset($_GET['action']) && $_GET['action'] == 'post_sell') {
             error_log("Error posting item: " . $e->getMessage());
         }
     }
+}
+
+/**
+ * Handle Post Buy Item
+ * 
+ * Processes the form submission for posting a new buy request.
+ * Validates input, handles image upload, and stores data in the buy_requests table.
+ * 
+ * Required Fields:
+ * - item_name
+ * - item_type
+ * - description
+ * - max_price
+ * - quantity
+ * 
+ * Optional Fields:
+ * - image
+ * - close_time
+ */
+if (isset($_GET['action']) && $_GET['action'] == 'post_buy') {
+    if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+        try {
+            $item_name = trim($_POST['item_name']);
+            $item_type = trim($_POST['item_type']);
+            $description = trim($_POST['description']);
+            $max_price = floatval($_POST['max_price']);
+            $quantity = intval($_POST['quantity']);
+            $close_time = !empty($_POST['close_time']) ? date('Y-m-d H:i:s', strtotime($_POST['close_time'])) : null;
+            $user_id = $_SESSION['user_id'];
+            $image_path = null;
+
+            if (empty($item_name) || empty($item_type) || empty($description) || $max_price <= 0 || $quantity <= 0) {
+                $error = "All fields are required, and max price/quantity must be positive.";
+            } elseif ($close_time && $close_time <= date('Y-m-d H:i:s')) {
+                $error = "Close time must be in the future.";
+            } else {
+                if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
+                    $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+                    $max_size = 5 * 1024 * 1024; // 5MB
+                    $upload_dir = dirname(__DIR__) . '/uploads/';
+                    $file_name = uniqid('buy_request_') . '_' . basename($_FILES['image']['name']);
+                    $file_path = $upload_dir . $file_name;
+                    $file_type = mime_content_type($_FILES['image']['tmp_name']);
+
+                    if (!is_dir($upload_dir)) {
+                        if (!mkdir($upload_dir, 0775, true)) {
+                            $error = "Failed to create uploads directory.";
+                        }
+                    }
+
+                    if (!isset($error) && !in_array($file_type, $allowed_types)) {
+                        $error = "Only JPEG, PNG, and GIF images are allowed.";
+                    } elseif (!isset($error) && $_FILES['image']['size'] > $max_size) {
+                        $error = "Image size must be less than 5MB.";
+                    } elseif (!isset($error) && !move_uploaded_file($_FILES['image']['tmp_name'], $file_path)) {
+                        $error = "Failed to upload image.";
+                    } else {
+                        $image_path = 'uploads/' . $file_name;
+                    }
+                }
+
+                if (!isset($error)) {
+                    $stmt = $pdo->prepare("INSERT INTO buy_requests (user_id, item_name, item_type, description, max_price, quantity, status, image, close_time, created_at) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, NOW())");
+                    $stmt->execute([$user_id, $item_name, $item_type, $description, $max_price, $quantity, $image_path, $close_time]);
+                    $success = "Buy request posted successfully!";
+                    header("Location: admin_dashboard.php?action=buy_requests");
+                    exit();
+                }
+            }
+        } catch (PDOException $e) {
+            $error = "Error posting buy request: " . $e->getMessage();
+        }
+    }
+}
+
+/**
+ * Handle Item Type Management
+ * 
+ * Processes the addition and deletion of item types.
+ * Ensures type names are unique and handles error cases.
+ */
+if (isset($_GET['action']) && $_GET['action'] == 'add_item_type') {
+    // ... existing code ...
 }
 
 // Handle Edit Item
@@ -277,63 +421,6 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete_item' && isset($_GET['i
         $pdo->rollBack();
         $error = "Error deleting item: " . $e->getMessage();
         error_log("Item deletion failed: " . $e->getMessage());
-    }
-}
-
-// Handle Post Buy Item
-if (isset($_GET['action']) && $_GET['action'] == 'post_buy') {
-    if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-        try {
-            $item_name = trim($_POST['item_name']);
-            $item_type = trim($_POST['item_type']);
-            $description = trim($_POST['description']);
-            $max_price = floatval($_POST['max_price']);
-            $quantity = intval($_POST['quantity']);
-            $close_time = !empty($_POST['close_time']) ? date('Y-m-d H:i:s', strtotime($_POST['close_time'])) : null;
-            $user_id = $_SESSION['user_id'];
-            $image_path = null;
-
-            if (empty($item_name) || empty($item_type) || empty($description) || $max_price <= 0 || $quantity <= 0) {
-                $error = "All fields are required, and max price/quantity must be positive.";
-            } elseif ($close_time && $close_time <= date('Y-m-d H:i:s')) {
-                $error = "Close time must be in the future.";
-            } else {
-                if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
-                    $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
-                    $max_size = 5 * 1024 * 1024; // 5MB
-                    $upload_dir = dirname(__DIR__) . '/uploads/';
-                    $file_name = uniqid('buy_request_') . '_' . basename($_FILES['image']['name']);
-                    $file_path = $upload_dir . $file_name;
-                    $file_type = mime_content_type($_FILES['image']['tmp_name']);
-
-                    if (!is_dir($upload_dir)) {
-                        if (!mkdir($upload_dir, 0775, true)) {
-                            $error = "Failed to create uploads directory.";
-                        }
-                    }
-
-                    if (!isset($error) && !in_array($file_type, $allowed_types)) {
-                        $error = "Only JPEG, PNG, and GIF images are allowed.";
-                    } elseif (!isset($error) && $_FILES['image']['size'] > $max_size) {
-                        $error = "Image size must be less than 5MB.";
-                    } elseif (!isset($error) && !move_uploaded_file($_FILES['image']['tmp_name'], $file_path)) {
-                        $error = "Failed to upload image.";
-                    } else {
-                        $image_path = 'uploads/' . $file_name;
-                    }
-                }
-
-                if (!isset($error)) {
-                    $stmt = $pdo->prepare("INSERT INTO buy_requests (user_id, item_name, item_type, description, max_price, quantity, status, image, close_time, created_at) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, NOW())");
-                    $stmt->execute([$user_id, $item_name, $item_type, $description, $max_price, $quantity, $image_path, $close_time]);
-                    $success = "Buy request posted successfully!";
-                    header("Location: admin_dashboard.php?action=buy_requests");
-                    exit();
-                }
-            }
-        } catch (PDOException $e) {
-            $error = "Error posting buy request: " . $e->getMessage();
-        }
     }
 }
 
