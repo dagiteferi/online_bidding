@@ -1368,6 +1368,616 @@ try {
                 <!-- Pagination -->
                 <div class="pagination">
                     <?php
-                    $total_pages = ceil($total_items / $items_per_page);
-                    if ($page > 1) {
-                        echo "<a href
+                                        $total_pages = ceil($total_items / $items_per_page);
+                                        if ($page > 1) {
+                                            echo "<a href='?action=items_for_sell&page=" . ($page - 1) . "'>« Previous</a>";
+                                        }
+                                        for ($i = 1; $i <= $total_pages; $i++) {
+                                            $active = ($i == $page) ? 'active' : '';
+                                            echo "<a href='?action=items_for_sell&page=$i' class='$active'>$i</a>";
+                                        }
+                                        if ($page < $total_pages) {
+                                            echo "<a href='?action=items_for_sell&page=" . ($page + 1) . "'>Next »</a>";
+                                        }
+                                        ?>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="no-data">
+                                        <i class="fas fa-box-open"></i>
+                                        <p>No items for sale found.</p>
+                                        <a href="?action=post_sell" class="admin-btn">
+                                            <i class="fas fa-plus"></i> Add New Item
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                    
+                            <?php elseif ($_GET['action'] == 'buy_requests'): ?>
+                                <!-- Buy Requests -->
+                                <h2><i class="fas fa-hand-holding-usd"></i> Active Buy Requests (<?php echo htmlspecialchars($total_requests, ENT_QUOTES, 'UTF-8'); ?>)</h2>
+                                <?php if ($requests): ?>
+                                    <div class="row">
+                                        <?php foreach ($requests as $request): ?>
+                                            <div class="col-md-6">
+                                                <div class="request-card <?php echo ($request['status'] === 'closed') ? 'closed-item' : ''; ?>">
+                                                    <?php if (!empty($request['image'])): ?>
+                                                        <img src="../<?php echo htmlspecialchars($request['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?>" class="item-image">
+                                                    <?php endif; ?>
+                                                    <h3><?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                                                    <p><strong>Type:</strong> <?php echo htmlspecialchars($request['item_type'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></p>
+                                                    <p><?php echo htmlspecialchars($request['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                                    <p class="price">Max Price: $<?php echo number_format($request['max_price'], 2); ?></p>
+                                                    <p class="quantity">Quantity: <?php echo htmlspecialchars($request['quantity'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                                    <?php if (!empty($request['close_time']) && $request['status'] === 'open'): ?>
+                                                        <p class="countdown" data-close-time="<?php echo htmlspecialchars($request['close_time'], ENT_QUOTES, 'UTF-8'); ?>">
+                                                            Closes in: <span class="countdown-timer"></span>
+                                                        </p>
+                                                    <?php elseif (!empty($request['close_time'])): ?>
+                                                        <p><strong>Closed At:</strong> <?php echo htmlspecialchars($request['close_time'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                                    <?php endif; ?>
+                                                    <div class="request-details">
+                                                        <p><strong>Posted By:</strong> <?php echo htmlspecialchars($request['username'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                                        <p><strong>Created At:</strong> <?php echo htmlspecialchars($request['created_at'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                                        <p><strong>Status:</strong> <?php echo htmlspecialchars($request['status'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                                    </div>
+                                                    <div class="request-actions">
+                                                        <?php if ($request['status'] !== 'closed'): ?>
+                                                            <a href="?action=view_offers&request_id=<?php echo htmlspecialchars($request['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn">
+                                                                <i class="fas fa-eye"></i> View Offers
+                                                            </a>
+                                                            <a href="?action=cancel_buy_request&request_id=<?php echo htmlspecialchars($request['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to cancel this buy request? It will no longer be available for offers, but will remain in your history.');">
+                                                                <i class="fas fa-times"></i> Cancel Request
+                                                            </a>
+                                                        <?php else: ?>
+                                                            <a href="?action=reopen_buy_request&request_id=<?php echo htmlspecialchars($request['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn reopen" onclick="return confirm('Are you sure you want to reopen this buy request? It will become available for offers again.');">
+                                                                <i class="fas fa-undo"></i> Reopen
+                                                            </a>
+                                                        <?php endif; ?>
+                                                        <a href="?action=delete_buy_request&request_id=<?php echo htmlspecialchars($request['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this buy request? All related offers and transactions will also be deleted, and this action cannot be undone.');">
+                                                            <i class="fas fa-trash"></i> Delete
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <!-- Pagination -->
+                                    <div class="pagination">
+                                        <?php
+                                        $total_pages = ceil($total_requests / $items_per_page);
+                                        if ($page > 1) {
+                                            echo "<a href='?action=buy_requests&page=" . ($page - 1) . "'>« Previous</a>";
+                                        }
+                                        for ($i = 1; $i <= $total_pages; $i++) {
+                                            $active = ($i == $page) ? 'active' : '';
+                                            echo "<a href='?action=buy_requests&page=$i' class='$active'>$i</a>";
+                                        }
+                                        if ($page < $total_pages) {
+                                            echo "<a href='?action=buy_requests&page=" . ($page + 1) . "'>Next »</a>";
+                                        }
+                                        ?>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="no-data">
+                                        <i class="fas fa-hand-holding-usd"></i>
+                                        <p>No active buy requests found.</p>
+                                        <a href="?action=post_buy" class="admin-btn">
+                                            <i class="fas fa-plus"></i> Create Buy Request
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                    
+                            <?php elseif ($_GET['action'] == 'view_offers' && isset($buy_request_offers)): ?>
+                                <!-- View Offers for Buy Request -->
+                                <h2><i class="fas fa-hand-holding-usd"></i> Offers for Buy Request</h2>
+                                <?php if ($buy_request_offers): ?>
+                                    <div class="offers-table-container">
+                                        <table class="offers-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>From</th>
+                                                    <th>Item Name</th>
+                                                    <th>Offered Price ($)</th>
+                                                    <th>Quantity</th>
+                                                    <th>Description</th>
+                                                    <th>Offer Time</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($buy_request_offers as $offer): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($offer['username'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td><?php echo htmlspecialchars($offer['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
+                                                        <td><?php echo htmlspecialchars($offer['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td><?php echo htmlspecialchars($offer['description'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td><?php echo htmlspecialchars($offer['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td class="offer-actions">
+                                                            <a href="?action=offer_action&offer_id=<?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?>&type=accept" class="admin-btn success">
+                                                                <i class="fas fa-check"></i> Accept
+                                                            </a>
+                                                            <a href="?action=offer_action&offer_id=<?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?>&type=reject" class="admin-btn danger">
+                                                                <i class="fas fa-times"></i> Reject
+                                                            </a>
+                                                            <a href="?action=close_offer&offer_id=<?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');">
+                                                                <i class="fas fa-times-circle"></i> Close
+                                                            </a>
+                                                            <a href="?action=delete_offer&offer_id=<?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this offer? This action cannot be undone.');">
+                                                                <i class="fas fa-trash"></i> Delete
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="back-btn">
+                                        <a href="?action=buy_requests" class="admin-btn">
+                                            <i class="fas fa-arrow-left"></i> Back to Buy Requests
+                                        </a>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="no-data">
+                                        <i class="fas fa-exchange-alt"></i>
+                                        <p>No offers found for this buy request.</p>
+                                        <a href="?action=buy_requests" class="admin-btn">
+                                            <i class="fas fa-arrow-left"></i> Back to Buy Requests
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                    
+                            <?php elseif ($_GET['action'] == 'offers'): ?>
+                                <!-- Offers Section -->
+                                <h2><i class="fas fa-exchange-alt"></i> Offers</h2>
+                                
+                                <!-- Buy Offers (Offers on Your Items for Sale) -->
+                                <h3>Offers on Your Items for Sale</h3>
+                                <?php if ($buy_offers): ?>
+                                    <div class="sort-controls">
+                                        <form method="GET">
+                                            <input type="hidden" name="action" value="offers">
+                                            <label for="buy_sort_field">Sort By:</label>
+                                            <select name="buy_sort_field" id="buy_sort_field">
+                                                <option value="offered_price" <?php echo $buy_sort_field == 'offered_price' ? 'selected' : ''; ?>>Offered Price</option>
+                                                <option value="created_at" <?php echo $buy_sort_field == 'created_at' ? 'selected' : ''; ?>>Date</option>
+                                            </select>
+                                            <label for="buy_sort_order">Order:</label>
+                                            <select name="buy_sort_order" id="buy_sort_order">
+                                                <option value="ASC" <?php echo $buy_sort_order == 'ASC' ? 'selected' : ''; ?>>Ascending</option>
+                                                <option value="DESC" <?php echo $buy_sort_order == 'DESC' ? 'selected' : ''; ?>>Descending</option>
+                                            </select>
+                                            <button type="submit" class="admin-btn">Sort</button>
+                                        </form>
+                                    </div>
+                                    <div class="offers-table-container">
+                                        <table class="offers-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>From</th>
+                                                    <th>Item Name</th>
+                                                    <th>Offered Price ($)</th>
+                                                    <th>Quantity</th>
+                                                    <th>Description</th>
+                                                    <th>Offer Time</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($buy_offers as $offer): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($offer['username'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td><?php echo htmlspecialchars($offer['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
+                                                        <td><?php echo htmlspecialchars($offer['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td><?php echo htmlspecialchars($offer['description'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td><?php echo htmlspecialchars($offer['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td class="offer-actions">
+                                                            <a href="?action=offer_action&offer_id=<?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?>&type=accept" class="admin-btn success">
+                                                                <i class="fas fa-check"></i> Accept
+                                                            </a>
+                                                            <a href="?action=offer_action&offer_id=<?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?>&type=reject" class="admin-btn danger">
+                                                                <i class="fas fa-times"></i> Reject
+                                                            </a>
+                                                            <a href="?action=close_offer&offer_id=<?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');">
+                                                                <i class="fas fa-times-circle"></i> Close
+                                                            </a>
+                                                            <a href="?action=delete_offer&offer_id=<?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this offer? This action cannot be undone.');">
+                                                                <i class="fas fa-trash"></i> Delete
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="no-data">
+                                        <i class="fas fa-exchange-alt"></i>
+                                        <p>No pending offers on your items for sale.</p>
+                                    </div>
+                                <?php endif; ?>
+                    
+                                <!-- Sell Offers (Offers You Made on Buy Requests) -->
+                                <h3>Offers on Your Buy Requests</h3>
+                                <?php if ($sell_offers): ?>
+                                    <div class="sort-controls">
+                                        <form method="GET">
+                                            <input type="hidden" name="action" value="offers">
+                                            <label for="sell_sort_field">Sort By:</label>
+                                            <select name="sell_sort_field" id="sell_sort_field">
+                                                <option value="offered_price" <?php echo $sell_sort_field == 'offered_price' ? 'selected' : ''; ?>>Offered Price</option>
+                                                <option value="created_at" <?php echo $sell_sort_field == 'created_at' ? 'selected' : ''; ?>>Date</option>
+                                            </select>
+                                            <label for="sell_sort_order">Order:</label>
+                                            <select name="sell_sort_order" id="sell_sort_order">
+                                                <option value="ASC" <?php echo $sell_sort_order == 'ASC' ? 'selected' : ''; ?>>Ascending</option>
+                                                <option value="DESC" <?php echo $sell_sort_order == 'DESC' ? 'selected' : ''; ?>>Descending</option>
+                                            </select>
+                                            <button type="submit" class="admin-btn">Sort</button>
+                                        </form>
+                                    </div>
+                                    <div class="offers-table-container">
+                                        <table class="offers-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>From</th>
+                                                    <th>Item Name</th>
+                                                    <th>Offered Price ($)</th>
+                                                    <th>Quantity</th>
+                                                    <th>Description</th>
+                                                    <th>Offer Time</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($sell_offers as $offer): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($offer['username'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td><?php echo htmlspecialchars($offer['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
+                                                        <td><?php echo htmlspecialchars($offer['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td><?php echo htmlspecialchars($offer['description'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td><?php echo htmlspecialchars($offer['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td class="offer-actions">
+                                                            <a href="?action=offer_action&offer_id=<?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?>&type=accept" class="admin-btn success">
+                                                                <i class="fas fa-check"></i> Accept
+                                                            </a>
+                                                            <a href="?action=offer_action&offer_id=<?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?>&type=reject" class="admin-btn danger">
+                                                                <i class="fas fa-times"></i> Reject
+                                                            </a>
+                                                            <a href="?action=close_offer&offer_id=<?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');">
+                                                                <i class="fas fa-times-circle"></i> Close
+                                                            </a>
+                                                            <a href="?action=delete_offer&offer_id=<?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this offer? This action cannot be undone.');">
+                                                                <i class="fas fa-trash"></i> Delete
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="no-data">
+                                        <i class="fas fa-exchange-alt"></i>
+                                        <p>No pending offers on your buy requests.</p>
+                                    </div>
+                                <?php endif; ?>
+                    
+                            <?php elseif ($_GET['action'] == 'transactions'): ?>
+                                <!-- Transactions -->
+                                <h2><i class="fas fa-receipt"></i> Transactions (<?php echo htmlspecialchars($total_transactions, ENT_QUOTES, 'UTF-8'); ?>)</h2>
+                                <?php if ($transactions): ?>
+                                    <div class="transactions-table-container">
+                                        <table class="transactions-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Item Name</th>
+                                                    <th>Type</th>
+                                                    <th>Buyer</th>
+                                                    <th>Seller</th>
+                                                    <th>Final Price ($)</th>
+                                                    <th>Quantity</th>
+                                                    <th>Total Amount ($)</th>
+                                                    <th>Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($transactions as $t): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($t['id'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td><?php echo htmlspecialchars($t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td><?php echo $t['item_id'] ? 'Sell' : 'Buy'; ?></td>
+                                                        <td><?php echo htmlspecialchars($t['buyer'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td><?php echo htmlspecialchars($t['seller'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td>$<?php echo number_format($t['final_price'], 2); ?></td>
+                                                        <td><?php echo htmlspecialchars($t['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td>$<?php echo number_format($t['final_price'] * $t['quantity'], 2); ?></td>
+                                                        <td><?php echo htmlspecialchars($t['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <!-- Pagination -->
+                                    <div class="pagination">
+                                        <?php
+                                        $total_pages = ceil($total_transactions / $items_per_page);
+                                        if ($page > 1) {
+                                            echo "<a href='?action=transactions&page=" . ($page - 1) . "'>« Previous</a>";
+                                        }
+                                        for ($i = 1; $i <= $total_pages; $i++) {
+                                            $active = ($i == $page) ? 'active' : '';
+                                            echo "<a href='?action=transactions&page=$i' class='$active'>$i</a>";
+                                        }
+                                        if ($page < $total_pages) {
+                                            echo "<a href='?action=transactions&page=" . ($page + 1) . "'>Next »</a>";
+                                        }
+                                        ?>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="no-data">
+                                        <i class="fas fa-receipt"></i>
+                                        <p>No transactions found.</p>
+                                    </div>
+                                <?php endif; ?>
+                    
+                            <?php elseif ($_GET['action'] == 'report'): ?>
+                                <!-- Reports -->
+                                <h2><i class="fas fa-chart-pie"></i> Generate Reports</h2>
+                                <div class="form-card">
+                                    <form method="POST" action="?action=report&generate_report=1">
+                                        <div class="form-group">
+                                            <label for="start_date">Start Date:</label>
+                                            <input type="date" name="start_date" id="start_date" class="input" value="<?php echo htmlspecialchars($start_date ? date('Y-m-d', strtotime($start_date)) : '', ENT_QUOTES, 'UTF-8'); ?>" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="end_date">End Date:</label>
+                                            <input type="date" name="end_date" id="end_date" class="input" value="<?php echo htmlspecialchars($end_date ? date('Y-m-d', strtotime($end_date)) : '', ENT_QUOTES, 'UTF-8'); ?>" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="transaction_type">Transaction Type:</label>
+                                            <select name="transaction_type" id="transaction_type" class="input">
+                                                <option value="all" <?php echo $transaction_type == 'all' ? 'selected' : ''; ?>>All</option>
+                                                <option value="sell" <?php echo $transaction_type == 'sell' ? 'selected' : ''; ?>>Sell</option>
+                                                <option value="buy" <?php echo $transaction_type == 'buy' ? 'selected' : ''; ?>>Buy</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="status">Status:</label>
+                                            <select name="status" id="status" class="input">
+                                                <option value="all" <?php echo $status == 'all' ? 'selected' : ''; ?>>All</option>
+                                                <option value="open" <?php echo $status == 'open' ? 'selected' : ''; ?>>Open</option>
+                                                <option value="closed" <?php echo $status == 'closed' ? 'selected' : ''; ?>>Closed</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="admin-btn">
+                                            <i class="fas fa-search"></i> Generate Report
+                                        </button>
+                                        <button type="submit" name="export_csv" value="1" class="admin-btn">
+                                            <i class="fas fa-download"></i> Export to CSV
+                                        </button>
+                                    </form>
+                                </div>
+                    
+                                <?php if (isset($report_transactions) || isset($report_items) || isset($report_requests)): ?>
+                                    <!-- Transactions Report -->
+                                    <h3>Transactions Report</h3>
+                                    <?php if ($report_transactions): ?>
+                                        <div class="transactions-table-container">
+                                            <table class="transactions-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>ID</th>
+                                                        <th>Item Name</th>
+                                                        <th>Type</th>
+                                                        <th>Buyer</th>
+                                                        <th>Seller</th>
+                                                        <th>Supplier</th>
+                                                        <th>Original Price/Max Price ($)</th>
+                                                        <th>Final Price ($)</th>
+                                                        <th>Quantity</th>
+                                                        <th>Total Amount ($)</th>
+                                                        <th>Description</th>
+                                                        <th>Date</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($report_transactions as $t): ?>
+                                                        <tr>
+                                                            <td><?php echo htmlspecialchars($t['id'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo $t['item_id'] ? 'Sell' : 'Buy'; ?></td>
+                                                            <td><?php echo htmlspecialchars($t['buyer'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($t['seller'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($t['supplier_name_sell'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td>$<?php echo number_format($t['item_id'] ? ($t['original_price_sell'] ?? 0) : ($t['max_price_buy'] ?? 0), 2); ?></td>
+                                                            <td>$<?php echo number_format($t['final_price'], 2); ?></td>
+                                                            <td><?php echo htmlspecialchars($t['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td>$<?php echo number_format($t['final_price'] * $t['quantity'], 2); ?></td>
+                                                            <td><?php echo htmlspecialchars($t['description_sell'] ?? $t['description_buy'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($t['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="no-data">
+                                            <i class="fas fa-receipt"></i>
+                                            <p>No transactions found for the selected criteria.</p>
+                                        </div>
+                                    <?php endif; ?>
+                    
+                                    <!-- Inventory Report -->
+                                    <h3>Inventory Report</h3>
+                                    <?php if ($report_items): ?>
+                                        <div class="items-table-container">
+                                            <table class="items-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>ID</th>
+                                                        <th>Item Name</th>
+                                                        <th>Supplier</th>
+                                                        <th>Description</th>
+                                                        <th>Price ($)</th>
+                                                        <th>Quantity</th>
+                                                        <th>Status</th>
+                                                        <th>Posted By</th>
+                                                        <th>Created At</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($report_items as $item): ?>
+                                                        <tr>
+                                                            <td><?php echo htmlspecialchars($item['id'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($item['supplier_name'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($item['description'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td>$<?php echo number_format($item['price'], 2); ?></td>
+                                                            <td><?php echo htmlspecialchars($item['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($item['status'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($item['posted_by_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($item['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="no-data">
+                                            <i class="fas fa-box-open"></i>
+                                            <p>No items found for the selected criteria.</p>
+                                        </div>
+                                    <?php endif; ?>
+                    
+                                    <!-- Buy Requests Report -->
+                                    <h3>Buy Requests Report</h3>
+                                    <?php if ($report_requests): ?>
+                                        <div class="requests-table-container">
+                                            <table class="requests-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>ID</th>
+                                                        <th>Item Name</th>
+                                                        <th>Description</th>
+                                                        <th>Max Price ($)</th>
+                                                        <th>Quantity</th>
+                                                        <th>Status</th>
+                                                        <th>User</th>
+                                                        <th>Created At</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($report_requests as $request): ?>
+                                                        <tr>
+                                                            <td><?php echo htmlspecialchars($request['id'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($request['description'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td>$<?php echo number_format($request['max_price'], 2); ?></td>
+                                                            <td><?php echo htmlspecialchars($request['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($request['status'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($request['username'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td><?php echo htmlspecialchars($request['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="no-data">
+                                            <i class="fas fa-hand-holding-usd"></i>
+                                            <p>No buy requests found for the selected criteria.</p>
+                                        </div>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                    
+                            <?php elseif ($_GET['action'] == 'add_item_type'): ?>
+                                <!-- Manage Item Types -->
+                                <h2><i class="fas fa-list"></i> Manage Item Types</h2>
+                                <div class="form-card">
+                                    <h3>Add New Item Type</h3>
+                                    <form method="POST">
+                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
+                                        <div class="form-group">
+                                            <input type="text" name="type_name" class="input" placeholder="Item Type Name" required />
+                                        </div>
+                                        <button type="submit" class="admin-btn full-width">
+                                            <i class="fas fa-plus"></i> Add Item Type
+                                        </button>
+                                    </form>
+                                </div>
+                                
+                                <!-- Existing Item Types -->
+                                <h3>Existing Item Types</h3>
+                                <?php if ($item_types): ?>
+                                    <div class="item-types-table-container">
+                                        <table class="item-types-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Type Name</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($item_types as $type): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($type, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td>
+                                                            <a href="?action=delete_item_type&type_name=<?php echo urlencode($type); ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to delete this item type? This action cannot be undone if the type is not in use.');">
+                                                                <i class="fas fa-trash"></i> Delete
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="no-data">
+                                        <i class="fas fa-list"></i>
+                                        <p>No item types found.</p>
+                                    </div>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <footer class="footer">
+                        <div class="inner-width">
+                            <p>© <?php echo date('Y'); ?> Online Bidding System. All rights reserved.</p>
+                        </div>
+                    </footer>
+                    
+                    <script>
+                    // Countdown timer for items and buy requests
+                    document.querySelectorAll('.countdown').forEach(function(element) {
+                        const closeTime = new Date(element.getAttribute('data-close-time')).getTime();
+                        const timerElement = element.querySelector('.countdown-timer');
+                    
+                        function updateTimer() {
+                            const now = new Date().getTime();
+                            const distance = closeTime - now;
+                    
+                            if (distance < 0) {
+                                timerElement.textContent = 'Closed';
+                                return;
+                            }
+                    
+                            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    
+                            timerElement.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+                        }
+                    
+                        updateTimer();
+                        setInterval(updateTimer, 1000);
+                    });
+                    </script>
+                    
+                    </body>
+                    </html>
