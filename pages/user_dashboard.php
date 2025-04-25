@@ -42,11 +42,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
     $quantity = trim($_POST['quantity'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $buyer_name = trim($_POST['buyer_name'] ?? '');
+    $item_type = trim($_POST['item_type'] ?? '');
 
-    error_log("Parsed values - item_id: " . ($item_id ?? 'null') . ", request_id: " . ($request_id ?? 'null') . ", offer_type: $offer_type");
+    error_log("Parsed values - item_id: " . ($item_id ?? 'null') . ", request_id: " . ($request_id ?? 'null') . ", offer_type: $offer_type, item_type: $item_type");
 
     if (empty($buyer_name)) {
         $error_msg = "Please enter your buyer name.";
+    } elseif (empty($item_type)) {
+        $error_msg = "Please select an item type.";
     } elseif (empty($offered_price) || !is_numeric($offered_price) || $offered_price <= 0) {
         $error_msg = "Please enter a valid offered price (greater than 0).";
     } elseif (empty($quantity) || !is_numeric($quantity) || $quantity <= 0) {
@@ -97,12 +100,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
 
             if (!isset($error_msg)) {
                 $description = empty($description) ? NULL : $description;
-                $stmt = $pdo->prepare("INSERT INTO offers (item_id, request_id, user_id, offer_type, offered_price, quantity, description, buyer_name, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
-                $result = $stmt->execute([$item_id, $request_id, $_SESSION['user_id'], $offer_type, $offered_price, $quantity, $description, $buyer_name]);
+                $stmt = $pdo->prepare("INSERT INTO offers (item_id, request_id, user_id, offer_type, offered_price, quantity, description, buyer_name, item_type, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
+                $result = $stmt->execute([$item_id, $request_id, $_SESSION['user_id'], $offer_type, $offered_price, $quantity, $description, $buyer_name, $item_type]);
                 if ($result) {
                     $offer_id = $pdo->lastInsertId();
                     $success_msg = "Offer submitted successfully!";
-                    error_log("Offer inserted - offer_id: $offer_id, item_id: $item_id, request_id: $request_id, user_id: {$_SESSION['user_id']}, offer_type: $offer_type, price: $offered_price, quantity: $quantity, buyer_name: $buyer_name");
+                    error_log("Offer inserted - offer_id: $offer_id, item_id: $item_id, request_id: $request_id, user_id: {$_SESSION['user_id']}, offer_type: $offer_type, price: $offered_price, quantity: $quantity, buyer_name: $buyer_name, item_type: $item_type");
                     $pdo->commit();
                 } else {
                     $error_msg = "Failed to submit offer. Please try again.";
@@ -200,40 +203,54 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_offer'])) {
     }
 }
 
-// Fetch all admin-posted items with close_time
+// Fetch all admin-posted items with close_time, quantity, and item_type
 try {
-    $stmt = $pdo->prepare("SELECT i.id, i.item_name AS title, i.description, i.price, 'for_sale' AS item_type, i.status, i.created_at, i.image, u.username AS admin_name, i.close_time 
+    $stmt = $pdo->prepare("SELECT i.id, i.item_name AS title, i.description, i.price, i.quantity, i.item_type, 'for_sale' AS type, i.status, i.created_at, i.image, u.username AS admin_name, i.close_time 
                            FROM items i 
                            JOIN users u ON i.posted_by = u.id 
                            WHERE u.is_admin = 1");
     $stmt->execute();
     $items = $stmt->fetchAll();
     error_log("Fetched " . count($items) . " admin-posted items.");
-    foreach ($items as $item) {
-        error_log("Item ID: " . $item['id']);
-    }
+
+    // Fetch unique item_types for items
+    $stmt = $pdo->prepare("SELECT DISTINCT item_type 
+                           FROM items i 
+                           JOIN users u ON i.posted_by = u.id 
+                           WHERE u.is_admin = 1 AND item_type IS NOT NULL");
+    $stmt->execute();
+    $item_types_for_sale = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    error_log("Fetched unique item_types for sale: " . print_r($item_types_for_sale, true));
 } catch (PDOException $e) {
     $error_msg = "Error fetching items: " . $e->getMessage();
     error_log("Items fetch failed: " . $e->getMessage());
     $items = [];
+    $item_types_for_sale = [];
 }
 
-// Fetch all admin-posted buy requests with close_time
+// Fetch all admin-posted buy requests with close_time, quantity, and item_type
 try {
-    $stmt = $pdo->prepare("SELECT br.id, br.item_name, br.description, br.max_price, br.quantity, br.status, br.created_at, br.image, u.username AS admin_name, br.close_time 
+    $stmt = $pdo->prepare("SELECT br.id, br.item_name, br.description, br.max_price, br.quantity, br.item_type, br.status, br.created_at, br.image, u.username AS admin_name, br.close_time 
                            FROM buy_requests br 
                            JOIN users u ON br.user_id = u.id 
                            WHERE u.is_admin = 1");
     $stmt->execute();
     $buy_requests = $stmt->fetchAll();
     error_log("Fetched " . count($buy_requests) . " admin-posted buy requests.");
-    foreach ($buy_requests as $request) {
-        error_log("Buy Request ID: " . $request['id']);
-    }
+
+    // Fetch unique item_types for buy requests
+    $stmt = $pdo->prepare("SELECT DISTINCT item_type 
+                           FROM buy_requests br 
+                           JOIN users u ON br.user_id = u.id 
+                           WHERE u.is_admin = 1 AND item_type IS NOT NULL");
+    $stmt->execute();
+    $item_types_for_buy = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    error_log("Fetched unique item_types for buy: " . print_r($item_types_for_buy, true));
 } catch (PDOException $e) {
     $error_msg = "Error fetching buy requests: " . $e->getMessage();
     error_log("Buy requests fetch failed: " . $e->getMessage());
     $buy_requests = [];
+    $item_types_for_buy = [];
 }
 
 // Fetch user's offers with associated item/buy request status
@@ -246,7 +263,7 @@ try {
     error_log("Raw offers fetched from offers table: " . count($raw_offers));
     error_log("Raw offers data: " . print_r($raw_offers, true));
 
-    $stmt = $pdo->prepare("SELECT o.id, o.item_id, o.request_id, o.offer_type, o.offered_price, o.quantity, o.description, o.buyer_name, o.status, o.created_at, 
+    $stmt = $pdo->prepare("SELECT o.id, o.item_id, o.request_id, o.offer_type, o.offered_price, o.quantity, o.description, o.buyer_name, o.item_type, o.status, o.created_at, 
                            COALESCE(i.item_name, br.item_name) AS item_name,
                            COALESCE(i.status, br.status) AS assoc_status
                            FROM offers o 
@@ -426,7 +443,7 @@ try {
                         <h3 class="item-title"><?php echo htmlspecialchars($item['title']); ?></h3>
                         <div class="item-price">$<?php echo number_format($item['price'], 2); ?></div>
                         <p class="item-desc"><?php echo htmlspecialchars($item['description'] ?? 'No description provided'); ?></p>
-                        <p class="item-admin"><i class="fas fa-user-tie"></i> <?php echo htmlspecialchars($item['admin_name']); ?></p>
+                        <p class="item-admin"><i class="fas fa-user-tie"></i> <?php echo htmlspecialchars($item['admin_name']); ?> | Qty: <?php echo htmlspecialchars($item['quantity']); ?></p>
                         
                         <div class="item-footer">
                             <?php if (!empty($item['close_time']) && $item['status'] === 'open'): ?>
@@ -462,7 +479,7 @@ try {
                             <?php endif; ?>
                             
                             <?php if ($item['status'] == 'open'): ?>
-                                <button class="btn-offer" onclick="openOfferModal(<?php echo $item_id; ?>, null, '<?php echo $item['item_type'] == 'for_sale' ? 'buy' : 'sell'; ?>', '<?php echo htmlspecialchars($item['title']); ?>')">
+                                <button class="btn-offer" onclick="openOfferModal(<?php echo $item_id; ?>, null, '<?php echo $item['type'] == 'for_sale' ? 'buy' : 'sell'; ?>', '<?php echo htmlspecialchars($item['title']); ?>', <?php echo $item['quantity']; ?>)">
                                     <i class="fas fa-handshake"></i> Make Offer
                                 </button>
                             <?php else: ?>
@@ -549,7 +566,7 @@ try {
                             <?php endif; ?>
                             
                             <?php if ($request['status'] == 'open'): ?>
-                                <button class="btn-offer" onclick="openOfferModal(null, <?php echo $request_id; ?>, 'sell', '<?php echo htmlspecialchars($request['item_name']); ?>')">
+                                <button class="btn-offer" onclick="openOfferModal(null, <?php echo $request_id; ?>, 'sell', '<?php echo htmlspecialchars($request['item_name']); ?>', <?php echo $request['quantity']; ?>)">
                                     <i class="fas fa-handshake"></i> Make Offer
                                 </button>
                             <?php else: ?>
@@ -580,6 +597,7 @@ try {
                         <th>Item/Request</th>
                         <th>Buyer Name</th>
                         <th>Type</th>
+                        <th>Item Type</th>
                         <th>Your Price</th>
                         <th>Qty</th>
                         <th>Description</th>
@@ -594,6 +612,7 @@ try {
                             <td><?php echo htmlspecialchars($offer['item_name'] ?? 'Item/Request Deleted'); ?></td>
                             <td><?php echo htmlspecialchars($offer['buyer_name'] ?? 'N/A'); ?></td>
                             <td><?php echo ucfirst(htmlspecialchars($offer['offer_type'] ?? 'Unknown')); ?></td>
+                            <td><?php echo htmlspecialchars($offer['item_type'] ?? 'N/A'); ?></td>
                             <td>$<?php echo number_format($offer['offered_price'] ?? 0, 2); ?></td>
                             <td><?php echo htmlspecialchars($offer['quantity'] ?? 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars($offer['description'] ?? 'No description provided'); ?></td>
@@ -640,6 +659,14 @@ try {
                 <label for="buyer_name">Buyer Name</label>
                 <input type="text" class="form-control" name="buyer_name" id="buyer_name" value="<?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?>" required>
             </div>
+
+            <div class="form-group">
+                <label for="item_type">Item Type</label>
+                <select class="form-control" name="item_type" id="modalItemType" required>
+                    <option value="">Select Item Type</option>
+                    <!-- Options will be populated dynamically via JavaScript -->
+                </select>
+            </div>
             
             <div class="form-group">
                 <label for="offered_price">Your Offer Price</label>
@@ -651,7 +678,7 @@ try {
             
             <div class="form-group">
                 <label for="quantity">Quantity</label>
-                <input type="number" class="form-control" name="quantity" id="quantity" placeholder="1" min="1" required>
+                <input type="number" class="form-control" name="quantity" id="quantity" min="1" required>
             </div>
             
             <div class="form-group">
@@ -723,6 +750,9 @@ try {
 </footer>
 
 <script>
+    const itemTypesForSale = <?php echo json_encode($item_types_for_sale); ?>;
+    const itemTypesForBuy = <?php echo json_encode($item_types_for_buy); ?>;
+
     // Enhanced Countdown Timer
     function updateCountdown() {
         const countdownElements = document.querySelectorAll('.countdown-timer');
@@ -762,12 +792,19 @@ try {
     function validateOfferForm() {
         const itemId = document.getElementById('modalItemId').value;
         const requestId = document.getElementById('modalRequestId').value;
+        const itemType = document.getElementById('modalItemType').value;
 
-        console.log('Validating form before submission - itemId:', itemId, 'requestId:', requestId);
+        console.log('Validating form before submission - itemId:', itemId, 'requestId:', requestId, 'itemType:', itemType);
 
         if (!itemId && !requestId) {
             console.log('Validation failed: Both itemId and requestId are empty.');
             alert('Please select an item or buy request to make an offer.');
+            return false;
+        }
+
+        if (!itemType) {
+            console.log('Validation failed: Item type not selected.');
+            alert('Please select an item type.');
             return false;
         }
 
@@ -776,8 +813,8 @@ try {
     }
 
     // Modal Functions
-    function openOfferModal(itemId, requestId, offerType, title) {
-        console.log('openOfferModal called with - itemId:', itemId, 'requestId:', requestId, 'offerType:', offerType, 'title:', title);
+    function openOfferModal(itemId, requestId, offerType, title, quantity) {
+        console.log('openOfferModal called with - itemId:', itemId, 'requestId:', requestId, 'offerType:', offerType, 'title:', title, 'quantity:', quantity);
 
         // Store values in variables to protect them
         const modalItemId = itemId || '';
@@ -786,17 +823,29 @@ try {
         // Set the form inputs
         const itemIdInput = document.getElementById('modalItemId');
         const requestIdInput = document.getElementById('modalRequestId');
+        const itemTypeSelect = document.getElementById('modalItemType');
+        const quantityInput = document.getElementById('quantity');
 
         itemIdInput.value = modalItemId;
         requestIdInput.value = modalRequestId;
         document.getElementById('modalOfferType').value = offerType || '';
         document.getElementById('modalTitle').textContent = 'Make Offer for ' + (title || 'Unknown Item');
         document.getElementById('offered_price').value = '';
-        document.getElementById('quantity').value = '';
+        quantityInput.value = quantity || 1; // Set default quantity
         document.getElementById('description').value = '';
         document.getElementById('buyer_name').value = '<?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?>';
 
-        console.log('Modal values set - itemId:', itemIdInput.value, 'requestId:', requestIdInput.value, 'offerType:', document.getElementById('modalOfferType').value);
+        // Populate item_type dropdown based on whether it's an item or buy request
+        itemTypeSelect.innerHTML = '<option value="">Select Item Type</option>';
+        const itemTypes = itemId ? itemTypesForSale : itemTypesForBuy;
+        itemTypes.forEach(type => {
+            const option = document.createElement('option');
+            option.value = type;
+            option.textContent = type;
+            itemTypeSelect.appendChild(option);
+        });
+
+        console.log('Modal values set - itemId:', itemIdInput.value, 'requestId:', requestIdInput.value, 'offerType:', document.getElementById('modalOfferType').value, 'quantity:', quantityInput.value);
 
         document.getElementById('offerModal').style.display = 'flex';
     }
