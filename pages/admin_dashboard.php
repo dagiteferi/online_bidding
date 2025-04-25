@@ -7,56 +7,37 @@
  * 
  * Main Features:
  * 1. Item Management
- *    - Post new items for sale
- *    - Edit existing items
- *    - Delete items
- *    - View all items
- * 
  * 2. Buy Request Management
- *    - Post new buy requests
- *    - View active buy requests
- *    - Cancel/reopen buy requests
- *    - Delete buy requests
- * 
  * 3. Offer Management
- *    - View offers on items
- *    - Accept/reject offers
- *    - Close offers
- * 
  * 4. Item Type Management
- *    - Add new item types
- *    - Delete item types
- *    - View all item types
  * 
  * Security Features:
  * - Session validation
  * - Admin role verification
  * - Input sanitization
  * - Error handling and logging
- * 
- * @author Your Name
- * @version 1.0
- * @package OnlineBidding
+ * - CSRF protection
+ * - SQL injection prevention
  */
 
 session_start();
 require_once '../config/db_connect.php';
 
-/**
- * Admin Authentication Check
- * 
- * Verifies that the current user is logged in and has admin privileges.
- * Redirects to login page if authentication fails.
- */
+// CSRF Token Generation
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Admin Authentication Check
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
     header("Location: login.php");
     exit();
 }
 
-// Validate that the user_id exists in the users table
+// Validate user_id in database
 try {
-    $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ? AND is_admin = 1");
-    $stmt->execute([$_SESSION['user_id']]);
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE id = :user_id AND is_admin = 1");
+    $stmt->execute([':user_id' => $_SESSION['user_id']]);
     if (!$stmt->fetch()) {
         session_destroy();
         header("Location: login.php?error=invalid_user");
@@ -71,289 +52,319 @@ try {
 
 $admin_name = "Admin"; // Hardcoded as per login.php
 
-// Check and update items and buy requests with expired close_time
+// Update expired items and buy requests
 try {
     $current_time = date('Y-m-d H:i:s');
-    // Update items
-    $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE close_time IS NOT NULL AND close_time <= ? AND status = 'open'");
-    $stmt->execute([$current_time]);
-    // Update buy requests
-    $stmt = $pdo->prepare("UPDATE buy_requests SET status = 'closed' WHERE close_time IS NOT NULL AND close_time <= ? AND status = 'open'");
-    $stmt->execute([$current_time]);
+    $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE close_time IS NOT NULL AND close_time <= :current_time AND status = 'open'");
+    $stmt->execute([':current_time' => $current_time]);
+    
+    $stmt = $pdo->prepare("UPDATE buy_requests SET status = 'closed' WHERE close_time IS NOT NULL AND close_time <= :current_time AND status = 'open'");
+    $stmt->execute([':current_time' => $current_time]);
 } catch (PDOException $e) {
     error_log("Error updating expired close times: " . $e->getMessage());
 }
 
-/**
- * Handle Post Sell Item
- * 
- * Processes the form submission for posting a new item for sale.
- * Validates input, handles image upload, and stores data in the items table.
- * 
- * Required Fields:
- * - item_name
- * - item_type
- * - description
- * - price
- * - quantity
- * 
- * Optional Fields:
- * - image
- * - close_time
- */
+// Helper function for input sanitization
+function sanitizeInput($input) {
+    return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
+}
+
+// Handle Post Sell Item
 if (isset($_GET['action']) && $_GET['action'] == 'post_sell') {
     if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-        try {
-            $supplier_name = trim($_POST['supplier_name']);
-            $item_name = trim($_POST['item_name']);
-            $item_type = trim($_POST['item_type']);
-            $description = trim($_POST['description']);
-            $price = floatval($_POST['price']);
-            $quantity = intval($_POST['quantity']);
-            $close_time = !empty($_POST['close_time']) ? date('Y-m-d H:i:s', strtotime($_POST['close_time'])) : null;
-            $user_id = $_SESSION['user_id'];
-            $image_path = null;
+        // CSRF validation
+        if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+            $error = "Invalid CSRF token.";
+            error_log("CSRF validation failed for post_sell");
+        } else {
+            try {
+                $supplier_name = sanitizeInput($_POST['supplier_name']);
+                $item_name = sanitizeInput($_POST['item_name']);
+                $item_type = sanitizeInput($_POST['item_type']);
+                $description = sanitizeInput($_POST['description']);
+                $price = floatval($_POST['price']);
+                $quantity = intval($_POST['quantity']);
+                $close_time = !empty($_POST['close_time']) ? date('Y-m-d H:i:s', strtotime($_POST['close_time'])) : null;
+                $user_id = $_SESSION['user_id'];
+                $image_path = null;
 
-            // Validate required fields
-            if (empty($supplier_name) || empty($item_name) || empty($item_type) || empty($description) || $price <= 0 || $quantity <= 0) {
-                $error = "All fields are required, and price/quantity must be positive.";
-                error_log("Validation failed: supplier_name='$supplier_name', item_name='$item_name', item_type='$item_type', description='$description', price=$price, quantity=$quantity");
-            } elseif ($close_time && $close_time <= date('Y-m-d H:i:s')) {
-                $error = "Close time must be in the future.";
-                error_log("Close time validation failed: close_time='$close_time'");
-            } else {
-                // Handle image upload
-                if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
-                    $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
-                    $max_size = 5 * 1024 * 1024; // 5MB
-                    $upload_dir = dirname(__DIR__) . '/uploads/';
-                    $file_name = uniqid('item_') . '_' . basename($_FILES['image']['name']);
-                    $file_path = $upload_dir . $file_name;
-                    $file_type = mime_content_type($_FILES['image']['tmp_name']);
+                if (empty($supplier_name) || empty($item_name) || empty($item_type) || empty($description) || $price <= 0 || $quantity <= 0) {
+                    $error = "All fields are required, and price/quantity must be positive.";
+                    error_log("Validation failed: supplier_name='$supplier_name', item_name='$item_name', item_type='$item_type', description='$description', price=$price, quantity=$quantity");
+                } elseif ($close_time && $close_time <= date('Y-m-d H:i:s')) {
+                    $error = "Close time must be in the future.";
+                    error_log("Close time validation failed: close_time='$close_time'");
+                } else {
+                    if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
+                        $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+                        $max_size = 5 * 1024 * 1024;
+                        $upload_dir = dirname(__DIR__) . '/uploads/';
+                        $file_name = uniqid('item_') . '_' . basename($_FILES['image']['name']);
+                        $file_path = $upload_dir . $file_name;
+                        $file_type = mime_content_type($_FILES['image']['tmp_name']);
 
-                    if (!is_dir($upload_dir)) {
-                        if (!mkdir($upload_dir, 0775, true)) {
+                        if (!is_dir($upload_dir) && !mkdir($upload_dir, 0775, true)) {
                             $error = "Failed to create uploads directory.";
                             error_log("Failed to create uploads directory: $upload_dir");
                         }
+
+                        if (!isset($error) && !in_array($file_type, $allowed_types)) {
+                            $error = "Only JPEG, PNG, and GIF images are allowed.";
+                            error_log("Invalid image type: $file_type");
+                        } elseif (!isset($error) && $_FILES['image']['size'] > $max_size) {
+                            $error = "Image size must be less than 5MB.";
+                            error_log("Image size too large: {$_FILES['image']['size']} bytes");
+                        } elseif (!isset($error) && !move_uploaded_file($_FILES['image']['tmp_name'], $file_path)) {
+                            $error = "Failed to upload image.";
+                            error_log("Failed to upload image to $file_path");
+                        } else {
+                            $image_path = 'uploads/' . $file_name;
+                        }
                     }
 
-                    if (!isset($error) && !in_array($file_type, $allowed_types)) {
-                        $error = "Only JPEG, PNG, and GIF images are allowed.";
-                        error_log("Invalid image type: $file_type");
-                    } elseif (!isset($error) && $_FILES['image']['size'] > $max_size) {
-                        $error = "Image size must be less than 5MB.";
-                        error_log("Image size too large: {$_FILES['image']['size']} bytes");
-                    } elseif (!isset($error) && !move_uploaded_file($_FILES['image']['tmp_name'], $file_path)) {
-                        $error = "Failed to upload image.";
-                        error_log("Failed to upload image to $file_path");
-                    } else {
-                        $image_path = 'uploads/' . $file_name;
+                    if (!isset($error)) {
+                        $stmt = $pdo->prepare("INSERT INTO items (posted_by, supplier_name, item_name, item_type, description, price, quantity, status, image, close_time, created_at) VALUES (:posted_by, :supplier_name, :item_name, :item_type, :description, :price, :quantity, 'open', :image, :close_time, NOW())");
+                        $result = $stmt->execute([
+                            ':posted_by' => $user_id,
+                            ':supplier_name' => $supplier_name,
+                            ':item_name' => $item_name,
+                            ':item_type' => $item_type,
+                            ':description' => $description,
+                            ':price' => $price,
+                            ':quantity' => $quantity,
+                            ':image' => $image_path,
+                            ':close_time' => $close_time
+                        ]);
+                        if ($result) {
+                            $success = "Item posted for sale successfully!";
+                            header("Location: admin_dashboard.php?action=items_for_sell");
+                            exit();
+                        }
                     }
                 }
-
-                if (!isset($error)) {
-                    $stmt = $pdo->prepare("INSERT INTO items (posted_by, supplier_name, item_name, item_type, description, price, quantity, status, image, close_time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, NOW())");
-                    $result = $stmt->execute([$user_id, $supplier_name, $item_name, $item_type, $description, $price, $quantity, $image_path, $close_time]);
-                    if ($result) {
-                        $success = "Item posted for sale successfully!";
-                        error_log("Item inserted: $item_name, item_type: $item_type, posted_by: $user_id");
-                        header("Location: admin_dashboard.php?action=items_for_sell");
-                        exit();
-                    } else {
-                        $error = "Failed to insert item into database.";
-                        error_log("Failed to insert item: $item_name, item_type: $item_type");
-                    }
-                }
+            } catch (PDOException $e) {
+                $error = "Error posting item: " . $e->getMessage();
+                error_log("Error posting item: " . $e->getMessage());
             }
-        } catch (PDOException $e) {
-            $error = "Error posting item: " . $e->getMessage();
-            error_log("Error posting item: " . $e->getMessage());
         }
     }
 }
 
-/**
- * Handle Post Buy Item
- * 
- * Processes the form submission for posting a new buy request.
- * Validates input, handles image upload, and stores data in the buy_requests table.
- * 
- * Required Fields:
- * - item_name
- * - item_type
- * - description
- * - max_price
- * - quantity
- * 
- * Optional Fields:
- * - image
- * - close_time
- */
+// Handle Post Buy Item
 if (isset($_GET['action']) && $_GET['action'] == 'post_buy') {
     if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-        try {
-            $item_name = trim($_POST['item_name']);
-            $item_type = trim($_POST['item_type']);
-            $description = trim($_POST['description']);
-            $max_price = floatval($_POST['max_price']);
-            $quantity = intval($_POST['quantity']);
-            $close_time = !empty($_POST['close_time']) ? date('Y-m-d H:i:s', strtotime($_POST['close_time'])) : null;
-            $user_id = $_SESSION['user_id'];
-            $image_path = null;
+        if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+            $error = "Invalid CSRF token.";
+            error_log("CSRF validation failed for post_buy");
+        } else {
+            try {
+                $item_name = sanitizeInput($_POST['item_name']);
+                $item_type = sanitizeInput($_POST['item_type']);
+                $description = sanitizeInput($_POST['description']);
+                $max_price = floatval($_POST['max_price']);
+                $quantity = intval($_POST['quantity']);
+                $close_time = !empty($_POST['close_time']) ? date('Y-m-d H:i:s', strtotime($_POST['close_time'])) : null;
+                $user_id = $_SESSION['user_id'];
+                $image_path = null;
 
-            if (empty($item_name) || empty($item_type) || empty($description) || $max_price <= 0 || $quantity <= 0) {
-                $error = "All fields are required, and max price/quantity must be positive.";
-                error_log("Buy request validation failed: item_name='$item_name', item_type='$item_type', description='$description', max_price=$max_price, quantity=$quantity");
-            } elseif ($close_time && $close_time <= date('Y-m-d H:i:s')) {
-                $error = "Close time must be in the future.";
-                error_log("Buy request close time validation failed: close_time='$close_time'");
-            } else {
-                if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
-                    $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
-                    $max_size = 5 * 1024 * 1024; // 5MB
-                    $upload_dir = dirname(__DIR__) . '/uploads/';
-                    $file_name = uniqid('buy_request_') . '_' . basename($_FILES['image']['name']);
-                    $file_path = $upload_dir . $file_name;
-                    $file_type = mime_content_type($_FILES['image']['tmp_name']);
+                if (empty($item_name) || empty($item_type) || empty($description) || $max_price <= 0 || $quantity <= 0) {
+                    $error = "All fields are required, and max price/quantity must be positive.";
+                } elseif ($close_time && $close_time <= date('Y-m-d H:i:s')) {
+                    $error = "Close time must be in the future.";
+                } else {
+                    if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
+                        $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+                        $max_size = 5 * 1024 * 1024;
+                        $upload_dir = dirname(__DIR__) . '/uploads/';
+                        $file_name = uniqid('buy_request_') . '_' . basename($_FILES['image']['name']);
+                        $file_path = $upload_dir . $file_name;
+                        $file_type = mime_content_type($_FILES['image']['tmp_name']);
 
-                    if (!is_dir($upload_dir)) {
-                        if (!mkdir($upload_dir, 0775, true)) {
+                        if (!is_dir($upload_dir) && !mkdir($upload_dir, 0775, true)) {
                             $error = "Failed to create uploads directory.";
-                            error_log("Failed to create uploads directory: $upload_dir");
+                        }
+
+                        if (!isset($error) && !in_array($file_type, $allowed_types)) {
+                            $error = "Only JPEG, PNG, and GIF images are allowed.";
+                        } elseif (!isset($error) && $_FILES['image']['size'] > $max_size) {
+                            $error = "Image size must be less than 5MB.";
+                        } elseif (!isset($error) && !move_uploaded_file($_FILES['image']['tmp_name'], $file_path)) {
+                            $error = "Failed to upload image.";
+                        } else {
+                            $image_path = 'uploads/' . $file_name;
                         }
                     }
 
-                    if (!isset($error) && !in_array($file_type, $allowed_types)) {
-                        $error = "Only JPEG, PNG, and GIF images are allowed.";
-                        error_log("Invalid image type: $file_type");
-                    } elseif (!isset($error) && $_FILES['image']['size'] > $max_size) {
-                        $error = "Image size must be less than 5MB.";
-                        error_log("Image size too large: {$_FILES['image']['size']} bytes");
-                    } elseif (!isset($error) && !move_uploaded_file($_FILES['image']['tmp_name'], $file_path)) {
-                        $error = "Failed to upload image.";
-                        error_log("Failed to upload image to $file_path");
-                    } else {
-                        $image_path = 'uploads/' . $file_name;
+                    if (!isset($error)) {
+                        $stmt = $pdo->prepare("INSERT INTO buy_requests (user_id, item_name, item_type, description, max_price, quantity, status, image, close_time, created_at) VALUES (:user_id, :item_name, :item_type, :description, :max_price, :quantity, 'open', :image, :close_time, NOW())");
+                        $stmt->execute([
+                            ':user_id' => $user_id,
+                            ':item_name' => $item_name,
+                            ':item_type' => $item_type,
+                            ':description' => $description,
+                            ':max_price' => $max_price,
+                            ':quantity' => $quantity,
+                            ':image' => $image_path,
+                            ':close_time' => $close_time
+                        ]);
+                        $success = "Buy request posted successfully!";
+                        header("Location: admin_dashboard.php?action=buy_requests");
+                        exit();
                     }
                 }
+            } catch (PDOException $e) {
+                $error = "Error posting buy request: " . $e->getMessage();
+            }
+        }
+    }
+}
 
-                if (!isset($error)) {
-                    $stmt = $pdo->prepare("INSERT INTO buy_requests (user_id, item_name, item_type, description, max_price, quantity, status, image, close_time, created_at) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, NOW())");
-                    $stmt->execute([$user_id, $item_name, $item_type, $description, $max_price, $quantity, $image_path, $close_time]);
-                    $success = "Buy request posted successfully!";
-                    error_log("Buy request inserted: $item_name, item_type: $item_type, user_id: $user_id");
-                    header("Location: admin_dashboard.php?action=buy_requests");
+// Handle Item Type Management
+if (isset($_GET['action']) && $_GET['action'] == 'add_item_type') {
+    try {
+        // Fetch existing item types
+        $stmt = $pdo->query("SELECT type_name FROM item_types");
+        $item_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+                $error = "Invalid CSRF token.";
+            } else {
+                $type_name = sanitizeInput($_POST['type_name']);
+                
+                if (empty($type_name)) {
+                    $error = "Type name is required.";
+                } elseif (in_array($type_name, $item_types)) {
+                    $error = "Item type already exists.";
+                } else {
+                    $stmt = $pdo->prepare("INSERT INTO item_types (type_name) VALUES (:type_name)");
+                    $stmt->execute([':type_name' => $type_name]);
+                    $success = "Item type added successfully!";
+                    header("Location: admin_dashboard.php?action=add_item_type");
                     exit();
                 }
             }
-        } catch (PDOException $e) {
-            $error = "Error posting buy request: " . $e->getMessage();
-            error_log("Error posting buy request: " . $e->getMessage());
         }
+    } catch (PDOException $e) {
+        $error = "Error managing item types: " . $e->getMessage();
     }
 }
 
-/**
- * Handle Item Type Management
- * 
- * Processes the addition and deletion of item types.
- * Ensures type names are unique and handles error cases.
- */
-if (isset($_GET['action']) && $_GET['action'] == 'add_item_type') {
-    // ... existing code ...
+// Handle Delete Item Type
+if (isset($_GET['action']) && $_GET['action'] == 'delete_item_type' && isset($_GET['type_name'])) {
+    try {
+        $type_name = sanitizeInput($_GET['type_name']);
+        
+        // Check if type is in use
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM items WHERE item_type = :type_name UNION SELECT COUNT(*) FROM buy_requests WHERE item_type = :type_name");
+        $stmt->execute([':type_name' => $type_name]);
+        $counts = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        if (array_sum($counts) > 0) {
+            $error = "Cannot delete item type - it is currently in use.";
+        } else {
+            $stmt = $pdo->prepare("DELETE FROM item_types WHERE type_name = :type_name");
+            $stmt->execute([':type_name' => $type_name]);
+            $success = "Item type deleted successfully!";
+        }
+        header("Location: admin_dashboard.php?action=add_item_type");
+        exit();
+    } catch (PDOException $e) {
+        $error = "Error deleting item type: " . $e->getMessage();
+    }
 }
 
 // Handle Edit Item
 if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($_GET['item_id'])) {
     $item_id = intval($_GET['item_id']);
     if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-        try {
-            $supplier_name = trim($_POST['supplier_name']);
-            $item_name = trim($_POST['item_name']);
-            $item_type = trim($_POST['item_type']);
-            $description = trim($_POST['description']);
-            $price = floatval($_POST['price']);
-            $quantity = intval($_POST['quantity']);
-            $close_time = !empty($_POST['close_time']) ? date('Y-m-d H:i:s', strtotime($_POST['close_time'])) : null;
-            $image_path = $_POST['existing_image'] ?? null;
+        if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+            $error = "Invalid CSRF token.";
+        } else {
+            try {
+                $supplier_name = sanitizeInput($_POST['supplier_name']);
+                $item_name = sanitizeInput($_POST['item_name']);
+                $item_type = sanitizeInput($_POST['item_type']);
+                $description = sanitizeInput($_POST['description']);
+                $price = floatval($_POST['price']);
+                $quantity = intval($_POST['quantity']);
+                $close_time = !empty($_POST['close_time']) ? date('Y-m-d H:i:s', strtotime($_POST['close_time'])) : null;
+                $image_path = $_POST['existing_image'] ?? null;
 
-            // Validate required fields
-            if (empty($supplier_name) || empty($item_name) || empty($item_type) || empty($description) || $price <= 0 || $quantity < 0) {
-                $error = "All fields are required, and price must be positive, quantity must be non-negative.";
-                error_log("Edit validation failed: supplier_name='$supplier_name', item_name='$item_name', item_type='$item_type', description='$description', price=$price, quantity=$quantity");
-            } elseif ($close_time && $close_time <= date('Y-m-d H:i:s')) {
-                $error = "Close time must be in the future.";
-                error_log("Edit close time validation failed: close_time='$close_time'");
-            } else {
-                // Handle image upload (if a new image is provided)
-                if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
-                    $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
-                    $max_size = 5 * 1024 * 1024; // 5MB
-                    $upload_dir = dirname(__DIR__) . '/uploads/';
-                    $file_name = uniqid('item_') . '_' . basename($_FILES['image']['name']);
-                    $file_path = $upload_dir . $file_name;
-                    $file_type = mime_content_type($_FILES['image']['tmp_name']);
+                if (empty($supplier_name) || empty($item_name) || empty($item_type) || empty($description) || $price <= 0 || $quantity < 0) {
+                    $error = "All fields are required, and price must be positive, quantity must be non-negative.";
+                } elseif ($close_time && $close_time <= date('Y-m-d H:i:s')) {
+                    $error = "Close time must be in the future.";
+                } else {
+                    if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
+                        $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+                        $max_size = 5 * 1024 * 1024;
+                        $upload_dir = dirname(__DIR__) . '/uploads/';
+                        $file_name = uniqid('item_') . '_' . basename($_FILES['image']['name']);
+                        $file_path = $upload_dir . $file_name;
+                        $file_type = mime_content_type($_FILES['image']['tmp_name']);
 
-                    if (!is_dir($upload_dir)) {
-                        if (!mkdir($upload_dir, 0775, true)) {
+                        if (!is_dir($upload_dir) && !mkdir($upload_dir, 0775, true)) {
                             $error = "Failed to create uploads directory.";
-                            error_log("Failed to create uploads directory: $upload_dir");
                         }
-                    }
 
-                    if (!isset($error) && !in_array($file_type, $allowed_types)) {
-                        $error = "Only JPEG, PNG, and GIF images are allowed.";
-                        error_log("Invalid image type: $file_type");
-                    } elseif (!isset($error) && $_FILES['image']['size'] > $max_size) {
-                        $error = "Image size must be less than 5MB.";
-                        error_log("Image size too large: {$_FILES['image']['size']} bytes");
-                    } elseif (!isset($error) && !move_uploaded_file($_FILES['image']['tmp_name'], $file_path)) {
-                        $error = "Failed to upload image.";
-                        error_log("Failed to upload image to $file_path");
-                    } else {
-                        $image_path = 'uploads/' . $file_name;
-                        // Delete old image if it exists
-                        if (!empty($_POST['existing_image'])) {
-                            $old_image = dirname(__DIR__) . '/' . $_POST['existing_image'];
-                            if (file_exists($old_image)) {
-                                unlink($old_image);
+                        if (!isset($error) && !in_array($file_type, $allowed_types)) {
+                            $error = "Only JPEG, PNG, and GIF images are allowed.";
+                        } elseif (!isset($error) && $_FILES['image']['size'] > $max_size) {
+                            $error = "Image size must be less than 5MB.";
+                        } elseif (!isset($error) && !move_uploaded_file($_FILES['image']['tmp_name'], $file_path)) {
+                            $error = "Failed to upload image.";
+                        } else {
+                            $image_path = 'uploads/' . $file_name;
+                            if (!empty($_POST['existing_image'])) {
+                                $old_image = dirname(__DIR__) . '/' . $_POST['existing_image'];
+                                if (file_exists($old_image)) {
+                                    unlink($old_image);
+                                }
                             }
                         }
                     }
-                }
 
-                if (!isset($error)) {
-                    $stmt = $pdo->prepare("UPDATE items SET supplier_name = ?, item_name = ?, item_type = ?, description = ?, price = ?, quantity = ?, image = ?, close_time = ? WHERE id = ? AND posted_by = ?");
-                    $stmt->execute([$supplier_name, $item_name, $item_type, $description, $price, $quantity, $image_path, $close_time, $item_id, $_SESSION['user_id']]);
-                    if ($stmt->rowCount() > 0) {
-                        $success = "Item updated successfully!";
-                        error_log("Item updated: ID $item_id, item_name: $item_name, item_type: $item_type");
-                    } else {
-                        $error = "Item not found or you don't have permission to edit it.";
-                        error_log("Item update failed: ID $item_id, no rows affected");
+                    if (!isset($error)) {
+                        $stmt = $pdo->prepare("UPDATE items SET supplier_name = :supplier_name, item_name = :item_name, item_type = :item_type, description = :description, price = :price, quantity = :quantity, image = :image, close_time = :close_time WHERE id = :item_id AND posted_by = :posted_by");
+                        $stmt->execute([
+                            ':supplier_name' => $supplier_name,
+                            ':item_name' => $item_name,
+                            ':item_type' => $item_type,
+                            ':description' => $description,
+                            ':price' => $price,
+                            ':quantity' => $quantity,
+                            ':image' => $image_path,
+                            ':close_time' => $close_time,
+                            ':item_id' => $item_id,
+                            ':posted_by' => $_SESSION['user_id']
+                        ]);
+                        if ($stmt->rowCount() > 0) {
+                            $success = "Item updated successfully!";
+                        } else {
+                            $error = "Item not found or you don't have permission to edit it.";
+                        }
+                        header("Location: admin_dashboard.php?action=items_for_sell");
+                        exit();
                     }
-                    header("Location: admin_dashboard.php?action=items_for_sell");
-                    exit();
                 }
+            } catch (PDOException $e) {
+                $error = "Error updating item: " . $e->getMessage();
             }
-        } catch (PDOException $e) {
-            $error = "Error updating item: " . $e->getMessage();
-            error_log("Error updating item: " . $e->getMessage());
         }
     } else {
-        // Fetch the item for editing
         try {
-            $stmt = $pdo->prepare("SELECT * FROM items WHERE id = ? AND posted_by = ?");
-            $stmt->execute([$item_id, $_SESSION['user_id']]);
+            $stmt = $pdo->prepare("SELECT * FROM items WHERE id = :item_id AND posted_by = :posted_by");
+            $stmt->execute([
+                ':item_id' => $item_id,
+                ':posted_by' => $_SESSION['user_id']
+            ]);
             $item_to_edit = $stmt->fetch();
             if (!$item_to_edit) {
                 $error = "Item not found or you don't have permission to edit it.";
-                error_log("Item fetch failed: ID $item_id, user_id {$_SESSION['user_id']}");
             }
         } catch (PDOException $e) {
             $error = "Error fetching item: " . $e->getMessage();
-            error_log("Error fetching item: " . $e->getMessage());
         }
     }
 }
@@ -362,8 +373,11 @@ if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($_GET['ite
 if (isset($_GET['action']) && $_GET['action'] == 'close_item' && isset($_GET['item_id'])) {
     $item_id = intval($_GET['item_id']);
     try {
-        $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE id = ? AND posted_by = ?");
-        $stmt->execute([$item_id, $_SESSION['user_id']]);
+        $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE id = :item_id AND posted_by = :posted_by");
+        $stmt->execute([
+            ':item_id' => $item_id,
+            ':posted_by' => $_SESSION['user_id']
+        ]);
         if ($stmt->rowCount() > 0) {
             $success = "Item marked as closed successfully!";
         } else {
@@ -380,8 +394,11 @@ if (isset($_GET['action']) && $_GET['action'] == 'close_item' && isset($_GET['it
 if (isset($_GET['action']) && $_GET['action'] == 'reopen_item' && isset($_GET['item_id'])) {
     $item_id = intval($_GET['item_id']);
     try {
-        $stmt = $pdo->prepare("UPDATE items SET status = 'open' WHERE id = ? AND posted_by = ?");
-        $stmt->execute([$item_id, $_SESSION['user_id']]);
+        $stmt = $pdo->prepare("UPDATE items SET status = 'open' WHERE id = :item_id AND posted_by = :posted_by");
+        $stmt->execute([
+            ':item_id' => $item_id,
+            ':posted_by' => $_SESSION['user_id']
+        ]);
         if ($stmt->rowCount() > 0) {
             $success = "Item reopened successfully!";
         } else {
@@ -399,40 +416,34 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete_item' && isset($_GET['i
     $item_id = intval($_GET['item_id']);
     try {
         $pdo->beginTransaction();
-
-        // Fetch the item to get the image path
-        $stmt = $pdo->prepare("SELECT image FROM items WHERE id = ? AND posted_by = ?");
-        $stmt->execute([$item_id, $_SESSION['user_id']]);
+        $stmt = $pdo->prepare("SELECT image FROM items WHERE id = :item_id AND posted_by = :posted_by");
+        $stmt->execute([
+            ':item_id' => $item_id,
+            ':posted_by' => $_SESSION['user_id']
+        ]);
         $item = $stmt->fetch();
 
         if ($item) {
-            // Step 1: Delete related transactions (via offers)
-            $stmt = $pdo->prepare("DELETE t FROM transactions t 
-                                   JOIN offers o ON t.offer_id = o.id 
-                                   WHERE o.item_id = ?");
-            $stmt->execute([$item_id]);
-            error_log("Deleted transactions for item_id: $item_id");
+            $stmt = $pdo->prepare("DELETE t FROM transactions t JOIN offers o ON t.offer_id = o.id WHERE o.item_id = :item_id");
+            $stmt->execute([':item_id' => $item_id]);
 
-            // Step 2: Delete related offers
-            $stmt = $pdo->prepare("DELETE FROM offers WHERE item_id = ?");
-            $stmt->execute([$item_id]);
-            error_log("Deleted offers for item_id: $item_id");
+            $stmt = $pdo->prepare("DELETE FROM offers WHERE item_id = :item_id");
+            $stmt->execute([':item_id' => $item_id]);
 
-            // Step 3: Delete the image file if it exists
             if (!empty($item['image'])) {
                 $image_path = dirname(__DIR__) . '/' . $item['image'];
                 if (file_exists($image_path)) {
                     unlink($image_path);
-                    error_log("Deleted image for item_id: $item_id, path: $image_path");
                 }
             }
 
-            // Step 4: Delete the item from the database
-            $stmt = $pdo->prepare("DELETE FROM items WHERE id = ? AND posted_by = ?");
-            $stmt->execute([$item_id, $_SESSION['user_id']]);
+            $stmt = $pdo->prepare("DELETE FROM items WHERE id = :item_id AND posted_by = :posted_by");
+            $stmt->execute([
+                ':item_id' => $item_id,
+                ':posted_by' => $_SESSION['user_id']
+            ]);
             if ($stmt->rowCount() > 0) {
                 $success = "Item, related offers, and transactions deleted successfully!";
-                error_log("Item deleted - item_id: $item_id, admin_id: {$_SESSION['user_id']}");
             } else {
                 $error = "Item not found or you don't have permission to delete it.";
             }
@@ -446,7 +457,6 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete_item' && isset($_GET['i
     } catch (PDOException $e) {
         $pdo->rollBack();
         $error = "Error deleting item: " . $e->getMessage();
-        error_log("Item deletion failed: " . $e->getMessage());
     }
 }
 
@@ -454,8 +464,11 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete_item' && isset($_GET['i
 if (isset($_GET['action']) && $_GET['action'] == 'cancel_buy_request' && isset($_GET['request_id'])) {
     $request_id = intval($_GET['request_id']);
     try {
-        $stmt = $pdo->prepare("UPDATE buy_requests SET status = 'closed' WHERE id = ? AND user_id = ?");
-        $stmt->execute([$request_id, $_SESSION['user_id']]);
+        $stmt = $pdo->prepare("UPDATE buy_requests SET status = 'closed' WHERE id = :request_id AND user_id = :user_id");
+        $stmt->execute([
+            ':request_id' => $request_id,
+            ':user_id' => $_SESSION['user_id']
+        ]);
         if ($stmt->rowCount() > 0) {
             $success = "Buy request canceled successfully!";
         } else {
@@ -472,8 +485,11 @@ if (isset($_GET['action']) && $_GET['action'] == 'cancel_buy_request' && isset($
 if (isset($_GET['action']) && $_GET['action'] == 'reopen_buy_request' && isset($_GET['request_id'])) {
     $request_id = intval($_GET['request_id']);
     try {
-        $stmt = $pdo->prepare("UPDATE buy_requests SET status = 'open' WHERE id = ? AND user_id = ?");
-        $stmt->execute([$request_id, $_SESSION['user_id']]);
+        $stmt = $pdo->prepare("UPDATE buy_requests SET status = 'open' WHERE id = :request_id AND user_id = :user_id");
+        $stmt->execute([
+            ':request_id' => $request_id,
+            ':user_id' => $_SESSION['user_id']
+        ]);
         if ($stmt->rowCount() > 0) {
             $success = "Buy request reopened successfully!";
         } else {
@@ -491,40 +507,34 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete_buy_request' && isset($
     $request_id = intval($_GET['request_id']);
     try {
         $pdo->beginTransaction();
-
-        // Fetch the buy request to get the image path
-        $stmt = $pdo->prepare("SELECT image FROM buy_requests WHERE id = ? AND user_id = ?");
-        $stmt->execute([$request_id, $_SESSION['user_id']]);
+        $stmt = $pdo->prepare("SELECT image FROM buy_requests WHERE id = :request_id AND user_id = :user_id");
+        $stmt->execute([
+            ':request_id' => $request_id,
+            ':user_id' => $_SESSION['user_id']
+        ]);
         $request = $stmt->fetch();
 
         if ($request) {
-            // Step 1: Delete related transactions (via offers)
-            $stmt = $pdo->prepare("DELETE t FROM transactions t 
-                                   JOIN offers o ON t.offer_id = o.id 
-                                   WHERE o.request_id = ?");
-            $stmt->execute([$request_id]);
-            error_log("Deleted transactions for request_id: $request_id");
+            $stmt = $pdo->prepare("DELETE t FROM transactions t JOIN offers o ON t.offer_id = o.id WHERE o.request_id = :request_id");
+            $stmt->execute([':request_id' => $request_id]);
 
-            // Step 2: Delete related offers
-            $stmt = $pdo->prepare("DELETE FROM offers WHERE request_id = ?");
-            $stmt->execute([$request_id]);
-            error_log("Deleted offers for request_id: $request_id");
+            $stmt = $pdo->prepare("DELETE FROM offers WHERE request_id = :request_id");
+            $stmt->execute([':request_id' => $request_id]);
 
-            // Step 3: Delete the image file if it exists
             if (!empty($request['image'])) {
                 $image_path = dirname(__DIR__) . '/' . $request['image'];
                 if (file_exists($image_path)) {
                     unlink($image_path);
-                    error_log("Deleted image for request_id: $request_id, path: $image_path");
                 }
             }
 
-            // Step 4: Delete the buy request from the database
-            $stmt = $pdo->prepare("DELETE FROM buy_requests WHERE id = ? AND user_id = ?");
-            $stmt->execute([$request_id, $_SESSION['user_id']]);
+            $stmt = $pdo->prepare("DELETE FROM buy_requests WHERE id = :request_id AND user_id = :user_id");
+            $stmt->execute([
+                ':request_id' => $request_id,
+                ':user_id' => $_SESSION['user_id']
+            ]);
             if ($stmt->rowCount() > 0) {
                 $success = "Buy request, related offers, and transactions deleted successfully!";
-                error_log("Buy request deleted - request_id: $request_id, admin_id: {$_SESSION['user_id']}");
             } else {
                 $error = "Buy request not found or you don't have permission to delete it.";
             }
@@ -538,7 +548,6 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete_buy_request' && isset($
     } catch (PDOException $e) {
         $pdo->rollBack();
         $error = "Error deleting buy request: " . $e->getMessage();
-        error_log("Buy request deletion failed: " . $e->getMessage());
     }
 }
 
@@ -550,8 +559,11 @@ if (isset($_GET['action']) && $_GET['action'] == 'view_offers' && isset($_GET['r
             FROM offers o 
             JOIN users u ON o.user_id = u.id 
             JOIN buy_requests br ON o.request_id = br.id 
-            WHERE o.request_id = ? AND o.status = 'pending' AND br.user_id = ?");
-        $stmt->execute([$request_id, $_SESSION['user_id']]);
+            WHERE o.request_id = :request_id AND o.status = 'pending' AND br.user_id = :user_id");
+        $stmt->execute([
+            ':request_id' => $request_id,
+            ':user_id' => $_SESSION['user_id']
+        ]);
         $buy_request_offers = $stmt->fetchAll();
     } catch (PDOException $e) {
         $error = "Error fetching offers: " . $e->getMessage();
@@ -562,8 +574,8 @@ if (isset($_GET['action']) && $_GET['action'] == 'view_offers' && isset($_GET['r
 if (isset($_GET['action']) && $_GET['action'] == 'close_offer' && isset($_GET['offer_id'])) {
     $offer_id = intval($_GET['offer_id']);
     try {
-        $stmt = $pdo->prepare("UPDATE offers SET status = 'closed' WHERE id = ?");
-        $stmt->execute([$offer_id]);
+        $stmt = $pdo->prepare("UPDATE offers SET status = 'closed' WHERE id = :offer_id");
+        $stmt->execute([':offer_id' => $offer_id]);
         $success = "Offer closed successfully!";
         header("Location: admin_dashboard.php?action=offers");
         exit();
@@ -577,104 +589,99 @@ if (isset($_GET['action']) && $_GET['action'] == 'delete_offer' && isset($_GET['
     $offer_id = intval($_GET['offer_id']);
     try {
         $pdo->beginTransaction();
+        $stmt = $pdo->prepare("DELETE FROM transactions WHERE offer_id = :offer_id");
+        $stmt->execute([':offer_id' => $offer_id]);
 
-        // Step 1: Delete related transactions
-        $stmt = $pdo->prepare("DELETE FROM transactions WHERE offer_id = ?");
-        $stmt->execute([$offer_id]);
-        error_log("Deleted transactions for offer_id: $offer_id");
-
-        // Step 2: Delete the offer
-        $stmt = $pdo->prepare("DELETE FROM offers WHERE id = ?");
-        $stmt->execute([$offer_id]);
+        $stmt = $pdo->prepare("DELETE FROM offers WHERE id = :offer_id");
+        $stmt->execute([':offer_id' => $offer_id]);
         if ($stmt->rowCount() > 0) {
             $success = "Offer and related transactions deleted successfully!";
-            error_log("Offer deleted - offer_id: $offer_id");
         } else {
             $error = "Offer not found.";
         }
         $pdo->commit();
-
         header("Location: admin_dashboard.php?action=offers");
         exit();
     } catch (PDOException $e) {
         $pdo->rollBack();
         $error = "Error deleting offer: " . $e->getMessage();
-        error_log("Offer deletion failed: " . $e->getMessage());
     }
 }
 
 // Handle Offer Actions
 if (isset($_GET['action']) && $_GET['action'] == 'offer_action' && isset($_GET['offer_id']) && isset($_GET['type'])) {
     $offer_id = intval($_GET['offer_id']);
-    $action_type = $_GET['type'];
+    $action_type = sanitizeInput($_GET['type']);
 
     try {
         $stmt = $pdo->prepare("SELECT o.offered_price, o.quantity, o.item_id, o.request_id, o.user_id AS buyer_id, i.posted_by AS seller_id, i.quantity AS available_quantity 
             FROM offers o 
             LEFT JOIN items i ON o.item_id = i.id 
-            WHERE o.id = ?");
-        $stmt->execute([$offer_id]);
+            WHERE o.id = :offer_id");
+        $stmt->execute([':offer_id' => $offer_id]);
         $offer = $stmt->fetch();
 
         if (!$offer) {
             $error = "Offer not found.";
         } else {
             if ($action_type == 'accept') {
-                $stmt = $pdo->prepare("UPDATE offers SET status = 'accepted' WHERE id = ?");
-                $stmt->execute([$offer_id]);
+                $stmt = $pdo->prepare("UPDATE offers SET status = 'accepted' WHERE id = :offer_id");
+                $stmt->execute([':offer_id' => $offer_id]);
 
                 if ($offer['item_id']) {
-                    // Buy offer (on item for sale)
                     $stmt = $pdo->prepare("INSERT INTO transactions (item_id, offer_id, buyer_or_seller_id, final_price, quantity, created_at) 
-                        VALUES (?, ?, ?, ?, ?, NOW())");
+                        VALUES (:item_id, :offer_id, :buyer_id, :final_price, :quantity, NOW())");
                     $stmt->execute([
-                        $offer['item_id'],
-                        $offer_id,
-                        $offer['buyer_id'],
-                        $offer['offered_price'],
-                        $offer['quantity']
+                        ':item_id' => $offer['item_id'],
+                        ':offer_id' => $offer_id,
+                        ':buyer_id' => $offer['buyer_id'],
+                        ':final_price' => $offer['offered_price'],
+                        ':quantity' => $offer['quantity']
                     ]);
 
-                    // Update item quantity
                     $new_quantity = $offer['available_quantity'] - $offer['quantity'];
-                    $stmt = $pdo->prepare("UPDATE items SET quantity = ? WHERE id = ?");
-                    $stmt->execute([$new_quantity, $offer['item_id']]);
+                    $stmt = $pdo->prepare("UPDATE items SET quantity = :new_quantity WHERE id = :item_id");
+                    $stmt->execute([
+                        ':new_quantity' => $new_quantity,
+                        ':item_id' => $offer['item_id']
+                    ]);
 
                     if ($new_quantity <= 0) {
-                        $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE id = ?");
-                        $stmt->execute([$offer['item_id']]);
+                        $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE id = :item_id");
+                        $stmt->execute([':item_id' => $offer['item_id']]);
                     }
                 } elseif ($offer['request_id']) {
-                    // Sell offer (on buy request)
-                    $stmt = $pdo->prepare("SELECT quantity FROM buy_requests WHERE id = ?");
-                    $stmt->execute([$offer['request_id']]);
+                    $stmt = $pdo->prepare("SELECT quantity FROM buy_requests WHERE id = :request_id");
+                    $stmt->execute([':request_id' => $offer['request_id']]);
                     $request = $stmt->fetch();
                     $requested_quantity = $request['quantity'];
 
                     $stmt = $pdo->prepare("INSERT INTO transactions (request_id, offer_id, buyer_or_seller_id, final_price, quantity, created_at) 
-                        VALUES (?, ?, ?, ?, ?, NOW())");
+                        VALUES (:request_id, :offer_id, :buyer_id, :final_price, :quantity, NOW())");
                     $stmt->execute([
-                        $offer['request_id'],
-                        $offer_id,
-                        $offer['buyer_id'],
-                        $offer['offered_price'],
-                        $offer['quantity']
+                        ':request_id' => $offer['request_id'],
+                        ':offer_id' => $offer_id,
+                        ':buyer_id' => $offer['buyer_id'],
+                        ':final_price' => $offer['offered_price'],
+                        ':quantity' => $offer['quantity']
                     ]);
 
                     $new_quantity = $requested_quantity - $offer['quantity'];
-                    $stmt = $pdo->prepare("UPDATE buy_requests SET quantity = ? WHERE id = ?");
-                    $stmt->execute([$new_quantity, $offer['request_id']]);
+                    $stmt = $pdo->prepare("UPDATE buy_requests SET quantity = :new_quantity WHERE id = :request_id");
+                    $stmt->execute([
+                        ':new_quantity' => $new_quantity,
+                        ':request_id' => $offer['request_id']
+                    ]);
 
                     if ($new_quantity <= 0) {
-                        $stmt = $pdo->prepare("UPDATE buy_requests SET status = 'closed' WHERE id = ?");
-                        $stmt->execute([$offer['request_id']]);
+                        $stmt = $pdo->prepare("UPDATE buy_requests SET status = 'closed' WHERE id = :request_id");
+                        $stmt->execute([':request_id' => $offer['request_id']]);
                     }
                 }
-
                 $success = "Offer accepted successfully!";
             } elseif ($action_type == 'reject') {
-                $stmt = $pdo->prepare("UPDATE offers SET status = 'rejected' WHERE id = ?");
-                $stmt->execute([$offer_id]);
+                $stmt = $pdo->prepare("UPDATE offers SET status = 'rejected' WHERE id = :offer_id");
+                $stmt->execute([':offer_id' => $offer_id]);
                 $success = "Offer rejected successfully!";
             } else {
                 $error = "Invalid action type.";
@@ -683,19 +690,17 @@ if (isset($_GET['action']) && $_GET['action'] == 'offer_action' && isset($_GET['
     } catch (PDOException $e) {
         $error = "Error processing offer: " . $e->getMessage();
     }
-
     header("Location: admin_dashboard.php?action=offers");
     exit();
 }
 
 // Handle Report Generation and Export
 if (isset($_GET['action']) && $_GET['action'] == 'report' && isset($_GET['generate_report'])) {
-    $start_date = $_POST['start_date'] ?? '';
-    $end_date = $_POST['end_date'] ?? '';
-    $transaction_type = $_POST['transaction_type'] ?? 'all';
-    $status = $_POST['status'] ?? 'all';
+    $start_date = sanitizeInput($_POST['start_date'] ?? '');
+    $end_date = sanitizeInput($_POST['end_date'] ?? '');
+    $transaction_type = sanitizeInput($_POST['transaction_type'] ?? 'all');
+    $status = sanitizeInput($_POST['status'] ?? 'all');
 
-    // Validate dates
     if ($start_date && $end_date) {
         $start_date = date('Y-m-d 00:00:00', strtotime($start_date));
         $end_date = date('Y-m-d 23:59:59', strtotime($end_date));
@@ -709,7 +714,6 @@ if (isset($_GET['action']) && $_GET['action'] == 'report' && isset($_GET['genera
 
     if (!isset($error)) {
         try {
-            // Build the base query for transactions
             $query = "SELECT t.*, 
                 i.item_name AS item_name_sell, 
                 br.item_name AS item_name_buy, 
@@ -725,18 +729,18 @@ if (isset($_GET['action']) && $_GET['action'] == 'report' && isset($_GET['genera
             LEFT JOIN buy_requests br ON t.request_id = br.id 
             JOIN users ub ON t.buyer_or_seller_id = ub.id 
             LEFT JOIN users us ON (i.posted_by = us.id OR br.user_id = us.id) 
-            WHERE (i.posted_by = ? OR br.user_id = ?)";
+            WHERE (i.posted_by = :user_id1 OR br.user_id = :user_id2)";
+            $params = [
+                ':user_id1' => $_SESSION['user_id'],
+                ':user_id2' => $_SESSION['user_id']
+            ];
 
-            $params = [$_SESSION['user_id'], $_SESSION['user_id']];
-
-            // Apply date filters
             if ($start_date && $end_date) {
-                $query .= " AND t.created_at BETWEEN ? AND ?";
-                $params[] = $start_date;
-                $params[] = $end_date;
+                $query .= " AND t.created_at BETWEEN :start_date AND :end_date";
+                $params[':start_date'] = $start_date;
+                $params[':end_date'] = $end_date;
             }
 
-            // Apply transaction type filter
             if ($transaction_type !== 'all') {
                 if ($transaction_type == 'sell') {
                     $query .= " AND t.item_id IS NOT NULL";
@@ -749,52 +753,47 @@ if (isset($_GET['action']) && $_GET['action'] == 'report' && isset($_GET['genera
             $stmt->execute($params);
             $report_transactions = $stmt->fetchAll();
 
-            // Fetch items for inventory report
             $items_query = "SELECT i.*, u.username AS posted_by_name 
                 FROM items i 
                 JOIN users u ON i.posted_by = u.id 
-                WHERE i.posted_by = ?";
-            $items_params = [$_SESSION['user_id']];
+                WHERE i.posted_by = :user_id";
+            $items_params = [':user_id' => $_SESSION['user_id']];
             if ($start_date && $end_date) {
-                $items_query .= " AND i.created_at BETWEEN ? AND ?";
-                $items_params[] = $start_date;
-                $items_params[] = $end_date;
+                $items_query .= " AND i.created_at BETWEEN :start_date AND :end_date";
+                $items_params[':start_date'] = $start_date;
+                $items_params[':end_date'] = $end_date;
             }
             if ($status !== 'all') {
-                $items_query .= " AND i.status = ?";
-                $items_params[] = $status;
+                $items_query .= " AND i.status = :status";
+                $items_params[':status'] = $status;
             }
             $stmt = $pdo->prepare($items_query);
             $stmt->execute($items_params);
             $report_items = $stmt->fetchAll();
 
-            // Fetch buy requests for report
             $requests_query = "SELECT br.*, u.username 
                 FROM buy_requests br 
                 JOIN users u ON br.user_id = u.id 
-                WHERE br.user_id = ?";
-            $requests_params = [$_SESSION['user_id']];
+                WHERE br.user_id = :user_id";
+            $requests_params = [':user_id' => $_SESSION['user_id']];
             if ($start_date && $end_date) {
-                $requests_query .= " AND br.created_at BETWEEN ? AND ?";
-                $requests_params[] = $start_date;
-                $requests_params[] = $end_date;
+                $requests_query .= " AND br.created_at BETWEEN :start_date AND :end_date";
+                $requests_params[':start_date'] = $start_date;
+                $requests_params[':end_date'] = $end_date;
             }
             if ($status !== 'all') {
-                $requests_query .= " AND br.status = ?";
-                $requests_params[] = $status;
+                $requests_query .= " AND br.status = :status";
+                $requests_params[':status'] = $status;
             }
             $stmt = $pdo->prepare($requests_query);
             $stmt->execute($requests_params);
             $report_requests = $stmt->fetchAll();
 
-            // Handle CSV export
             if (isset($_POST['export_csv'])) {
                 header('Content-Type: text/csv');
                 header('Content-Disposition: attachment; filename="admin_report_' . date('Y-m-d_H-i-s') . '.csv"');
-
                 $output = fopen('php://output', 'w');
 
-                // Write Transactions Section
                 fputcsv($output, ['Transactions Report']);
                 fputcsv($output, ['ID', 'Item Name', 'Type', 'Buyer', 'Seller', 'Supplier', 'Original Price/Max Price', 'Final Price', 'Quantity', 'Total Amount', 'Description', 'Date']);
                 foreach ($report_transactions as $t) {
@@ -820,7 +819,6 @@ if (isset($_GET['action']) && $_GET['action'] == 'report' && isset($_GET['genera
                     ]);
                 }
 
-                // Write Inventory Section
                 fputcsv($output, []);
                 fputcsv($output, ['Inventory Report']);
                 fputcsv($output, ['ID', 'Item Name', 'Supplier', 'Description', 'Price', 'Quantity', 'Status', 'Posted By', 'Created At']);
@@ -838,7 +836,6 @@ if (isset($_GET['action']) && $_GET['action'] == 'report' && isset($_GET['genera
                     ]);
                 }
 
-                // Write Buy Requests Section
                 fputcsv($output, []);
                 fputcsv($output, ['Buy Requests Report']);
                 fputcsv($output, ['ID', 'Item Name', 'Description', 'Max Price', 'Quantity', 'Status', 'User', 'Created At']);
@@ -867,103 +864,96 @@ if (isset($_GET['action']) && $_GET['action'] == 'report' && isset($_GET['genera
 // Fetch counts for dashboard
 $items_for_sell = $buy_requests = $pending_offers = 0;
 try {
-    // Count all items for admin (not just posted_by)
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM items WHERE posted_by = ?");
-    $stmt->execute([$_SESSION['user_id']]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM items WHERE posted_by = :user_id");
+    $stmt->execute([':user_id' => $_SESSION['user_id']]);
     $items_for_sell = $stmt->fetchColumn();
-    error_log("Items for sell count (admin): $items_for_sell");
 
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM buy_requests WHERE user_id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM buy_requests WHERE user_id = :user_id");
+    $stmt->execute([':user_id' => $_SESSION['user_id']]);
     $buy_requests = $stmt->fetchColumn();
 
-    // Count pending offers (both buy and sell offers) submitted by users
-    $pending_buy_offers = 0;
-    $pending_sell_offers = 0;
-
-    // Buy offers: Offers on items posted by the admin
-    $stmt = $pdo->prepare("SELECT COUNT(*) 
-        FROM offers o 
-        JOIN items i ON o.item_id = i.id 
-        WHERE i.posted_by = ? AND o.status = 'pending'");
-    $stmt->execute([$_SESSION['user_id']]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM offers o JOIN items i ON o.item_id = i.id WHERE i.posted_by = :user_id AND o.status = 'pending'");
+    $stmt->execute([':user_id' => $_SESSION['user_id']]);
     $pending_buy_offers = $stmt->fetchColumn();
-    error_log("Pending buy offers (on admin's items): $pending_buy_offers");
 
-    // Sell offers: Offers on buy requests posted by the admin
-    $stmt = $pdo->prepare("SELECT COUNT(*) 
-        FROM offers o 
-        JOIN buy_requests br ON o.request_id = br.id 
-        WHERE br.user_id = ? AND o.status = 'pending'");
-    $stmt->execute([$_SESSION['user_id']]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM offers o JOIN buy_requests br ON o.request_id = br.id WHERE br.user_id = :user_id AND o.status = 'pending'");
+    $stmt->execute([':user_id' => $_SESSION['user_id']]);
     $pending_sell_offers = $stmt->fetchColumn();
-    error_log("Pending sell offers (on admin's buy requests): $pending_sell_offers");
 
     $pending_offers = $pending_buy_offers + $pending_sell_offers;
-    error_log("Total pending offers: $pending_offers");
-
-    // Debug: Fetch actual offer records to inspect
-    $stmt = $pdo->prepare("SELECT o.*, i.posted_by AS item_posted_by, br.user_id AS request_user_id 
-        FROM offers o 
-        LEFT JOIN items i ON o.item_id = i.id 
-        LEFT JOIN buy_requests br ON o.request_id = br.id 
-        WHERE (i.posted_by = ? OR br.user_id = ?) AND o.status = 'pending'");
-    $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
-    $debug_offers = $stmt->fetchAll();
-    error_log("Debug offers: " . print_r($debug_offers, true));
 } catch (PDOException $e) {
     $error = "Error fetching dashboard stats: " . $e->getMessage();
-    error_log("Error fetching dashboard stats: " . $e->getMessage());
 }
 
-// Fetch items below min stock (assume min stock = 5 for demo)
+// Fetch items below min stock
 $min_stock = 5;
 $low_stock_items = [];
 try {
-    $stmt = $pdo->prepare("SELECT item_name FROM items WHERE quantity < ? AND status = 'open' AND posted_by = ?");
-    $stmt->execute([$min_stock, $_SESSION['user_id']]);
+    $stmt = $pdo->prepare("SELECT item_name FROM items WHERE quantity < :min_stock AND status = 'open' AND posted_by = :user_id");
+    $stmt->execute([
+        ':min_stock' => $min_stock,
+        ':user_id' => $_SESSION['user_id']
+    ]);
     $low_stock_items = $stmt->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
     $error = "Error fetching low stock items: " . $e->getMessage();
 }
 
-// Fetch items for sale (only items posted by this admin)
+// Pagination setup
+$items_per_page = 10;
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($page - 1) * $items_per_page;
+
+// Fetch items for sale with pagination
 $items = [];
+$total_items = 0;
 try {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM items WHERE posted_by = :user_id");
+    $stmt->execute([':user_id' => $_SESSION['user_id']]);
+    $total_items = $stmt->fetchColumn();
+    
     $stmt = $pdo->prepare("SELECT i.*, u.username AS posted_by_name 
         FROM items i 
         JOIN users u ON i.posted_by = u.id 
-        WHERE i.posted_by = ?");
-    $stmt->execute([$_SESSION['user_id']]);
+        WHERE i.posted_by = :user_id 
+        LIMIT :limit OFFSET :offset");
+    $stmt->bindValue(':limit', $items_per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute([':user_id' => $_SESSION['user_id']]);
     $items = $stmt->fetchAll();
-    error_log("Fetched items: " . count($items));
 } catch (PDOException $e) {
     $error = "Error fetching items: " . $e->getMessage();
 }
 
-// Fetch buy requests
+// Fetch buy requests with pagination
 $requests = [];
+$total_requests = 0;
 try {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM buy_requests WHERE user_id = :user_id");
+    $stmt->execute([':user_id' => $_SESSION['user_id']]);
+    $total_requests = $stmt->fetchColumn();
+    
     $stmt = $pdo->prepare("SELECT br.*, u.username 
         FROM buy_requests br 
         JOIN users u ON br.user_id = u.id 
-        WHERE br.user_id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
+        WHERE br.user_id = :user_id 
+        LIMIT :limit OFFSET :offset");
+    $stmt->bindValue(':limit', $items_per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute([':user_id' => $_SESSION['user_id']]);
     $requests = $stmt->fetchAll();
 } catch (PDOException $e) {
     $error = "Error fetching buy requests: " . $e->getMessage();
 }
 
-// Fetch pending offers (both buy and sell)
+// Fetch pending offers with secure sorting
 $buy_offers = $sell_offers = [];
 try {
-    // Sorting parameters
-    $buy_sort_field = $_GET['buy_sort_field'] ?? 'offered_price';
-    $buy_sort_order = $_GET['buy_sort_order'] ?? 'ASC';
-    $sell_sort_field = $_GET['sell_sort_field'] ?? 'offered_price';
-    $sell_sort_order = $_GET['sell_sort_order'] ?? 'ASC';
+    $buy_sort_field = sanitizeInput($_GET['buy_sort_field'] ?? 'offered_price');
+    $buy_sort_order = sanitizeInput($_GET['buy_sort_order'] ?? 'ASC');
+    $sell_sort_field = sanitizeInput($_GET['sell_sort_field'] ?? 'offered_price');
+    $sell_sort_order = sanitizeInput($_GET['sell_sort_order'] ?? 'ASC');
 
-    // Validate sort fields and order
     $valid_fields = ['offered_price', 'created_at'];
     $valid_orders = ['ASC', 'DESC'];
     $buy_sort_field = in_array($buy_sort_field, $valid_fields) ? $buy_sort_field : 'offered_price';
@@ -971,32 +961,42 @@ try {
     $sell_sort_field = in_array($sell_sort_field, $valid_fields) ? $sell_sort_field : 'offered_price';
     $sell_sort_order = in_array($sell_sort_order, $valid_orders) ? $sell_sort_order : 'ASC';
 
-    // Fetch buy offers (offers on items for sale)
     $stmt = $pdo->prepare("SELECT o.*, i.item_name, u.username 
         FROM offers o 
         JOIN items i ON o.item_id = i.id 
         JOIN users u ON o.user_id = u.id 
-        WHERE i.posted_by = ? AND o.status = 'pending' 
+        WHERE i.posted_by = :user_id AND o.status = 'pending' 
         ORDER BY o.$buy_sort_field $buy_sort_order");
-    $stmt->execute([$_SESSION['user_id']]);
+    $stmt->execute([':user_id' => $_SESSION['user_id']]);
     $buy_offers = $stmt->fetchAll();
 
-    // Fetch sell offers (offers on buy requests)
     $stmt = $pdo->prepare("SELECT o.*, br.item_name, u.username 
         FROM offers o 
         JOIN buy_requests br ON o.request_id = br.id 
         JOIN users u ON o.user_id = u.id 
-        WHERE br.user_id = ? AND o.status = 'pending' 
+        WHERE br.user_id = :user_id AND o.status = 'pending' 
         ORDER BY o.$sell_sort_field $sell_sort_order");
-    $stmt->execute([$_SESSION['user_id']]);
+    $stmt->execute([':user_id' => $_SESSION['user_id']]);
     $sell_offers = $stmt->fetchAll();
 } catch (PDOException $e) {
     $error = "Error fetching offers: " . $e->getMessage();
 }
 
-// Fetch transactions
+// Fetch transactions with pagination
 $transactions = [];
+$total_transactions = 0;
 try {
+    $stmt = $pdo->prepare("SELECT COUNT(*) 
+        FROM transactions t 
+        LEFT JOIN items i ON t.item_id = i.id 
+        LEFT JOIN buy_requests br ON t.request_id = br.id 
+        WHERE (i.posted_by = :user_id1 OR br.user_id = :user_id2)");
+    $stmt->execute([
+        ':user_id1' => $_SESSION['user_id'],
+        ':user_id2' => $_SESSION['user_id']
+    ]);
+    $total_transactions = $stmt->fetchColumn();
+
     $stmt = $pdo->prepare("SELECT t.*, 
         i.item_name AS item_name_sell, 
         br.item_name AS item_name_buy, 
@@ -1007,8 +1007,14 @@ try {
     LEFT JOIN buy_requests br ON t.request_id = br.id 
     JOIN users ub ON t.buyer_or_seller_id = ub.id 
     LEFT JOIN users us ON (i.posted_by = us.id OR br.user_id = us.id) 
-    WHERE (i.posted_by = ? OR br.user_id = ?)");
-    $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
+    WHERE (i.posted_by = :user_id1 OR br.user_id = :user_id2) 
+    LIMIT :limit OFFSET :offset");
+    $stmt->bindValue(':limit', $items_per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute([
+        ':user_id1' => $_SESSION['user_id'],
+        ':user_id2' => $_SESSION['user_id']
+    ]);
     $transactions = $stmt->fetchAll();
 } catch (PDOException $e) {
     $error = "Error fetching transactions: " . $e->getMessage();
@@ -1020,13 +1026,14 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="robots" content="noindex, nofollow">
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <script src="../javaScript/scripts.js"></script>
 </head>
 
@@ -1053,7 +1060,7 @@ try {
 <!-- Admin Header -->
 <div class="admin-header">
     <div class="inner-width">
-        <h1>Welcome, <?php echo htmlspecialchars($admin_name); ?></h1>
+        <h1>Welcome, <?php echo htmlspecialchars($admin_name, ENT_QUOTES, 'UTF-8'); ?></h1>
         <p>Manage your inventory, sales, and purchases efficiently</p>
     </div>
 </div>
@@ -1074,6 +1081,7 @@ try {
             <li><a href="?action=offers"><i class="fas fa-exchange-alt"></i> Offers</a></li>
             <li><a href="?action=transactions"><i class="fas fa-receipt"></i> Transactions</a></li>
             <li><a href="?action=report"><i class="fas fa-chart-pie"></i> Reports</a></li>
+            <li><a href="?action=add_item_type"><i class="fas fa-list"></i> Manage Item Types</a></li>
             <li><a href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </div>
@@ -1082,13 +1090,13 @@ try {
     <div class="main-content">
         <?php if (isset($error)): ?>
             <div class="alert-card error">
-                <p><i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?></p>
+                <p><i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
             </div>
         <?php endif; ?>
         
         <?php if (isset($success)): ?>
             <div class="alert-card success">
-                <p><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?></p>
+                <p><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success, ENT_QUOTES, 'UTF-8'); ?></p>
             </div>
         <?php endif; ?>
 
@@ -1099,7 +1107,7 @@ try {
                     <div class="col-md-4">
                         <div class="stat-card">
                             <i class="fas fa-tag"></i>
-                            <div class="stat-number"><?php echo htmlspecialchars($items_for_sell); ?></div>
+                            <div class="stat-number"><?php echo htmlspecialchars($items_for_sell, ENT_QUOTES, 'UTF-8'); ?></div>
                             <h3>Items for Sale</h3>
                             <p>Total items in inventory</p>
                             <a href="?action=items_for_sell" class="admin-btn">View Items</a>
@@ -1109,7 +1117,7 @@ try {
                     <div class="col-md-4">
                         <div class="stat-card">
                             <i class="fas fa-shopping-cart"></i>
-                            <div class="stat-number"><?php echo htmlspecialchars($buy_requests); ?></div>
+                            <div class="stat-number"><?php echo htmlspecialchars($buy_requests, ENT_QUOTES, 'UTF-8'); ?></div>
                             <h3>Active Buy Requests</h3>
                             <p>Total purchase requests</p>
                             <a href="?action=buy_requests" class="admin-btn">View Requests</a>
@@ -1119,7 +1127,7 @@ try {
                     <div class="col-md-4">
                         <div class="stat-card">
                             <i class="fas fa-exchange-alt"></i>
-                            <div class="stat-number"><?php echo htmlspecialchars($pending_offers); ?></div>
+                            <div class="stat-number"><?php echo htmlspecialchars($pending_offers, ENT_QUOTES, 'UTF-8'); ?></div>
                             <h3>Pending Offers</h3>
                             <p>Offers awaiting your response</p>
                             <a href="?action=offers" class="admin-btn">View Offers</a>
@@ -1134,7 +1142,7 @@ try {
                 <?php if (!empty($low_stock_items)): ?>
                     <ul>
                         <?php foreach ($low_stock_items as $item): ?>
-                            <li><?php echo htmlspecialchars($item); ?> - Needs restocking</li>
+                            <li><?php echo htmlspecialchars($item, ENT_QUOTES, 'UTF-8'); ?> - Needs restocking</li>
                         <?php endforeach; ?>
                     </ul>
                 <?php else: ?>
@@ -1161,6 +1169,7 @@ try {
             <div class="form-card">
                 <h2><i class="fas fa-tag"></i> Post Item for Sale</h2>
                 <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
                     <div class="form-group">
                         <input type="text" name="supplier_name" class="input" placeholder="Supplier Name" required />
                     </div>
@@ -1168,7 +1177,15 @@ try {
                         <input type="text" name="item_name" class="input" placeholder="Item Name" required />
                     </div>
                     <div class="form-group">
-                        <input type="text" name="item_type" id="item_type" class="input" placeholder="Item Type (e.g., car, pc, desktop)" required />
+                        <select name="item_type" id="item_type" class="input" required>
+                            <option value="">Select Item Type</option>
+                            <?php
+                            $stmt = $pdo->query("SELECT type_name FROM item_types");
+                            while ($type = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='" . htmlspecialchars($type['type_name']) . "'>" . htmlspecialchars($type['type_name']) . "</option>";
+                            }
+                            ?>
+                        </select>
                     </div>
                     <div class="form-group">
                         <textarea name="description" class="input" placeholder="Item Description" rows="4" required></textarea>
@@ -1197,34 +1214,40 @@ try {
             <!-- Edit Item Form -->
             <div class="form-card">
                 <h2><i class="fas fa-edit"></i> Edit Item</h2>
-                <?php if (isset($error)): ?>
-                    <div class="error"><?php echo htmlspecialchars($error); ?></div>
-                <?php endif; ?>
                 <form method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="existing_image" value="<?php echo htmlspecialchars($item_to_edit['image'] ?? ''); ?>">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="existing_image" value="<?php echo htmlspecialchars($item_to_edit['image'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                     <div class="form-group">
                         <label>Supplier Name:</label>
-                        <input type="text" name="supplier_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['supplier_name'] ?? ''); ?>" required />
+                        <input type="text" name="supplier_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['supplier_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required />
                     </div>
                     <div class="form-group">
                         <label>Item Name:</label>
-                        <input type="text" name="item_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['item_name'] ?? ''); ?>" required />
+                        <input type="text" name="item_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['item_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required />
                     </div>
                     <div class="form-group">
                         <label for="item_type">Item Type:</label>
-                        <input type="text" name="item_type" id="item_type" class="input" value="<?php echo htmlspecialchars($item_to_edit['item_type'] ?? ''); ?>" placeholder="Item Type (e.g., car, pc, desktop)" required />
+                        <select name="item_type" id="item_type" class="input" required>
+                            <?php
+                            $stmt = $pdo->query("SELECT type_name FROM item_types");
+                            while ($type = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                $selected = ($type['type_name'] === $item_to_edit['item_type']) ? 'selected' : '';
+                                echo "<option value='" . htmlspecialchars($type['type_name']) . "' $selected>" . htmlspecialchars($type['type_name']) . "</option>";
+                            }
+                            ?>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>Description:</label>
-                        <textarea name="description" class="input" rows="4" required><?php echo htmlspecialchars($item_to_edit['description'] ?? ''); ?></textarea>
+                        <textarea name="description" class="input" rows="4" required><?php echo htmlspecialchars($item_to_edit['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
                     </div>
                     <div class="form-group">
                         <label>Price ($):</label>
-                        <input type="number" name="price" class="input" value="<?php echo htmlspecialchars($item_to_edit['price'] ?? 0); ?>" step="0.01" required />
+                        <input type="number" name="price" class="input" value="<?php echo htmlspecialchars($item_to_edit['price'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>" step="0.01" required />
                     </div>
                     <div class="form-group">
                         <label>Quantity:</label>
-                        <input type="number" name="quantity" class="input" value="<?php echo htmlspecialchars($item_to_edit['quantity'] ?? 0); ?>" required />
+                        <input type="number" name="quantity" class="input" value="<?php echo htmlspecialchars($item_to_edit['quantity'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>" required />
                     </div>
                     <div class="form-group">
                         <label>Close Time (optional):</label>
@@ -1233,7 +1256,7 @@ try {
                     <div class="form-group">
                         <label>Current Image:</label>
                         <?php if (!empty($item_to_edit['image']) && file_exists('../' . $item_to_edit['image'])): ?>
-                            <img src="../<?php echo htmlspecialchars($item_to_edit['image']); ?>" alt="Current Image" class="item-image" style="max-width: 200px;">
+                            <img src="../<?php echo htmlspecialchars($item_to_edit['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="Current Image" class="item-image" style="max-width: 200px;">
                         <?php else: ?>
                             <p>No image uploaded.</p>
                         <?php endif; ?>
@@ -1254,11 +1277,20 @@ try {
             <div class="form-card">
                 <h2><i class="fas fa-hand-holding-usd"></i> Post Buy Request</h2>
                 <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
                     <div class="form-group">
                         <input type="text" name="item_name" class="input" placeholder="Item Name" required />
                     </div>
                     <div class="form-group">
-                        <input type="text" name="item_type" id="item_type" class="input" placeholder="Item Type (e.g., car, pc, desktop)" required />
+                        <select name="item_type" id="item_type" class="input" required>
+                            <option value="">Select Item Type</option>
+                            <?php
+                            $stmt = $pdo->query("SELECT type_name FROM item_types");
+                            while ($type = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='" . htmlspecialchars($type['type_name']) . "'>" . htmlspecialchars($type['type_name']) . "</option>";
+                            }
+                            ?>
+                        </select>
                     </div>
                     <div class="form-group">
                         <textarea name="description" class="input" placeholder="Item Description" rows="4" required></textarea>
@@ -1285,48 +1317,47 @@ try {
 
         <?php elseif ($_GET['action'] == 'items_for_sell'): ?>
             <!-- Items for Sell -->
-            <h2><i class="fas fa-box-open"></i> Items for Sale (<?php echo count($items); ?>)</h2>
+            <h2><i class="fas fa-box-open"></i> Items for Sale (<?php echo htmlspecialchars($total_items, ENT_QUOTES, 'UTF-8'); ?>)</h2>
             <?php if ($items): ?>
                 <div class="row">
                     <?php foreach ($items as $item): ?>
-                        <?php error_log("Item Type for item {$item['id']}: " . ($item['item_type'] ?? 'N/A')); ?>
                         <div class="col-md-6">
                             <div class="item-card <?php echo ($item['status'] === 'closed') ? 'closed-item' : ''; ?>">
                                 <?php if (!empty($item['image'])): ?>
-                                    <img src="../<?php echo htmlspecialchars($item['image']); ?>" alt="<?php echo htmlspecialchars($item['item_name']); ?>" class="item-image">
+                                    <img src="../<?php echo htmlspecialchars($item['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?>" class="item-image">
                                 <?php endif; ?>
-                                <h3><?php echo htmlspecialchars($item['item_name']); ?></h3>
-                                <p><strong>Type:</strong> <?php echo htmlspecialchars($item['item_type'] ?? 'N/A'); ?></p>
-                                <p><strong>Supplier:</strong> <?php echo htmlspecialchars($item['supplier_name'] ?? 'N/A'); ?></p>
-                                <p><?php echo htmlspecialchars($item['description']); ?></p>
+                                <h3><?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                                <p><strong>Type:</strong> <?php echo htmlspecialchars($item['item_type'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></p>
+                                <p><strong>Supplier:</strong> <?php echo htmlspecialchars($item['supplier_name'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></p>
+                                <p><?php echo htmlspecialchars($item['description'], ENT_QUOTES, 'UTF-8'); ?></p>
                                 <p class="price">Price: $<?php echo number_format($item['price'], 2); ?></p>
-                                <p class="quantity">Quantity: <?php echo htmlspecialchars($item['quantity']); ?></p>
+                                <p class="quantity">Quantity: <?php echo htmlspecialchars($item['quantity'], ENT_QUOTES, 'UTF-8'); ?></p>
                                 <?php if (!empty($item['close_time']) && $item['status'] === 'open'): ?>
-                                    <p class="countdown" data-close-time="<?php echo htmlspecialchars($item['close_time']); ?>">
+                                    <p class="countdown" data-close-time="<?php echo htmlspecialchars($item['close_time'], ENT_QUOTES, 'UTF-8'); ?>">
                                         Closes in: <span class="countdown-timer"></span>
                                     </p>
                                 <?php elseif (!empty($item['close_time'])): ?>
-                                    <p><strong>Closed At:</strong> <?php echo htmlspecialchars($item['close_time']); ?></p>
+                                    <p><strong>Closed At:</strong> <?php echo htmlspecialchars($item['close_time'], ENT_QUOTES, 'UTF-8'); ?></p>
                                 <?php endif; ?>
                                 <div class="item-details">
-                                    <p><strong>Posted By:</strong> <?php echo htmlspecialchars($item['posted_by_name']); ?></p>
-                                    <p><strong>Created At:</strong> <?php echo htmlspecialchars($item['created_at'] ?? 'N/A'); ?></p>
-                                    <p><strong>Status:</strong> <?php echo htmlspecialchars($item['status'] ?? 'N/A'); ?></p>
+                                    <p><strong>Posted By:</strong> <?php echo htmlspecialchars($item['posted_by_name'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                    <p><strong>Created At:</strong> <?php echo htmlspecialchars($item['created_at'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></p>
+                                    <p><strong>Status:</strong> <?php echo htmlspecialchars($item['status'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></p>
                                 </div>
                                 <div class="item-actions">
-                                    <a href="?action=edit_item&item_id=<?php echo $item['id']; ?>" class="admin-btn">
+                                    <a href="?action=edit_item&item_id=<?php echo htmlspecialchars($item['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn">
                                         <i class="fas fa-edit"></i> Edit
                                     </a>
                                     <?php if ($item['status'] !== 'closed'): ?>
-                                        <a href="?action=close_item&item_id=<?php echo $item['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to mark this item as closed? It will no longer be available for offers, but will remain in your inventory.');">
+                                        <a href="?action=close_item&item_id=<?php echo htmlspecialchars($item['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to mark this item as closed? It will no longer be available for offers, but will remain in your inventory.');">
                                             <i class="fas fa-times"></i> Mark as Closed
                                         </a>
                                     <?php else: ?>
-                                        <a href="?action=reopen_item&item_id=<?php echo $item['id']; ?>" class="admin-btn reopen" onclick="return confirm('Are you sure you want to reopen this item? It will become available for offers again.');">
+                                        <a href="?action=reopen_item&item_id=<?php echo htmlspecialchars($item['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn reopen" onclick="return confirm('Are you sure you want to reopen this item? It will become available for offers again.');">
                                             <i class="fas fa-undo"></i> Reopen
                                         </a>
                                     <?php endif; ?>
-                                    <a href="?action=delete_item&item_id=<?php echo $item['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this item? All related offers and transactions will also be deleted, and this action cannot be undone.');">
+                                    <a href="?action=delete_item&item_id=<?php echo htmlspecialchars($item['id'], ENT_QUOTES, 'UTF-8'); ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this item? All related offers and transactions will also be deleted, and this action cannot be undone.');">
                                         <i class="fas fa-trash"></i> Delete
                                     </a>
                                 </div>
@@ -1334,563 +1365,9 @@ try {
                         </div>
                     <?php endforeach; ?>
                 </div>
-            <?php else: ?>
-                <div class="no-data">
-                    <i class="fas fa-box-open"></i>
-                    <p>No items currently for sale.</p>
-                    <a href="?action=post_sell" class="admin-btn">
-                        <i class="fas fa-plus"></i> Add New Item
-                    </a>
-                </div>
-            <?php endif; ?>
-
-        <?php elseif ($_GET['action'] == 'buy_requests'): ?>
-            <!-- Buy Requests -->
-            <h2><i class="fas fa-hand-holding-usd"></i> Active Buy Requests (<?php echo count($requests); ?>)</h2>
-            <?php if ($requests): ?>
-                <div class="row">
-                    <?php foreach ($requests as $request): ?>
-                        <div class="col-md-6">
-                            <div class="item-card <?php echo ($request['status'] === 'closed') ? 'closed-item' : ''; ?>">
-                                <?php if (!empty($request['image'])): ?>
-                                    <img src="../<?php echo htmlspecialchars($request['image']); ?>" alt="<?php echo htmlspecialchars($request['item_name']); ?>" class="request-image">
-                                <?php endif; ?>
-                                <h3><?php echo htmlspecialchars($request['item_name']); ?></h3>
-                                <p><strong>Type:</strong> <?php echo htmlspecialchars($request['item_type'] ?? 'N/A'); ?></p>
-                                <p><?php echo htmlspecialchars($request['description']); ?></p>
-                                <p class="price">Max Price: $<?php echo number_format($request['max_price'], 2); ?></p>
-                                <p class="quantity">Quantity: <?php echo htmlspecialchars($request['quantity']); ?></p>
-                                <?php if (!empty($request['close_time']) && $request['status'] === 'open'): ?>
-                                    <p class="countdown" data-close-time="<?php echo htmlspecialchars($request['close_time']); ?>">
-                                        Closes in: <span class="countdown-timer"></span>
-                                    </p>
-                                <?php elseif (!empty($request['close_time'])): ?>
-                                    <p><strong>Closed At:</strong> <?php echo htmlspecialchars($request['close_time']); ?></p>
-                                <?php endif; ?>
-                                <div class="item-details">
-                                    <p><strong>Posted By:</strong> <?php echo htmlspecialchars($request['username']); ?></p>
-                                    <p><strong>Created At:</strong> <?php echo htmlspecialchars($request['created_at'] ?? 'N/A'); ?></p>
-                                    <p><strong>Status:</strong> <?php echo htmlspecialchars($request['status'] ?? 'N/A'); ?></p>
-                                </div>
-                                <div class="item-actions">
-                                    <a href="?action=view_offers&request_id=<?php echo $request['id']; ?>" class="admin-btn">
-                                        <i class="fas fa-search"></i> View Offers
-                                    </a>
-                                    <?php if ($request['status'] !== 'closed'): ?>
-                                        <a href="?action=cancel_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to mark this buy request as closed? It will no longer be available for offers, but will remain in your records.');">
-                                            <i class="fas fa-times"></i> Mark as Closed
-                                        </a>
-                                    <?php else: ?>
-                                        <a href="?action=reopen_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn reopen" onclick="return confirm('Are you sure you want to reopen this buy request? It will become available for offers again.');">
-                                            <i class="fas fa-undo"></i> Reopen
-                                        </a>
-                                    <?php endif; ?>
-                                    <a href="?action=delete_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this buy request? All related offers and transactions will also be deleted, and this action cannot be undone.');">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php else: ?>
-                <div class="no-data">
-                    <i class="fas fa-shopping-cart"></i>
-                    <p>No active buy requests.</p>
-                    <a href="?action=post_buy" class="admin-btn">
-                        <i class="fas fa-plus"></i> Create Buy Request
-                    </a>
-                </div>
-            <?php endif; ?>
-
-        <?php elseif ($_GET['action'] == 'view_offers' && isset($buy_request_offers)): ?>
-            <!-- View Offers for Buy Request -->
-            <h2><i class="fas fa-exchange-alt"></i> Offers for Buy Request</h2>
-            <?php if ($buy_request_offers): ?>
-                <div class="offers-table-container">
-                    <table class="offers-table">
-                        <thead>
-                            <tr>
-                                <th>From</th>
-                                <th>Item Name</th>
-                                <th>Offered Price ($)</th>
-                                <th>Quantity</th>
-                                <th>Description</th>
-                                <th>Offer Time</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($buy_request_offers as $offer): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($offer['username']); ?></td>
-                                    <td><?php echo htmlspecialchars($offer['item_name']); ?></td>
-                                    <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
-                                    <td><?php echo htmlspecialchars($offer['quantity']); ?></td>
-                                    <td><?php echo htmlspecialchars($offer['description'] ?? 'N/A'); ?></td>
-                                    <td><?php echo htmlspecialchars($offer['created_at']); ?></td>
-                                    <td class="offer-actions">
-                                        <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=accept" class="admin-btn success">
-                                            <i class="fas fa-check"></i> Accept
-                                        </a>
-                                        <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=reject" class="admin-btn danger">
-                                            <i class="fas fa-times"></i> Reject
-                                        </a>
-                                        <a href="?action=close_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');">
-                                            <i class="fas fa-times-circle"></i> Close
-                                        </a>
-                                        <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this offer? This action cannot be undone.');">
-                                            <i class="fas fa-trash"></i> Delete
-                                        </a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php else: ?>
-                <div class="no-data">
-                    <i class="fas fa-exchange-alt"></i>
-                    <p>No offers available for this buy request.</p>
-                    <a href="?action=buy_requests" class="admin-btn">
-                        <i class="fas fa-arrow-left"></i> Back to Buy Requests
-                    </a>
-                </div>
-            <?php endif; ?>
-
-        <?php elseif ($_GET['action'] == 'offers'): ?>
-            <!-- Pending Offers -->
-            <h2><i class="fas fa-exchange-alt"></i> Pending Offers (<?php echo $pending_offers; ?>)</h2>
-            
-            <!-- Buy Offers (Offers on Items for Sale) -->
-            <h3>Buy Offers (On Your Items for Sale)</h3>
-            <div class="sort-options">
-                <form method="GET" class="sort-form">
-                    <input type="hidden" name="action" value="offers">
-                    <label for="buy_sort_field">Sort By:</label>
-                    <select name="buy_sort_field" id="buy_sort_field">
-                        <option value="offered_price" <?php echo $buy_sort_field == 'offered_price' ? 'selected' : ''; ?>>Price</option>
-                        <option value="created_at" <?php echo $buy_sort_field == 'created_at' ? 'selected' : ''; ?>>Date</option>
-                    </select>
-                    <label for="buy_sort_order">Order:</label>
-                    <select name="buy_sort_order" id="buy_sort_order">
-                        <option value="ASC" <?php echo $buy_sort_order == 'ASC' ? 'selected' : ''; ?>>Ascending</option>
-                        <option value="DESC" <?php echo $buy_sort_order == 'DESC' ? 'selected' : ''; ?>>Descending</option>
-                    </select>
-                    <button type="submit" class="admin-btn small"><i class="fas fa-sort"></i> Sort</button>
-                </form>
-            </div>
-            <?php if ($buy_offers): ?>
-                <div class="offers-table-container">
-                    <table class="offers-table">
-                        <thead>
-                            <tr>
-                                <th>From</th>
-                                <th>Item Name</th>
-                                <th>Offered Price ($)</th>
-                                <th>Quantity</th>
-                                <th>Description</th>
-                                <th>Offer Time</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($buy_offers as $offer): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($offer['username']); ?></td>
-                                    <td><?php echo htmlspecialchars($offer['item_name']); ?></td>
-                                    <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
-                                    <td><?php echo htmlspecialchars($offer['quantity']); ?></td>
-                                    <td><?php echo htmlspecialchars($offer['description'] ?? 'N/A'); ?></td>
-                                    <td><?php echo htmlspecialchars($offer['created_at']); ?></td>
-                                    <td class="offer-actions">
-                                        <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=accept" class="admin-btn success" onclick="return confirm('Are you sure you want to accept this offer?');">
-                                            <i class="fas fa-check"></i> Accept
-                                        </a>
-                                        <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=reject" class="admin-btn danger" onclick="return confirm('Are you sure you want to reject this offer?');">
-                                            <i class="fas fa-times"></i> Reject
-                                        </a>
-                                        <a href="?action=close_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');">
-                                            <i class="fas fa-times-circle"></i> Close
-                                        </a>
-                                        <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this offer? This action cannot be undone.');">
-                                            <i class="fas fa-trash"></i> Delete
-                                        </a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php else: ?>
-                <div class="no-data">
-                    <i class="fas fa-exchange-alt"></i>
-                    <p>No pending buy offers on your items for sale.</p>
-                </div>
-            <?php endif; ?>
-
-            <!-- Sell Offers (Offers on Buy Requests) -->
-            <h3>Sell Offers (On Your Buy Requests)</h3>
-            <div class="sort-options">
-                <form method="GET" class="sort-form">
-                    <input type="hidden" name="action" value="offers">
-                    <label for="sell_sort_field">Sort By:</label>
-                    <select name="sell_sort_field" id="sell_sort_field">
-                        <option value="offered_price" <?php echo $sell_sort_field == 'offered_price' ? 'selected' : ''; ?>>Price</option>
-                        <option value="created_at" <?php echo $sell_sort_field == 'created_at' ? 'selected' : ''; ?>>Date</option>
-                    </select>
-                    <label for="sell_sort_order">Order:</label>
-                    <select name="sell_sort_order" id="sell_sort_order">
-                        <option value="ASC" <?php echo $sell_sort_order == 'ASC' ? 'selected' : ''; ?>>Ascending</option>
-                        <option value="DESC" <?php echo $sell_sort_order == 'DESC' ? 'selected' : ''; ?>>Descending</option>
-                    </select>
-                    <button type="submit" class="admin-btn small"><i class="fas fa-sort"></i> Sort</button>
-                </form>
-            </div>
-            <?php if ($sell_offers): ?>
-                <div class="offers-table-container">
-                    <table class="offers-table">
-                        <thead>
-                            <tr>
-                                <th>From</th>
-                                <th>Item Name</th>
-                                <th>Offered Price ($)</th>
-                                <th>Quantity</th>
-                                <th>Description</th>
-                                <th>Offer Time</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($sell_offers as $offer): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($offer['username']); ?></td>
-                                    <td><?php echo htmlspecialchars($offer['item_name']); ?></td>
-                                    <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
-                                    <td><?php echo htmlspecialchars($offer['quantity']); ?></td>
-                                    <td><?php echo htmlspecialchars($offer['description'] ?? 'N/A'); ?></td>
-                                    <td><?php echo htmlspecialchars($offer['created_at']); ?></td>
-                                    <td class="offer-actions">
-                                        <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=accept" class="admin-btn success" onclick="return confirm('Are you sure you want to accept this offer?');">
-                                            <i class="fas fa-check"></i> Accept
-                                        </a>
-                                        <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=reject" class="admin-btn danger" onclick="return confirm('Are you sure you want to reject this offer?');">
-                                            <i class="fas fa-times"></i> Reject
-                                        </a>
-                                        <a href="?action=close_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');">
-                                            <i class="fas fa-times-circle"></i> Close
-                                        </a>
-                                        <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to permanently delete this offer? This action cannot be undone.');">
-                                            <i class="fas fa-trash"></i> Delete
-                                        </a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php else: ?>
-                <div class="no-data">
-                    <i class="fas fa-exchange-alt"></i>
-                    <p>No pending sell offers on your buy requests.</p>
-                </div>
-            <?php endif; ?>
-
-        <?php elseif ($_GET['action'] == 'transactions'): ?>
-            <!-- Transactions -->
-            <h2><i class="fas fa-receipt"></i> Transactions (<?php echo count($transactions); ?>)</h2>
-            <?php if ($transactions): ?>
-                <div class="transactions-table-container">
-                    <table class="transactions-table">
-                        <thead>
-                            <tr>
-                                <th>Transaction ID</th>
-                                <th>Item Name</th>
-                                <th>Type</th>
-                                <th>Buyer</th>
-                                <th>Seller</th>
-                                <th>Final Price ($)</th>
-                                <th>Quantity</th>
-                                <th>Total Amount ($)</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($transactions as $t): ?>
-                                <?php
-                                    $item_name = $t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A';
-                                    $type = $t['item_id'] ? 'Sell' : 'Buy';
-                                    $total_amount = $t['final_price'] * $t['quantity'];
-                                ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($t['id']); ?></td>
-                                    <td><?php echo htmlspecialchars($item_name); ?></td>
-                                    <td><?php echo htmlspecialchars($type); ?></td>
-                                    <td><?php echo htmlspecialchars($t['buyer']); ?></td>
-                                    <td><?php echo htmlspecialchars($t['seller']); ?></td>
-                                    <td>$<?php echo number_format($t['final_price'], 2); ?></td>
-                                    <td><?php echo htmlspecialchars($t['quantity']); ?></td>
-                                    <td>$<?php echo number_format($total_amount, 2); ?></td>
-                                    <td><?php echo htmlspecialchars($t['created_at']); ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php else: ?>
-                <div class="no-data">
-                    <i class="fas fa-receipt"></i>
-                    <p>No transactions available.</p>
-                </div>
-            <?php endif; ?>
-
-        <?php elseif ($_GET['action'] == 'report'): ?>
-            <!-- Reports -->
-            <h2><i class="fas fa-chart-pie"></i> Generate Reports</h2>
-            <div class="form-card">
-                <form method="POST" action="?action=report&generate_report=1">
-                    <div class="form-group">
-                        <label for="start_date">Start Date:</label>
-                        <input type="date" name="start_date" id="start_date" class="input" value="<?php echo htmlspecialchars($_POST['start_date'] ?? ''); ?>" />
-                    </div>
-                    <div class="form-group">
-                        <label for="end_date">End Date:</label>
-                        <input type="date" name="end_date" id="end_date" class="input" value="<?php echo htmlspecialchars($_POST['end_date'] ?? ''); ?>" />
-                    </div>
-                    <div class="form-group">
-                        <label for="transaction_type">Transaction Type:</label>
-                        <select name="transaction_type" id="transaction_type" class="input">
-                            <option value="all" <?php echo ($transaction_type == 'all') ? 'selected' : ''; ?>>All</option>
-                            <option value="sell" <?php echo ($transaction_type == 'sell') ? 'selected' : ''; ?>>Sell</option>
-                            <option value="buy" <?php echo ($transaction_type == 'buy') ? 'selected' : ''; ?>>Buy</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="status">Status:</label>
-                        <select name="status" id="status" class="input">
-                            <option value="all" <?php echo ($status == 'all') ? 'selected' : ''; ?>>All</option>
-                            <option value="open" <?php echo ($status == 'open') ? 'selected' : ''; ?>>Open</option>
-                            <option value="closed" <?php echo ($status == 'closed') ? 'selected' : ''; ?>>Closed</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="admin-btn">
-                        <i class="fas fa-search"></i> Generate Report
-                    </button>
-                    <button type="submit" name="export_csv" value="1" class="admin-btn">
-                        <i class="fas fa-download"></i> Export to CSV
-                    </button>
-                </form>
-            </div>
-
-            <?php if (isset($report_transactions)): ?>
-                <!-- Transactions Report -->
-                <h3>Transactions Report</h3>
-                <?php if ($report_transactions): ?>
-                    <div class="transactions-table-container">
-                        <table class="transactions-table">
-                            <thead>
-                                <tr>
-                                    <th>Transaction ID</th>
-                                    <th>Item Name</th>
-                                    <th>Type</th>
-                                    <th>Buyer</th>
-                                    <th>Seller</th>
-                                    <th>Supplier</th>
-                                    <th>Original Price/Max Price ($)</th>
-                                    <th>Final Price ($)</th>
-                                    <th>Quantity</th>
-                                    <th>Total Amount ($)</th>
-                                    <th>Description</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($report_transactions as $t): ?>
-                                    <?php
-                                        $item_name = $t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A';
-                                        $type = $t['item_id'] ? 'Sell' : 'Buy';
-                                        $supplier = $t['supplier_name_sell'] ?? 'N/A';
-                                        $original_price = $t['item_id'] ? ($t['original_price_sell'] ?? 'N/A') : ($t['max_price_buy'] ?? 'N/A');
-                                        $description = $t['description_sell'] ?? $t['description_buy'] ?? 'N/A';
-                                        $total_amount = $t['final_price'] * $t['quantity'];
-                                    ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($t['id']); ?></td>
-                                        <td><?php echo htmlspecialchars($item_name); ?></td>
-                                        <td><?php echo htmlspecialchars($type); ?></td>
-                                        <td><?php echo htmlspecialchars($t['buyer']); ?></td>
-                                        <td><?php echo htmlspecialchars($t['seller']); ?></td>
-                                        <td><?php echo htmlspecialchars($supplier); ?></td>
-                                        <td>$<?php echo htmlspecialchars($original_price); ?></td>
-                                        <td>$<?php echo number_format($t['final_price'], 2); ?></td>
-                                        <td><?php echo htmlspecialchars($t['quantity']); ?></td>
-                                        <td>$<?php echo number_format($total_amount, 2); ?></td>
-                                        <td><?php echo htmlspecialchars($description); ?></td>
-                                        <td><?php echo htmlspecialchars($t['created_at']); ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php else: ?>
-                    <div class="no-data">
-                        <i class="fas fa-receipt"></i>
-                        <p>No transactions match the selected criteria.</p>
-                    </div>
-                <?php endif; ?>
-
-                <!-- Inventory Report -->
-                <h3>Inventory Report</h3>
-                <?php if ($report_items): ?>
-                    <div class="items-table-container">
-                        <table class="items-table">
-                            <thead>
-                                <tr>
-                                    <th>Item ID</th>
-                                    <th>Item Name</th>
-                                    <th>Supplier</th>
-                                    <th>Description</th>
-                                    <th>Price ($)</th>
-                                    <th>Quantity</th>
-                                    <th>Status</th>
-                                    <th>Posted By</th>
-                                    <th>Created At</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($report_items as $item): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($item['id']); ?></td>
-                                        <td><?php echo htmlspecialchars($item['item_name']); ?></td>
-                                        <td><?php echo htmlspecialchars($item['supplier_name'] ?? 'N/A'); ?></td>
-                                        <td><?php echo htmlspecialchars($item['description']); ?></td>
-                                        <td>$<?php echo number_format($item['price'], 2); ?></td>
-                                        <td><?php echo htmlspecialchars($item['quantity']); ?></td>
-                                        <td><?php echo htmlspecialchars($item['status']); ?></td>
-                                        <td><?php echo htmlspecialchars($item['posted_by_name']); ?></td>
-                                        <td><?php echo htmlspecialchars($item['created_at']); ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php else: ?>
-                    <div class="no-data">
-                        <i class="fas fa-box-open"></i>
-                        <p>No items match the selected criteria.</p>
-                    </div>
-                <?php endif; ?>
-
-                <!-- Buy Requests Report -->
-                <h3>Buy Requests Report</h3>
-                <?php if ($report_requests): ?>
-                    <div class="requests-table-container">
-                        <table class="requests-table">
-                            <thead>
-                                <tr>
-                                    <th>Request ID</th>
-                                    <th>Item Name</th>
-                                    <th>Description</th>
-                                    <th>Max Price ($)</th>
-                                    <th>Quantity</th>
-                                    <th>Status</th>
-                                    <th>User</th>
-                                    <th>Created At</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($report_requests as $request): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($request['id']); ?></td>
-                                        <td><?php echo htmlspecialchars($request['item_name']); ?></td>
-                                        <td><?php echo htmlspecialchars($request['description']); ?></td>
-                                        <td>$<?php echo number_format($request['max_price'], 2); ?></td>
-                                        <td><?php echo htmlspecialchars($request['quantity']); ?></td>
-                                        <td><?php echo htmlspecialchars($request['status']); ?></td>
-                                        <td><?php echo htmlspecialchars($request['username']); ?></td>
-                                        <td><?php echo htmlspecialchars($request['created_at']); ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php else: ?>
-                    <div class="no-data">
-                        <i class="fas fa-hand-holding-usd"></i>
-                        <p>No buy requests match the selected criteria.</p>
-                    </div>
-                <?php endif; ?>
-            <?php endif; ?>
-        <?php endif; ?>
-    </div>
-</div>
-
-<!-- Footer -->
-<footer class="footer">
-    <div class="inner-width">
-        <div class="footer-content">
-            <div class="footer-section">
-                <h3>About Us</h3>
-                <p>We are a platform dedicated to facilitating buying and selling of items efficiently and securely.</p>
-            </div>
-            <div class="footer-section">
-                <h3>Quick Links</h3>
-                <ul>
-                    <li><a href="../index.php">Home</a></li>
-                    <li><a href="../index.php#about">About</a></li>
-                    <li><a href="../index.php#contact">Contact</a></li>
-                    <li><a href="admin_dashboard.php">Dashboard</a></li>
-                </ul>
-            </div>
-            <div class="footer-section">
-                <h3>Contact Us</h3>
-                <p>Email: support@example.com</p>
-                <p>Phone: +123 456 7890</p>
-                <div class="social-links">
-                    <a href="#"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#"><i class="fab fa-twitter"></i></a>
-                    <a href="#"><i class="fab fa-instagram"></i></a>
-                </div>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>&copy; <?php echo date('Y'); ?> Trading Platform. All rights reserved.</p>
-        </div>
-    </div>
-</footer>
-
-<script>
-// Countdown Timer for Close Time
-document.addEventListener('DOMContentLoaded', function() {
-    const countdownElements = document.querySelectorAll('.countdown');
-
-    countdownElements.forEach(element => {
-        const closeTime = new Date(element.getAttribute('data-close-time')).getTime();
-        const timerElement = element.querySelector('.countdown-timer');
-
-        function updateTimer() {
-            const now = new Date().getTime();
-            const distance = closeTime - now;
-
-            if (distance < 0) {
-                timerElement.textContent = 'Closed';
-                element.classList.add('closed');
-                return;
-            }
-
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-            timerElement.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
-        }
-
-        updateTimer();
-        setInterval(updateTimer, 1000);
-    });
-});
-</script>
-
-</body>
-</html>
+                <!-- Pagination -->
+                <div class="pagination">
+                    <?php
+                    $total_pages = ceil($total_items / $items_per_page);
+                    if ($page > 1) {
+                        echo "<a href
