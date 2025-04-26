@@ -2260,7 +2260,7 @@ try {
                             <td>$<?php echo number_format($request['max_price'], 2); ?></td>
                             <td><?php echo htmlspecialchars($request['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
                             <td><?php echo htmlspecialchars($request['status'], ENT_QUOTES, 'UTF-8'); ?></td>
-                            <td><?php echo htmlspecialchars($request['username'], ENT_QUOTES, 'illi'); ?></td>
+                            <td><?php echo htmlspecialchars($request['username'], ENT_QUOTES, 'UTF-8'); ?></td>
                             <td><?php echo htmlspecialchars($request['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -2551,23 +2551,5 @@ $(document).ready(function() {
 });
 </script>
 </body>
-</html>item_name" class="input" placeholder="Enter item name" required 
-                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Types (e.g., computer chair, marker)</label>
-                        <div class="tag-container" id="tag-container-buy">
-                            <div class="tag-input-wrapper">
-                                <input type="text" id="tag-input-buy" class="tag-input" placeholder="Type and press Enter or click + to add a type">
-                                <button type="button" id="add-tag-buy" class="add-tag-btn">+</button>
-                            </div>
-                            <div id="tag-error-buy" class="error-text" style="display: none;"></div>
-                        </div>
-                        <input type="hidden" name="item_types" id="item-types-buy">
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Description</label>
-                        <textarea name="description" class="input" placeholder="Enter item description" rows="4" required 
+</html>
     
