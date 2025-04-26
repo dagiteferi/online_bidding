@@ -2469,15 +2469,21 @@ if (isset($error_message)) {
 
     // Edit item function
     function editItem(itemId) {
-        const editForm = document.querySelector(`.edit-form-container[data-item-id="${itemId}"]`);
-        if (!editForm) return;
-
+        console.log('Edit button clicked for item:', itemId);
+        
         // Create overlay
         const overlay = document.createElement('div');
         overlay.className = 'overlay active';
         document.body.appendChild(overlay);
 
-        // Show edit form
+        // Find and show edit form
+        const editForm = document.querySelector(`.edit-form-container[data-item-id="${itemId}"]`);
+        if (!editForm) {
+            console.error('Edit form not found for item:', itemId);
+            return;
+        }
+
+        editForm.style.display = 'block';
         editForm.classList.add('active');
 
         // Close form when clicking overlay
@@ -2489,7 +2495,10 @@ if (isset($error_message)) {
     // Save edit function
     function saveEdit(itemId) {
         const form = document.querySelector(`.edit-form-container[data-item-id="${itemId}"] .edit-form`);
-        if (!form) return;
+        if (!form) {
+            console.error('Form not found for item:', itemId);
+            return;
+        }
 
         const formData = new FormData(form);
         formData.append('action', 'update');
@@ -2517,6 +2526,7 @@ if (isset($error_message)) {
         const overlay = document.querySelector('.overlay');
         
         if (editForm) {
+            editForm.style.display = 'none';
             editForm.classList.remove('active');
         }
         if (overlay) {
