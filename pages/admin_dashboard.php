@@ -2412,23 +2412,23 @@ if (isset($error_message)) {
                         <h3>Edit ${itemType === 'sell' ? 'Item' : 'Buy Request'}</h3>
                         <div class="form-group">
                             <label>Name:</label>
-                            <input type="text" name="item_name" class="input" required placeholder="Loading...">
+                            <input type="text" name="item_name" class="input" required placeholder="Enter item name">
                         </div>
                         <div class="form-group">
                             <label>Description:</label>
-                            <textarea name="description" class="input" required placeholder="Loading..."></textarea>
+                            <textarea name="description" class="input" required placeholder="Enter item description"></textarea>
                         </div>
                         <div class="form-group">
                             <label>${itemType === 'sell' ? 'Price ($):' : 'Max Price ($):'}</label>
-                            <input type="number" name="price" class="input" step="0.01" required placeholder="Loading...">
+                            <input type="number" name="price" class="input" step="0.01" required placeholder="Enter price">
                         </div>
                         <div class="form-group">
                             <label>Quantity:</label>
-                            <input type="number" name="quantity" class="input" required placeholder="Loading...">
+                            <input type="number" name="quantity" class="input" required placeholder="Enter quantity">
                         </div>
                         <div class="form-group">
                             <label>Close Time (optional):</label>
-                            <input type="datetime-local" name="close_time" class="input" placeholder="Loading...">
+                            <input type="datetime-local" name="close_time" class="input" placeholder="Select close time">
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="admin-btn success">Save Changes</button>
