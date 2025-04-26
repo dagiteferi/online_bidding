@@ -1719,7 +1719,7 @@ if (isset($error_message)) {
                                 <?php endif; ?>
                                 
                                 <div class="card-actions">
-                                    <button class="admin-btn small" onclick="editItem(<?php echo $item['id']; ?>, 'sale')">
+                                    <button class="admin-btn small" onclick="showEditForm(<?php echo $item['id']; ?>, 'sell')">
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
                                     <button class="admin-btn small danger" onclick="deleteItem(<?php echo $item['id']; ?>, 'sale')">
@@ -1870,7 +1870,7 @@ if (isset($error_message)) {
                                 <?php endif; ?>
                                 
                                 <div class="card-actions">
-                                    <button class="admin-btn small" onclick="editItem(<?php echo $request['id']; ?>, 'buy')">
+                                    <button class="admin-btn small" onclick="showEditForm(<?php echo $request['id']; ?>, 'buy')">
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
                                     <?php if ($request['status'] == 'open'): ?>
@@ -2363,24 +2363,39 @@ if (isset($error_message)) {
     }
 
     function showEditForm(itemId, itemType) {
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'overlay';
+        document.body.appendChild(overlay);
+        
+        // Show form
         const form = $(`#edit-form-${itemId}`);
         if (form.length) {
             form.show();
+            form.addClass('active');
+            overlay.classList.add('active');
         }
     }
 
     function hideEditForm(itemId) {
         const form = $(`#edit-form-${itemId}`);
+        const overlay = $('.overlay');
+        
         if (form.length) {
             form.hide();
+            form.removeClass('active');
+        }
+        if (overlay.length) {
+            overlay.remove();
         }
     }
 
-    function saveEdit(itemId) {
+    function saveEdit(itemId, itemType) {
         const form = $(`#edit-form-${itemId}`);
         const formData = new FormData(form[0]);
         formData.append('action', 'update');
         formData.append('item_id', itemId);
+        formData.append('item_type', itemType);
 
         $.ajax({
             url: 'admin_dashboard.php',
@@ -2398,14 +2413,16 @@ if (isset($error_message)) {
         });
     }
 
-    function showAlert(message, type) {
-        const alertDiv = $('<div>')
-            .addClass(`alert alert-${type}`)
-            .text(message)
-            .appendTo('body');
-        
-        setTimeout(() => alertDiv.remove(), 3000);
-    }
+    // Add overlay click handler to close form
+    $(document).on('click', '.overlay', function() {
+        $('.edit-form-container').hide().removeClass('active');
+        $(this).remove();
+    });
+
+    // Prevent form click from closing the overlay
+    $(document).on('click', '.edit-form-container', function(e) {
+        e.stopPropagation();
+    });
 
     // Initialize countdown timers
     function initializeCountdowns() {
