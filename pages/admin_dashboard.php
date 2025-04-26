@@ -1166,6 +1166,68 @@ if (isset($error_message)) {
             margin-bottom: 10px;
             display: none;
         }
+
+        /* Add this CSS in the head section */
+        .edit-form-container {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .edit-form-container.active {
+            display: block;
+        }
+
+        .item-card {
+            position: relative;
+        }
+
+        .card-content {
+            transition: opacity 0.3s ease;
+        }
+
+        .card-content.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .alert-success {
+            background-color: #2ecc71;
+        }
+
+        .alert-error {
+            background-color: #e74c3c;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 
