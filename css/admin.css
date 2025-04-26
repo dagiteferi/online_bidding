@@ -1212,7 +1212,7 @@ textarea:focus {
 
 .countdown {
     font-weight: 600;
-    color: #e74c3c;
+    color: #2c3e50;
 }
 
 /* Action Buttons */
@@ -1280,11 +1280,11 @@ textarea:focus {
 }
 
 .item-card.closed .card-status {
-    background-color: #f44336;
+    background-color: #e74c3c;
 }
 
 .item-card.closed .card-close-time {
-    color: #f44336;
+    color: #e74c3c;
 }
 
 /* Edit Form Styles */

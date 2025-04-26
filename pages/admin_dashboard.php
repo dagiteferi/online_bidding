@@ -2272,7 +2272,8 @@ function updateCountdown() {
         const itemId = element.getAttribute('data-item-id');
         const statusBadge = document.querySelector(`.item-card[data-item-id="${itemId}"] .card-status`);
         
-        if (endTime <= now || statusBadge.textContent.trim() === 'CLOSED') {
+        // Only stop countdown if manually closed by admin
+        if (statusBadge.textContent.trim() === 'CLOSED') {
             element.innerHTML = '<i class="fas fa-clock"></i> CLOSED';
             const card = document.querySelector(`.item-card[data-item-id="${itemId}"]`);
             card.classList.add('closed');
@@ -2310,6 +2311,8 @@ function closeItem(itemId) {
                 card.classList.add('closed');
                 const statusBadge = card.querySelector('.card-status');
                 statusBadge.textContent = 'CLOSED';
+                statusBadge.classList.remove('status-open');
+                statusBadge.classList.add('status-closed');
                 const closeTime = card.querySelector('.card-close-time');
                 closeTime.innerHTML = '<i class="fas fa-clock"></i> CLOSED';
             } else {
