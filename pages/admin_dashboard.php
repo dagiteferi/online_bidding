@@ -1887,7 +1887,11 @@ if (isset($error_message)) {
                                     </a>
                                 </div>
                             </div>
-                            
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
         <?php elseif ($_GET['action'] == 'transactions'): ?>
             <!-- Transactions -->
             <div class="table-card">
@@ -1946,170 +1950,6 @@ if (isset($error_message)) {
                     </div>
                 <?php endif; ?>
             </div>
-
-        <?php elseif ($_GET['action'] == 'report'): ?>
-            <!-- Reports -->
-            <div class="form-card">
-                <h2><i class="fas fa-chart-pie"></i> Generate Report</h2>
-                <form method="POST" action="?action=report&generate_report=1">
-                    <div class="form-group">
-                        <label>Start Date:</label>
-                        <input type="date" name="start_date" class="input" />
-                    </div>
-                    <div class="form-group">
-                        <label>End Date:</label>
-                        <input type="date" name="end_date" class="input" />
-                    </div>
-                    <div class="form-group">
-                        <label>Transaction Type:</label>
-                        <select name="transaction_type" class="input">
-                            <option value="all">All</option>
-                            <option value="sell">Sell Transactions</option>
-                            <option value="buy">Buy Transactions</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Status (Items/Buy Requests):</label>
-                        <select name="status" class="input">
-                            <option value="all">All</option>
-                            <option value="open">Open</option>
-                            <option value="closed">Closed</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="admin-btn">
-                        <i class="fas fa-eye"></i> Generate Report
-                    </button>
-                    <button type="submit" name="export_csv" value="1" class="admin-btn">
-                        <i class="fas fa-download"></i> Export as CSV
-                    </button>
-                </form>
-            </div>
-
-            <?php if (isset($report_transactions)): ?>
-                <div class="table-card">
-                    <h2>Transactions Report</h2>
-                    <?php if (empty($report_transactions)): ?>
-                        <p>No transactions found for the selected criteria.</p>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Item Name</th>
-                                        <th>Type</th>
-                                        <th>Buyer</th>
-                                        <th>Seller</th>
-                                        <th>Supplier</th>
-                                        <th>Original Price/Max Price ($)</th>
-                                        <th>Final Price ($)</th>
-                                        <th>Quantity</th>
-                                        <th>Total Amount ($)</th>
-                                        <th>Description</th>
-                                        <th>Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($report_transactions as $t): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($t['id'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo $t['item_id'] ? 'Sell' : 'Buy'; ?></td>
-                                            <td><?php echo htmlspecialchars($t['buyer'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($t['seller'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($t['supplier_name_sell'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo $t['item_id'] ? htmlspecialchars($t['original_price_sell'] ?? 'N/A', ENT_QUOTES, 'UTF-8') : htmlspecialchars($t['max_price_buy'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($t['final_price'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($t['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($t['final_price'] * $t['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($t['description_sell'] ?? $t['description_buy'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($t['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <div class="table-card">
-                    <h2>Inventory Report</h2>
-                    <?php if (empty($report_items)): ?>
-                        <p>No items found for the selected criteria.</p>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Item Name</th>
-                                        <th>Supplier</th>
-                                        <th>Description</th>
-                                        <th>Price ($)</th>
-                                        <th>Quantity</th>
-                                        <th>Status</th>
-                                        <th>Posted By</th>
-                                        <th>Created At</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($report_items as $item): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($item['id'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($item['supplier_name'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($item['description'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($item['price'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($item['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($item['status'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($item['posted_by_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($item['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <div class="table-card">
-                    <h2>Buy Requests Report</h2>
-                    <?php if (empty($report_requests)): ?>
-                        <p>No buy requests found for the selected criteria.</p>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Item Name</th>
-                                        <th>Description</th>
-                                        <th>Max Price ($)</th>
-                                        <th>Quantity</th>
-                                        <th>Status</th>
-                                        <th>User</th>
-                                        <th>Created At</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($report_requests as $request): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($request['id'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($request['description'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($request['max_price'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($request['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($request['status'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($request['username'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($request['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>
