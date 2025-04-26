@@ -974,57 +974,98 @@ try {
     $error = "Error fetching transactions: " . $e->getMessage();
 }
 
-// Add these handlers at the top of the file with other action handlers
-// Handle Close Item
-if (isset($_GET['action']) && $_GET['action'] == 'close_item' && isset($_GET['id'])) {
-    try {
-        $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE id = :id");
-        $stmt->execute([':id' => $_GET['id']]);
-        header("Location: admin_dashboard.php?action=items_for_sell");
-        exit();
-    } catch (PDOException $e) {
-        error_log("Error closing item: " . $e->getMessage());
-        $error = "Error closing item. Please try again later.";
+// Handle all operations at the top of the file
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['action'])) {
+        switch ($_POST['action']) {
+            case 'delete':
+                if (isset($_POST['item_id'])) {
+                    $item_id = (int)$_POST['item_id'];
+                    try {
+                        $pdo->beginTransaction();
+                        
+                        // Delete related records
+                        $stmt = $conn->prepare("DELETE FROM bids WHERE item_id = ?");
+                        $stmt->execute([$item_id]);
+                        
+                        $stmt = $conn->prepare("DELETE FROM offers WHERE item_id = ?");
+                        $stmt->execute([$item_id]);
+                        
+                        // Delete the item
+                        $stmt = $conn->prepare("DELETE FROM items WHERE id = ?");
+                        $stmt->execute([$item_id]);
+                        
+                        $conn->commit();
+                        $success_message = "Item deleted successfully";
+                    } catch (PDOException $e) {
+                        $conn->rollBack();
+                        $error_message = "Error deleting item: " . $e->getMessage();
+                    }
+                }
+                break;
+                
+            case 'update':
+                if (isset($_POST['item_id'])) {
+                    $item_id = (int)$_POST['item_id'];
+                    $item_name = sanitizeInput($_POST['item_name']);
+                    $description = sanitizeInput($_POST['description']);
+                    $price = (float)$_POST['price'];
+                    $quantity = (int)$_POST['quantity'];
+                    $close_time = isset($_POST['close_time']) ? $_POST['close_time'] : null;
+                    
+                    try {
+                        $stmt = $conn->prepare("
+                            UPDATE items 
+                            SET item_name = ?, 
+                                description = ?, 
+                                price = ?, 
+                                quantity = ?, 
+                                close_time = ?
+                            WHERE id = ?
+                        ");
+                        
+                        $stmt->execute([
+                            $item_name,
+                            $description,
+                            $price,
+                            $quantity,
+                            $close_time,
+                            $item_id
+                        ]);
+                        
+                        if ($stmt->rowCount() > 0) {
+                            $success_message = "Item updated successfully";
+                        } else {
+                            $error_message = "No changes made or item not found";
+                        }
+                    } catch (PDOException $e) {
+                        $error_message = "Error updating item: " . $e->getMessage();
+                    }
+                }
+                break;
+                
+            case 'close':
+                if (isset($_POST['item_id'])) {
+                    $item_id = (int)$_POST['item_id'];
+                    try {
+                        $stmt = $conn->prepare("UPDATE items SET status = 'closed' WHERE id = ?");
+                        $stmt->execute([$item_id]);
+                        $success_message = "Item closed successfully";
+                    } catch (PDOException $e) {
+                        $error_message = "Error closing item: " . $e->getMessage();
+                    }
+                }
+                break;
+        }
     }
 }
 
-// Handle Reopen Item
-if (isset($_GET['action']) && $_GET['action'] == 'reopen_item' && isset($_GET['id'])) {
-    try {
-        $stmt = $pdo->prepare("UPDATE items SET status = 'open' WHERE id = :id");
-        $stmt->execute([':id' => $_GET['id']]);
-        header("Location: admin_dashboard.php?action=items_for_sell");
-        exit();
-    } catch (PDOException $e) {
-        error_log("Error reopening item: " . $e->getMessage());
-        $error = "Error reopening item. Please try again later.";
-    }
+// Show success/error messages if they exist
+if (isset($success_message)) {
+    echo "<div class='alert alert-success'>$success_message</div>";
 }
-
-// Handle Close Buy Request
-if (isset($_GET['action']) && $_GET['action'] == 'close_buy_request' && isset($_GET['id'])) {
-    try {
-        $stmt = $pdo->prepare("UPDATE buy_requests SET status = 'closed' WHERE id = :id");
-        $stmt->execute([':id' => $_GET['id']]);
-        header("Location: admin_dashboard.php?action=buy_requests");
-        exit();
-    } catch (PDOException $e) {
-        error_log("Error closing buy request: " . $e->getMessage());
-        $error = "Error closing buy request. Please try again later.";
-    }
-}
-
-// Handle Reopen Buy Request
-if (isset($_GET['action']) && $_GET['action'] == 'reopen_buy_request' && isset($_GET['id'])) {
-    try {
-        $stmt = $pdo->prepare("UPDATE buy_requests SET status = 'open' WHERE id = :id");
-        $stmt->execute([':id' => $_GET['id']]);
-        header("Location: admin_dashboard.php?action=buy_requests");
-        exit();
-    } catch (PDOException $e) {
-        error_log("Error reopening buy request: " . $e->getMessage());
-        $error = "Error reopening buy request. Please try again later.";
-    }
+if (isset($error_message)) {
+    echo "<div class='alert alert-error'>$error_message</div>";
 }
 ?>
 
@@ -1539,21 +1580,17 @@ if (isset($_GET['action']) && $_GET['action'] == 'reopen_buy_request' && isset($
                                 <?php endif; ?>
                                 
                                 <div class="card-actions">
-                                    <a href="?action=edit_item&id=<?php echo $item['id']; ?>" class="admin-btn small">
+                                    <button class="admin-btn small" onclick="editItem(<?php echo $item['id']; ?>)">
                                         <i class="fas fa-edit"></i> Edit
-                                    </a>
-                                    <?php if ($item['status'] == 'open'): ?>
-                                        <a href="?action=close_item&id=<?php echo $item['id']; ?>" class="admin-btn small warning" onclick="return confirm('Are you sure you want to close this item?');">
-                                            <i class="fas fa-times"></i> Close
-                                        </a>
-                                    <?php else: ?>
-                                        <a href="?action=reopen_item&id=<?php echo $item['id']; ?>" class="admin-btn small success" onclick="return confirm('Are you sure you want to reopen this item?');">
-                                            <i class="fas fa-undo"></i> Reopen
-                                        </a>
-                                    <?php endif; ?>
-                                    <a href="?action=delete_item&id=<?php echo $item['id']; ?>" class="admin-btn small danger" onclick="return confirm('Are you sure you want to delete this item?');">
+                                    </button>
+                                    <button class="admin-btn small danger" onclick="deleteItem(<?php echo $item['id']; ?>)">
                                         <i class="fas fa-trash"></i> Delete
-                                    </a>
+                                    </button>
+                                    <?php if ($item['status'] !== 'closed'): ?>
+                                    <button class="admin-btn small warning" onclick="closeItem(<?php echo $item['id']; ?>)">
+                                        <i class="fas fa-times"></i> Close
+                                    </button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -1656,21 +1693,15 @@ if (isset($_GET['action']) && $_GET['action'] == 'reopen_buy_request' && isset($
                                 <?php endif; ?>
                                 
                                 <div class="card-actions">
-                                    <a href="?action=edit_buy_request&id=<?php echo $request['id']; ?>" class="admin-btn small">
+                                    <button class="admin-btn small" onclick="editItem(<?php echo $request['id']; ?>)">
                                         <i class="fas fa-edit"></i> Edit
-                                    </a>
-                                    <?php if ($request['status'] == 'open'): ?>
-                                        <a href="?action=close_buy_request&id=<?php echo $request['id']; ?>" class="admin-btn small warning" onclick="return confirm('Are you sure you want to close this buy request?');">
-                                            <i class="fas fa-times"></i> Close
-                                        </a>
-                                    <?php else: ?>
-                                        <a href="?action=reopen_buy_request&id=<?php echo $request['id']; ?>" class="admin-btn small success" onclick="return confirm('Are you sure you want to reopen this buy request?');">
-                                            <i class="fas fa-undo"></i> Reopen
-                                        </a>
-                                    <?php endif; ?>
-                                    <a href="?action=delete_buy_request&id=<?php echo $request['id']; ?>" class="admin-btn small danger" onclick="return confirm('Are you sure you want to delete this request?');">
+                                    </button>
+                                    <button class="admin-btn small warning" onclick="closeItem(<?php echo $request['id']; ?>)">
+                                        <i class="fas fa-times"></i> Close
+                                    </button>
+                                    <button class="admin-btn small danger" onclick="deleteItem(<?php echo $request['id']; ?>)">
                                         <i class="fas fa-trash"></i> Delete
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -2367,6 +2398,20 @@ function cancelEdit(itemId) {
     
     editForm.classList.remove('active');
     cardContent.style.display = 'block';
+}
+
+// Delete item function
+function deleteItem(itemId) {
+    if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="item_id" value="${itemId}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+    }
 }
 </script>
 </body>
