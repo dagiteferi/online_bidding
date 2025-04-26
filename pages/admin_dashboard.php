@@ -1808,60 +1808,48 @@ if (isset($error_message)) {
             <?php else: ?>
                 <div class="items-grid">
                     <?php foreach ($buy_requests as $request): ?>
-                        <div class="item-card <?php echo $request['status'] === 'closed' ? 'closed' : ''; ?>" data-item-id="<?php echo $request['id']; ?>" data-item-type="buy">
-                            <?php if ($request['image']): ?>
-                                <img src="../<?php echo htmlspecialchars($request['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?>" class="card-image">
-                            <?php else: ?>
-                                <div class="card-image" style="background: #f8f9fa; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-image" style="font-size: 48px; color: #ced4da;"></i>
-                                </div>
-                            <?php endif; ?>
-                            
-                            <div class="card-content">
-                                <div class="card-status <?php echo $request['status'] == 'open' ? 'status-open' : 'status-closed'; ?>">
-                                    <?php echo htmlspecialchars(ucfirst($request['status']), ENT_QUOTES, 'UTF-8'); ?>
-                                </div>
-                                
-                                <h3 class="card-title"><?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
-                                
-                                <p class="card-description"><?php echo htmlspecialchars($request['description'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                
-                                <div class="card-details">
-                                    <span class="card-detail">
-                                        <i class="fas fa-tag"></i> <?php echo htmlspecialchars($request['item_type'], ENT_QUOTES, 'UTF-8'); ?>
-                                    </span>
-                                </div>
-                                
-                                <div class="card-price">
-                                    <i class="fas fa-dollar-sign"></i> Max: <?php echo number_format($request['max_price'], 2); ?>
-                                </div>
-                                
-                                <div class="card-quantity">
-                                    <i class="fas fa-box"></i> <?php echo htmlspecialchars($request['quantity'], ENT_QUOTES, 'UTF-8'); ?> needed
-                                </div>
-                                
-                                <?php if ($request['close_time']): ?>
-                                    <div class="card-close-time" data-end-time="<?php echo strtotime($request['close_time']); ?>">
-                                        <i class="fas fa-clock"></i> Closes: <?php echo date('M d, Y H:i', strtotime($request['close_time'])); ?>
-                                    </div>
+                        <div class="item-card <?php echo $request['status'] === 'closed' ? 'closed' : ''; ?>" data-id="<?php echo $request['id']; ?>">
+                            <div class="card-image">
+                                <img src="<?php echo htmlspecialchars($request['image_path']); ?>" alt="<?php echo htmlspecialchars($request['item_name']); ?>">
+                                <?php if ($request['status'] === 'closed'): ?>
+                                    <div class="card-status">Closed</div>
                                 <?php endif; ?>
-                                
-                                <div class="card-actions">
-                                    <button class="admin-btn small" onclick="showEditForm(<?php echo $request['id']; ?>, 'buy')">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </button>
-                                    <?php if ($request['status'] == 'open'): ?>
-                                        <a href="?action=cancel_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn small warning" onclick="return confirm('Are you sure you want to close this buy request?');">
-                                            <i class="fas fa-times"></i> Close
-                                        </a>
-                                    <?php else: ?>
-                                        <a href="?action=reopen_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn small success" onclick="return confirm('Are you sure you want to reopen this buy request?');">
-                                            <i class="fas fa-redo"></i> Reopen
-                                        </a>
+                            </div>
+                            <div class="card-content">
+                                <div class="card-info">
+                                    <div class="info-row">
+                                        <span class="info-label">Name:</span>
+                                        <span class="info-value"><?php echo htmlspecialchars($request['item_name']); ?></span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Description:</span>
+                                        <span class="info-value"><?php echo htmlspecialchars($request['description']); ?></span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Max Price:</span>
+                                        <span class="info-value">$<?php echo number_format($request['max_price'], 2); ?></span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Quantity:</span>
+                                        <span class="info-value"><?php echo $request['quantity']; ?> needed</span>
+                                    </div>
+                                    <?php if ($request['close_time']): ?>
+                                        <div class="info-row">
+                                            <span class="info-label">Closes:</span>
+                                            <span class="info-value countdown" data-close-time="<?php echo $request['close_time']; ?>">
+                                                <?php echo date('M d, Y H:i', strtotime($request['close_time'])); ?>
+                                            </span>
+                                        </div>
                                     <?php endif; ?>
-                                    <a href="?action=delete_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn small danger" onclick="return confirm('Are you sure you want to delete this buy request? This action cannot be undone.');">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </a>
+                                </div>
+                                <div class="card-actions">
+                                    <button class="admin-btn primary" onclick="showEditForm(<?php echo $request['id']; ?>, 'buy')">Edit</button>
+                                    <button class="admin-btn danger" onclick="deleteItem(<?php echo $request['id']; ?>, 'buy')">Delete</button>
+                                    <?php if ($request['status'] === 'active'): ?>
+                                        <button class="admin-btn warning" onclick="closeItem(<?php echo $request['id']; ?>, 'buy')">Close</button>
+                                    <?php else: ?>
+                                        <button class="admin-btn success" onclick="reopenItem(<?php echo $request['id']; ?>, 'buy')">Reopen</button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
