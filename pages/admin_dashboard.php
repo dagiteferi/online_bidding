@@ -1648,7 +1648,7 @@ if (isset($error_message)) {
             <?php else: ?>
                 <div class="items-grid">
                     <?php foreach ($items as $item): ?>
-                        <div class="item-card <?php echo $item['status'] === 'closed' ? 'closed' : ''; ?>" data-item-id="<?php echo $item['id']; ?>" data-item-type="<?php echo $item['type']; ?>">
+                        <div class="item-card <?php echo $item['status'] === 'closed' ? 'closed' : ''; ?>" data-item-id="<?php echo $item['id']; ?>" data-item-type="sale">
                             <?php if ($item['image']): ?>
                                 <img src="../<?php echo htmlspecialchars($item['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?>" class="card-image">
                             <?php else: ?>
@@ -1694,26 +1694,26 @@ if (isset($error_message)) {
                                 <?php endif; ?>
                                 
                                 <div class="card-actions">
-                                    <button class="admin-btn small" onclick="editItem(<?php echo $item['id']; ?>, '<?php echo $item['type']; ?>')">
+                                    <button class="admin-btn small" onclick="editItem(<?php echo $item['id']; ?>, 'sale')">
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
-                                    <button class="admin-btn small danger" onclick="deleteItem(<?php echo $item['id']; ?>, '<?php echo $item['type']; ?>')">
+                                    <button class="admin-btn small danger" onclick="deleteItem(<?php echo $item['id']; ?>, 'sale')">
                                         <i class="fas fa-trash"></i> Delete
                                     </button>
                                     <?php if ($item['status'] === 'closed'): ?>
-                                    <button class="admin-btn small success" onclick="reopenItem(<?php echo $item['id']; ?>, '<?php echo $item['type']; ?>')">
+                                    <button class="admin-btn small success" onclick="reopenItem(<?php echo $item['id']; ?>, 'sale')">
                                         <i class="fas fa-redo"></i> Reopen
                                     </button>
                                     <?php else: ?>
-                                    <button class="admin-btn small warning" onclick="closeItem(<?php echo $item['id']; ?>, '<?php echo $item['type']; ?>')">
+                                    <button class="admin-btn small warning" onclick="closeItem(<?php echo $item['id']; ?>, 'sale')">
                                         <i class="fas fa-times"></i> Close
                                     </button>
                                     <?php endif; ?>
                                 </div>
                             </div>
                             
-                            <div class="edit-form-container" data-item-id="<?php echo $item['id']; ?>" data-item-type="<?php echo $item['type']; ?>">
-                                <form class="edit-form" onsubmit="event.preventDefault(); saveEdit(<?php echo $item['id']; ?>, '<?php echo $item['type']; ?>');">
+                            <div class="edit-form-container" data-item-id="<?php echo $item['id']; ?>" data-item-type="sale">
+                                <form class="edit-form" onsubmit="event.preventDefault(); saveEdit(<?php echo $item['id']; ?>, 'sale');">
                                     <h3>Edit Item</h3>
                                     <div class="form-group">
                                         <label for="item_name">Item Name</label>
@@ -1739,7 +1739,7 @@ if (isset($error_message)) {
                                         <button type="submit" class="admin-btn success">
                                             <i class="fas fa-save"></i> Save Changes
                                         </button>
-                                        <button type="button" class="admin-btn" onclick="cancelEdit(<?php echo $item['id']; ?>, '<?php echo $item['type']; ?>')">
+                                        <button type="button" class="admin-btn" onclick="cancelEdit(<?php echo $item['id']; ?>, 'sale')">
                                             <i class="fas fa-times"></i> Cancel
                                         </button>
                                     </div>
@@ -1806,7 +1806,7 @@ if (isset($error_message)) {
             <?php else: ?>
                 <div class="items-grid">
                     <?php foreach ($buy_requests as $request): ?>
-                        <div class="buy-request-card" data-request-id="<?php echo $request['id']; ?>">
+                        <div class="item-card <?php echo $request['status'] === 'closed' ? 'closed' : ''; ?>" data-item-id="<?php echo $request['id']; ?>" data-item-type="buy">
                             <?php if ($request['image']): ?>
                                 <img src="../<?php echo htmlspecialchars($request['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?>" class="card-image">
                             <?php else: ?>
@@ -1845,16 +1845,56 @@ if (isset($error_message)) {
                                 <?php endif; ?>
                                 
                                 <div class="card-actions">
-                                    <button class="admin-btn small" onclick="editItem(<?php echo $request['id']; ?>, '<?php echo $request['type']; ?>')">
+                                    <button class="admin-btn small" onclick="editItem(<?php echo $request['id']; ?>, 'buy')">
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
-                                    <button class="admin-btn small warning" onclick="closeItem(<?php echo $request['id']; ?>, '<?php echo $request['type']; ?>')">
-                                        <i class="fas fa-times"></i> Close
-                                    </button>
-                                    <button class="admin-btn small danger" onclick="deleteItem(<?php echo $request['id']; ?>, '<?php echo $request['type']; ?>')">
+                                    <button class="admin-btn small danger" onclick="deleteItem(<?php echo $request['id']; ?>, 'buy')">
                                         <i class="fas fa-trash"></i> Delete
                                     </button>
+                                    <?php if ($request['status'] === 'closed'): ?>
+                                    <button class="admin-btn small success" onclick="reopenItem(<?php echo $request['id']; ?>, 'buy')">
+                                        <i class="fas fa-redo"></i> Reopen
+                                    </button>
+                                    <?php else: ?>
+                                    <button class="admin-btn small warning" onclick="closeItem(<?php echo $request['id']; ?>, 'buy')">
+                                        <i class="fas fa-times"></i> Close
+                                    </button>
+                                    <?php endif; ?>
                                 </div>
+                            </div>
+                            
+                            <div class="edit-form-container" data-item-id="<?php echo $request['id']; ?>" data-item-type="buy">
+                                <form class="edit-form" onsubmit="event.preventDefault(); saveEdit(<?php echo $request['id']; ?>, 'buy');">
+                                    <h3>Edit Buy Request</h3>
+                                    <div class="form-group">
+                                        <label for="item_name">Item Name</label>
+                                        <input type="text" name="item_name" value="<?php echo htmlspecialchars($request['item_name']); ?>" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="description">Description</label>
+                                        <textarea name="description" required><?php echo htmlspecialchars($request['description']); ?></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="price">Maximum Price</label>
+                                        <input type="number" name="price" value="<?php echo $request['price']; ?>" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="quantity">Quantity</label>
+                                        <input type="number" name="quantity" value="<?php echo $request['quantity']; ?>" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="close_time">Close Time</label>
+                                        <input type="datetime-local" name="close_time" value="<?php echo date('Y-m-d\TH:i', strtotime($request['close_time'])); ?>">
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="submit" class="admin-btn success">
+                                            <i class="fas fa-save"></i> Save Changes
+                                        </button>
+                                        <button type="button" class="admin-btn" onclick="cancelEdit(<?php echo $request['id']; ?>, 'buy')">
+                                            <i class="fas fa-times"></i> Cancel
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     <?php endforeach; ?>
