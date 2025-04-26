@@ -978,18 +978,35 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $item_id = $_POST['item_id'] ?? 0;
-    $item_type = $_POST['item_type'] ?? ''; // Add this line to track item type
+    $item_type = $_POST['item_type'] ?? '';
     
     try {
+        $pdo->beginTransaction();
+        
         switch ($action) {
+            case 'delete':
+                // First delete related records
+                if ($item_type === 'buy') {
+                    $stmt = $pdo->prepare("DELETE FROM offers WHERE buy_request_id = ?");
+                } else {
+                    $stmt = $pdo->prepare("DELETE FROM bids WHERE item_id = ?");
+                }
+                $stmt->execute([$item_id]);
+                
+                // Then delete the item
+                $stmt = $pdo->prepare("DELETE FROM items WHERE id = ?");
+                $stmt->execute([$item_id]);
+                $success_message = "Item deleted successfully";
+                break;
+                
             case 'close':
-                $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE id = ?");
+                $stmt = $pdo->prepare("UPDATE items SET status = 'closed', close_time = NOW() WHERE id = ?");
                 $stmt->execute([$item_id]);
                 $success_message = "Item closed successfully";
                 break;
                 
             case 'reopen':
-                $stmt = $pdo->prepare("UPDATE items SET status = 'open' WHERE id = ?");
+                $stmt = $pdo->prepare("UPDATE items SET status = 'open', close_time = NULL WHERE id = ?");
                 $stmt->execute([$item_id]);
                 $success_message = "Item reopened successfully";
                 break;
@@ -1006,8 +1023,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $success_message = "Item updated successfully";
                 break;
+                
+            default:
+                throw new Exception("Invalid action specified");
         }
+        
+        $pdo->commit();
     } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         $error_message = "An error occurred: " . $e->getMessage();
     }
 }
@@ -1848,248 +1873,21 @@ if (isset($error_message)) {
                                     <button class="admin-btn small" onclick="editItem(<?php echo $request['id']; ?>, 'buy')">
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
-                                    <button class="admin-btn small danger" onclick="deleteItem(<?php echo $request['id']; ?>, 'buy')">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
-                                    <?php if ($request['status'] === 'closed'): ?>
-                                    <button class="admin-btn small success" onclick="reopenItem(<?php echo $request['id']; ?>, 'buy')">
-                                        <i class="fas fa-redo"></i> Reopen
-                                    </button>
+                                    <?php if ($request['status'] == 'open'): ?>
+                                        <a href="?action=cancel_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn small warning" onclick="return confirm('Are you sure you want to close this buy request?');">
+                                            <i class="fas fa-times"></i> Close
+                                        </a>
                                     <?php else: ?>
-                                    <button class="admin-btn small warning" onclick="closeItem(<?php echo $request['id']; ?>, 'buy')">
-                                        <i class="fas fa-times"></i> Close
-                                    </button>
+                                        <a href="?action=reopen_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn small success" onclick="return confirm('Are you sure you want to reopen this buy request?');">
+                                            <i class="fas fa-redo"></i> Reopen
+                                        </a>
                                     <?php endif; ?>
+                                    <a href="?action=delete_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn small danger" onclick="return confirm('Are you sure you want to delete this buy request? This action cannot be undone.');">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </a>
                                 </div>
                             </div>
                             
-                            <div class="edit-form-container" data-item-id="<?php echo $request['id']; ?>" data-item-type="buy">
-                                <form class="edit-form" onsubmit="event.preventDefault(); saveEdit(<?php echo $request['id']; ?>, 'buy');">
-                                    <h3>Edit Buy Request</h3>
-                                    <div class="form-group">
-                                        <label for="item_name">Item Name</label>
-                                        <input type="text" name="item_name" value="<?php echo htmlspecialchars($request['item_name']); ?>" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="description">Description</label>
-                                        <textarea name="description" required><?php echo htmlspecialchars($request['description']); ?></textarea>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="price">Maximum Price</label>
-                                        <input type="number" name="price" value="<?php echo $request['price']; ?>" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="quantity">Quantity</label>
-                                        <input type="number" name="quantity" value="<?php echo $request['quantity']; ?>" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="close_time">Close Time</label>
-                                        <input type="datetime-local" name="close_time" value="<?php echo date('Y-m-d\TH:i', strtotime($request['close_time'])); ?>">
-                                    </div>
-                                    <div class="form-actions">
-                                        <button type="submit" class="admin-btn success">
-                                            <i class="fas fa-save"></i> Save Changes
-                                        </button>
-                                        <button type="button" class="admin-btn" onclick="cancelEdit(<?php echo $request['id']; ?>, 'buy')">
-                                            <i class="fas fa-times"></i> Cancel
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-
-                <?php if ($total_pages > 1): ?>
-                    <div class="pagination">
-                        <?php if ($page > 1): ?>
-                            <a href="?action=buy_requests&page=<?php echo $page - 1; ?>" class="admin-btn small">Previous</a>
-                        <?php endif; ?>
-                        
-                        <?php if ($page < $total_pages): ?>
-                            <a href="?action=buy_requests&page=<?php echo $page + 1; ?>" class="admin-btn small">Next</a>
-                        <?php endif; ?>
-                    </div>
-                <?php endif; ?>
-            <?php endif; ?>
-
-        <?php elseif ($_GET['action'] == 'view_offers' && isset($buy_request_offers)): ?>
-            <!-- View Offers for Buy Request -->
-            <div class="table-card">
-                <h2><i class="fas fa-exchange-alt"></i> Offers for Buy Request ID: <?php echo htmlspecialchars($request_id, ENT_QUOTES, 'UTF-8'); ?></h2>
-                <?php if (empty($buy_request_offers)): ?>
-                    <p>No offers found for this buy request.</p>
-                <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Offer ID</th>
-                                    <th>Item Name</th>
-                                    <th>Offered By</th>
-                                    <th>Offered Price ($)</th>
-                                    <th>Quantity</th>
-                                    <th>Created At</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($buy_request_offers as $offer): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['username'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['offered_price'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td>
-                                            <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=accept" class="admin-btn small success" onclick="return confirm('Are you sure you want to accept this offer?');">
-                                                <i class="fas fa-check"></i> Accept
-                                            </a>
-                                            <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=reject" class="admin-btn small warning" onclick="return confirm('Are you sure you want to reject this offer?');">
-                                                <i class="fas fa-times"></i> Reject
-                                            </a>
-                                            <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn small danger" onclick="return confirm('Are you sure you want to delete this offer?');">
-                                                <i class="fas fa-trash"></i> Delete
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
-                <a href="?action=buy_requests" class="admin-btn">
-                    <i class="fas fa-arrow-left"></i> Back to Buy Requests
-                </a>
-            </div>
-
-        <?php elseif ($_GET['action'] == 'offers'): ?>
-            <!-- Pending Offers -->
-            <div class="table-card">
-                <h2><i class="fas fa-exchange-alt"></i> Pending Offers</h2>
-                
-                <!-- Buy Offers (Offers on your Items for Sale) -->
-                <h3>Buy Offers (On Your Items for Sale)</h3>
-                <?php if (empty($buy_offers)): ?>
-                    <p>No pending buy offers.</p>
-                <?php else: ?>
-                    <div class="sort-controls">
-                        <form method="GET" style="display: flex; gap: 10px; margin-bottom: 15px;">
-                            <input type="hidden" name="action" value="offers">
-                            <label>Sort By:</label>
-                            <select name="buy_sort_field" class="input">
-                                <option value="offered_price" <?php echo $buy_sort_field == 'offered_price' ? 'selected' : ''; ?>>Price</option>
-                                <option value="created_at" <?php echo $buy_sort_field == 'created_at' ? 'selected' : ''; ?>>Date</option>
-                            </select>
-                            <select name="buy_sort_order" class="input">
-                                <option value="ASC" <?php echo $buy_sort_order == 'ASC' ? 'selected' : ''; ?>>Ascending</option>
-                                <option value="DESC" <?php echo $buy_sort_order == 'DESC' ? 'selected' : ''; ?>>Descending</option>
-                            </select>
-                            <button type="submit" class="admin-btn small">Sort</button>
-                        </form>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Offer ID</th>
-                                    <th>Item Name</th>
-                                    <th>Offered By</th>
-                                    <th>Offered Price ($)</th>
-                                    <th>Quantity</th>
-                                    <th>Created At</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($buy_offers as $offer): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['username'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['offered_price'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td>
-                                            <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=accept" class="admin-btn small success" onclick="return confirm('Are you sure you want to accept this offer?');">
-                                                <i class="fas fa-check"></i> Accept
-                                            </a>
-                                            <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=reject" class="admin-btn small warning" onclick="return confirm('Are you sure you want to reject this offer?');">
-                                                <i class="fas fa-times"></i> Reject
-                                            </a>
-                                            <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn small danger" onclick="return confirm('Are you sure you want to delete this offer?');">
-                                                <i class="fas fa-trash"></i> Delete
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
-                
-                <!-- Sell Offers (Offers on your Buy Requests) -->
-                <h3>Sell Offers (On Your Buy Requests)</h3>
-                <?php if (empty($sell_offers)): ?>
-                    <p>No pending sell offers.</p>
-                <?php else: ?>
-                    <div class="sort-controls">
-                        <form method="GET" style="display: flex; gap: 10px; margin-bottom: 15px;">
-                            <input type="hidden" name="action" value="offers">
-                            <label>Sort By:</label>
-                            <select name="sell_sort_field" class="input">
-                                <option value="offered_price" <?php echo $sell_sort_field == 'offered_price' ? 'selected' : ''; ?>>Price</option>
-                                <option value="created_at" <?php echo $sell_sort_field == 'created_at' ? 'selected' : ''; ?>>Date</option>
-                            </select>
-                            <select name="sell_sort_order" class="input">
-                                <option value="ASC" <?php echo $sell_sort_order == 'ASC' ? 'selected' : ''; ?>>Ascending</option>
-                                <option value="DESC" <?php echo $sell_sort_order == 'DESC' ? 'selected' : ''; ?>>Descending</option>
-                            </select>
-                            <button type="submit" class="admin-btn small">Sort</button>
-                        </form>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Offer ID</th>
-                                    <th>Item Name</th>
-                                    <th>Offered By</th>
-                                    <th>Offered Price ($)</th>
-                                    <th>Quantity</th>
-                                    <th>Created At</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($sell_offers as $offer): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($offer['id'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['username'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['offered_price'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($offer['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td>
-                                            <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=accept" class="admin-btn small success" onclick="return confirm('Are you sure you want to accept this offer?');">
-                                                <i class="fas fa-check"></i> Accept
-                                            </a>
-                                            <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=reject" class="admin-btn small warning" onclick="return confirm('Are you sure you want to reject this offer?');">
-                                                <i class="fas fa-times"></i> Reject
-                                            </a>
-                                            <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn small danger" onclick="return confirm('Are you sure you want to delete this offer?');">
-                                                <i class="fas fa-trash"></i> Delete
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
-            </div>
-
         <?php elseif ($_GET['action'] == 'transactions'): ?>
             <!-- Transactions -->
             <div class="table-card">
@@ -2578,50 +2376,43 @@ if (isset($error_message)) {
 
     // Delete item function
     function deleteItem(itemId, itemType) {
-        if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
-            const formData = new FormData();
-            formData.append('action', 'delete');
-            formData.append('item_id', itemId);
-            formData.append('item_type', itemType);
-            
-            fetch(window.location.href, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (response.ok) {
-                    window.location.reload();
-                } else {
-                    throw new Error('Network response was not ok');
+        if (confirm('Are you sure you want to delete this item?')) {
+            $.ajax({
+                url: 'admin_dashboard.php',
+                type: 'POST',
+                data: {
+                    action: 'delete',
+                    item_id: itemId,
+                    item_type: itemType
+                },
+                success: function(response) {
+                    showAlert('Item deleted successfully', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                },
+                error: function() {
+                    showAlert('Error deleting item', 'error');
                 }
-            })
-            .catch(error => {
-                showAlert('Error deleting item: ' + error.message, 'error');
             });
         }
     }
 
     // Close item function
-    function closeItem(itemId, itemType) {
+    function closeItem(itemId) {
         if (confirm('Are you sure you want to close this item?')) {
-            const formData = new FormData();
-            formData.append('action', 'close');
-            formData.append('item_id', itemId);
-            formData.append('item_type', itemType);
-            
-            fetch(window.location.href, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (response.ok) {
-                    window.location.reload();
-                } else {
-                    throw new Error('Network response was not ok');
+            $.ajax({
+                url: 'admin_dashboard.php',
+                type: 'POST',
+                data: {
+                    action: 'close',
+                    item_id: itemId
+                },
+                success: function(response) {
+                    showAlert('Item closed successfully', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                },
+                error: function() {
+                    showAlert('Error closing item', 'error');
                 }
-            })
-            .catch(error => {
-                showAlert('Error closing item: ' + error.message, 'error');
             });
         }
     }
@@ -2640,41 +2431,174 @@ if (isset($error_message)) {
 
     // Show success/error messages
     function showAlert(message, type) {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type}`;
-        alertDiv.textContent = message;
+        const alertDiv = $('<div>')
+            .addClass(`alert alert-${type}`)
+            .text(message)
+            .appendTo('body');
         
-        document.body.appendChild(alertDiv);
-        
-        setTimeout(() => {
-            alertDiv.remove();
-        }, 3000);
+        setTimeout(() => alertDiv.remove(), 3000);
     }
 
     // Reopen item function
-    function reopenItem(itemId, itemType) {
+    function reopenItem(itemId) {
         if (confirm('Are you sure you want to reopen this item?')) {
-            const formData = new FormData();
-            formData.append('action', 'reopen');
-            formData.append('item_id', itemId);
-            formData.append('item_type', itemType);
-            
-            fetch(window.location.href, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (response.ok) {
-                    window.location.reload();
-                } else {
-                    throw new Error('Network response was not ok');
+            $.ajax({
+                url: 'admin_dashboard.php',
+                type: 'POST',
+                data: {
+                    action: 'reopen',
+                    item_id: itemId
+                },
+                success: function(response) {
+                    showAlert('Item reopened successfully', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                },
+                error: function() {
+                    showAlert('Error reopening item', 'error');
                 }
-            })
-            .catch(error => {
-                showAlert('Error reopening item: ' + error.message, 'error');
             });
         }
     }
+
+    // JavaScript functions for item actions
+    function deleteItem(itemId, itemType) {
+        if (confirm('Are you sure you want to delete this item?')) {
+            $.ajax({
+                url: 'admin_dashboard.php',
+                type: 'POST',
+                data: {
+                    action: 'delete',
+                    item_id: itemId,
+                    item_type: itemType
+                },
+                success: function(response) {
+                    showAlert('Item deleted successfully', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                },
+                error: function() {
+                    showAlert('Error deleting item', 'error');
+                }
+            });
+        }
+    }
+
+    function closeItem(itemId) {
+        if (confirm('Are you sure you want to close this item?')) {
+            $.ajax({
+                url: 'admin_dashboard.php',
+                type: 'POST',
+                data: {
+                    action: 'close',
+                    item_id: itemId
+                },
+                success: function(response) {
+                    showAlert('Item closed successfully', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                },
+                error: function() {
+                    showAlert('Error closing item', 'error');
+                }
+            });
+        }
+    }
+
+    function reopenItem(itemId) {
+        if (confirm('Are you sure you want to reopen this item?')) {
+            $.ajax({
+                url: 'admin_dashboard.php',
+                type: 'POST',
+                data: {
+                    action: 'reopen',
+                    item_id: itemId
+                },
+                success: function(response) {
+                    showAlert('Item reopened successfully', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                },
+                error: function() {
+                    showAlert('Error reopening item', 'error');
+                }
+            });
+        }
+    }
+
+    function showEditForm(itemId, itemType) {
+        const form = $(`#edit-form-${itemId}`);
+        if (form.length) {
+            form.show();
+        }
+    }
+
+    function hideEditForm(itemId) {
+        const form = $(`#edit-form-${itemId}`);
+        if (form.length) {
+            form.hide();
+        }
+    }
+
+    function saveEdit(itemId) {
+        const form = $(`#edit-form-${itemId}`);
+        const formData = new FormData(form[0]);
+        formData.append('action', 'update');
+        formData.append('item_id', itemId);
+
+        $.ajax({
+            url: 'admin_dashboard.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                showAlert('Item updated successfully', 'success');
+                setTimeout(() => location.reload(), 1500);
+            },
+            error: function() {
+                showAlert('Error updating item', 'error');
+            }
+        });
+    }
+
+    function showAlert(message, type) {
+        const alertDiv = $('<div>')
+            .addClass(`alert alert-${type}`)
+            .text(message)
+            .appendTo('body');
+        
+        setTimeout(() => alertDiv.remove(), 3000);
+    }
+
+    // Initialize countdown timers
+    function initializeCountdowns() {
+        $('.countdown').each(function() {
+            const endTime = new Date($(this).data('end-time')).getTime();
+            const timer = $(this);
+            
+            const updateTimer = () => {
+                const now = new Date().getTime();
+                const distance = endTime - now;
+                
+                if (distance < 0) {
+                    timer.html('Closed');
+                    return;
+                }
+                
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                
+                timer.html(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+            };
+            
+            updateTimer();
+            setInterval(updateTimer, 1000);
+        });
+    }
+
+    // Initialize when document is ready
+    $(document).ready(function() {
+        initializeCountdowns();
+    });
 </script>
 </body>
 </html>
