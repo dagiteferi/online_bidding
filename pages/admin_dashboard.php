@@ -1493,7 +1493,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'reopen_buy_request' && isset($
             <?php else: ?>
                 <div class="items-grid">
                     <?php foreach ($items as $item): ?>
-                        <div class="item-card">
+                        <div class="item-card" data-item-id="<?php echo $item['id']; ?>">
                             <?php if ($item['image']): ?>
                                 <img src="../<?php echo htmlspecialchars($item['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?>" class="card-image">
                             <?php else: ?>
@@ -1530,7 +1530,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'reopen_buy_request' && isset($
                                 </div>
                                 
                                 <?php if ($item['close_time']): ?>
-                                    <div class="card-close-time">
+                                    <div class="card-close-time" data-end-time="<?php echo strtotime($item['close_time']); ?>">
                                         <i class="fas fa-clock"></i> 
                                         <span class="countdown" data-close-time="<?php echo strtotime($item['close_time']); ?>">
                                             Closes in: <span class="time-remaining"></span>
@@ -1617,7 +1617,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'reopen_buy_request' && isset($
             <?php else: ?>
                 <div class="items-grid">
                     <?php foreach ($buy_requests as $request): ?>
-                        <div class="buy-request-card">
+                        <div class="buy-request-card" data-request-id="<?php echo $request['id']; ?>">
                             <?php if ($request['image']): ?>
                                 <img src="../<?php echo htmlspecialchars($request['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?>" class="card-image">
                             <?php else: ?>
@@ -1650,7 +1650,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'reopen_buy_request' && isset($
                                 </div>
                                 
                                 <?php if ($request['close_time']): ?>
-                                    <div class="card-close-time">
+                                    <div class="card-close-time" data-end-time="<?php echo strtotime($request['close_time']); ?>">
                                         <i class="fas fa-clock"></i> Closes: <?php echo date('M d, Y H:i', strtotime($request['close_time'])); ?>
                                     </div>
                                 <?php endif; ?>
@@ -2263,38 +2263,108 @@ if (isset($_GET['action']) && $_GET['action'] == 'reopen_buy_request' && isset($
 <!-- Add this JavaScript at the bottom of the file, before the closing </body> tag -->
 <script>
 // Countdown timer function
-function updateCountdowns() {
-    const countdowns = document.querySelectorAll('.countdown');
-    const now = Math.floor(Date.now() / 1000);
+function updateCountdown() {
+    const countdownElements = document.querySelectorAll('.card-close-time');
+    const now = new Date().getTime();
 
-    countdowns.forEach(countdown => {
-        const closeTime = parseInt(countdown.dataset.closeTime);
-        const timeRemaining = closeTime - now;
-        const timeSpan = countdown.querySelector('.time-remaining');
-
-        if (timeRemaining <= 0) {
-            timeSpan.textContent = 'Closed';
-            countdown.parentElement.style.backgroundColor = '#ffe6e6';
-        } else {
-            const days = Math.floor(timeRemaining / 86400);
-            const hours = Math.floor((timeRemaining % 86400) / 3600);
-            const minutes = Math.floor((timeRemaining % 3600) / 60);
-            const seconds = timeRemaining % 60;
-
-            let timeString = '';
-            if (days > 0) timeString += `${days}d `;
-            if (hours > 0) timeString += `${hours}h `;
-            if (minutes > 0) timeString += `${minutes}m `;
-            timeString += `${seconds}s`;
-
-            timeSpan.textContent = timeString;
+    countdownElements.forEach(element => {
+        const endTime = new Date(element.getAttribute('data-end-time')).getTime();
+        const itemId = element.getAttribute('data-item-id');
+        const statusBadge = document.querySelector(`.item-card[data-item-id="${itemId}"] .card-status`);
+        
+        if (endTime <= now || statusBadge.textContent.trim() === 'CLOSED') {
+            element.innerHTML = '<i class="fas fa-clock"></i> CLOSED';
+            const card = document.querySelector(`.item-card[data-item-id="${itemId}"]`);
+            card.classList.add('closed');
+            return;
         }
+
+        const distance = endTime - now;
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        element.innerHTML = `<i class="fas fa-clock"></i> ${days}d ${hours}h ${minutes}m ${seconds}s`;
     });
 }
 
-// Update countdowns every second
-setInterval(updateCountdowns, 1000);
-updateCountdowns(); // Initial update
+// Update countdown every second
+setInterval(updateCountdown, 1000);
+updateCountdown();
+
+// Close item function
+function closeItem(itemId) {
+    if (confirm('Are you sure you want to close this item?')) {
+        fetch('close_item.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `item_id=${itemId}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const card = document.querySelector(`.item-card[data-item-id="${itemId}"]`);
+                card.classList.add('closed');
+                const statusBadge = card.querySelector('.card-status');
+                statusBadge.textContent = 'CLOSED';
+                const closeTime = card.querySelector('.card-close-time');
+                closeTime.innerHTML = '<i class="fas fa-clock"></i> CLOSED';
+            } else {
+                alert('Error closing item: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while closing the item');
+        });
+    }
+}
+
+// Edit item function
+function editItem(itemId) {
+    const card = document.querySelector(`.item-card[data-item-id="${itemId}"]`);
+    const editForm = card.querySelector('.edit-form-container');
+    const cardContent = card.querySelector('.card-content');
+    
+    cardContent.style.display = 'none';
+    editForm.classList.add('active');
+}
+
+// Save edit function
+function saveEdit(itemId) {
+    const form = document.querySelector(`.item-card[data-item-id="${itemId}"] .edit-form`);
+    const formData = new FormData(form);
+    
+    fetch('update_item.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error updating item: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while updating the item');
+    });
+}
+
+// Cancel edit function
+function cancelEdit(itemId) {
+    const card = document.querySelector(`.item-card[data-item-id="${itemId}"]`);
+    const editForm = card.querySelector('.edit-form-container');
+    const cardContent = card.querySelector('.card-content');
+    
+    editForm.classList.remove('active');
+    cardContent.style.display = 'block';
+}
 </script>
 </body>
 </html>
