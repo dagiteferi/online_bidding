@@ -973,6 +973,59 @@ try {
 } catch (PDOException $e) {
     $error = "Error fetching transactions: " . $e->getMessage();
 }
+
+// Add these handlers at the top of the file with other action handlers
+// Handle Close Item
+if (isset($_GET['action']) && $_GET['action'] == 'close_item' && isset($_GET['id'])) {
+    try {
+        $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE id = :id");
+        $stmt->execute([':id' => $_GET['id']]);
+        header("Location: admin_dashboard.php?action=items_for_sell");
+        exit();
+    } catch (PDOException $e) {
+        error_log("Error closing item: " . $e->getMessage());
+        $error = "Error closing item. Please try again later.";
+    }
+}
+
+// Handle Reopen Item
+if (isset($_GET['action']) && $_GET['action'] == 'reopen_item' && isset($_GET['id'])) {
+    try {
+        $stmt = $pdo->prepare("UPDATE items SET status = 'open' WHERE id = :id");
+        $stmt->execute([':id' => $_GET['id']]);
+        header("Location: admin_dashboard.php?action=items_for_sell");
+        exit();
+    } catch (PDOException $e) {
+        error_log("Error reopening item: " . $e->getMessage());
+        $error = "Error reopening item. Please try again later.";
+    }
+}
+
+// Handle Close Buy Request
+if (isset($_GET['action']) && $_GET['action'] == 'close_buy_request' && isset($_GET['id'])) {
+    try {
+        $stmt = $pdo->prepare("UPDATE buy_requests SET status = 'closed' WHERE id = :id");
+        $stmt->execute([':id' => $_GET['id']]);
+        header("Location: admin_dashboard.php?action=buy_requests");
+        exit();
+    } catch (PDOException $e) {
+        error_log("Error closing buy request: " . $e->getMessage());
+        $error = "Error closing buy request. Please try again later.";
+    }
+}
+
+// Handle Reopen Buy Request
+if (isset($_GET['action']) && $_GET['action'] == 'reopen_buy_request' && isset($_GET['id'])) {
+    try {
+        $stmt = $pdo->prepare("UPDATE buy_requests SET status = 'open' WHERE id = :id");
+        $stmt->execute([':id' => $_GET['id']]);
+        header("Location: admin_dashboard.php?action=buy_requests");
+        exit();
+    } catch (PDOException $e) {
+        error_log("Error reopening buy request: " . $e->getMessage());
+        $error = "Error reopening buy request. Please try again later.";
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -1397,178 +1450,242 @@ try {
             </div>
 
         <?php elseif ($_GET['action'] == 'items_for_sell'): ?>
-            <!-- Items for Sale -->
-            <div class="table-card">
-                <h2><i class="fas fa-box-open"></i> Items for Sale</h2>
-                <?php if (empty($items)): ?>
-                    <p>No items found.</p>
-                <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Supplier Name</th>
-                                    <th>Item Name</th>
-                                    <th>Item Types</th>
-                                    <th>Description</th>
-                                    <th>Price ($)</th>
-                                    <th>Quantity</th>
-                                    <th>Status</th>
-                                    <th>Image</th>
-                                    <th>Close Time</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($items as $item): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($item['id'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($item['supplier_name'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($item['item_type'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($item['description'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($item['price'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($item['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($item['status'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td>
-                                            <?php if (!empty($item['image']) && file_exists('../' . $item['image'])): ?>
-                                                <img src="../<?php echo htmlspecialchars($item['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="Item Image" class="item-image" style="max-width: 100px;">
-                                            <?php else: ?>
-                                                No Image
-                                            <?php endif; ?>
-                                        </td>
-                                        <td><?php echo htmlspecialchars($item['close_time'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td>
-                                            <a href="?action=edit_item&item_id=<?php echo $item['id']; ?>" class="admin-btn small">
-                                                <i class="fas fa-edit"></i> Edit
-                                            </a>
-                                            <?php if ($item['status'] == 'open'): ?>
-                                                <a href="?action=close_item&item_id=<?php echo $item['id']; ?>" class="admin-btn small warning" onclick="return confirm('Are you sure you want to close this item?');">
-                                                    <i class="fas fa-times"></i> Close
-                                                </a>
-                                            <?php else: ?>
-                                                <a href="?action=reopen_item&item_id=<?php echo $item['id']; ?>" class="admin-btn small success" onclick="return confirm('Are you sure you want to reopen this item?');">
-                                                    <i class="fas fa-undo"></i> Reopen
-                                                </a>
-                                            <?php endif; ?>
-                                            <a href="?action=delete_item&item_id=<?php echo $item['id']; ?>" class="admin-btn small danger" onclick="return confirm('Are you sure you want to delete this item? This will also delete all related offers and transactions.');">
-                                                <i class="fas fa-trash"></i> Delete
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                    <!-- Pagination -->
-                    <div class="pagination">
-                        <?php
-                        $total_pages = ceil($total_items / $items_per_page);
-                        if ($total_pages > 1):
-                        ?>
-                            <div class="pagination-links">
-                                <?php if ($page > 1): ?>
-                                    <a href="?action=items_for_sell&page=<?php echo $page - 1; ?>" class="admin-btn small">Previous</a>
-                                <?php endif; ?>
-                                <span>Page <?php echo $page; ?> of <?php echo $total_pages; ?></span>
-                                <?php if ($page < $total_pages): ?>
-                                    <a href="?action=items_for_sell&page=<?php echo $page + 1; ?>" class="admin-btn small">Next</a>
-                                <?php endif; ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                <?php endif; ?>
-                <a href="?action=post_sell" class="admin-btn">
-                    <i class="fas fa-plus"></i> Add New Item
-                </a>
+            <?php
+            // Initialize items array
+            $items = [];
+            
+            // Pagination setup
+            $items_per_page = 12;
+            $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+            $offset = ($page - 1) * $items_per_page;
+            
+            try {
+                // Get total count of items
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM items WHERE posted_by = :user_id");
+                $stmt->execute([':user_id' => $_SESSION['user_id']]);
+                $total_items = $stmt->fetchColumn();
+                
+                // Calculate total pages
+                $total_pages = ceil($total_items / $items_per_page);
+                
+                // Fetch items with pagination
+                $stmt = $pdo->prepare("SELECT * FROM items WHERE posted_by = :user_id ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
+                $stmt->bindValue(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
+                $stmt->bindValue(':limit', $items_per_page, PDO::PARAM_INT);
+                $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+                $stmt->execute();
+                $items = $stmt->fetchAll();
+            } catch (PDOException $e) {
+                error_log("Error fetching items: " . $e->getMessage());
+                $error = "Error fetching items. Please try again later.";
+            }
+            ?>
+            
+            <div class="section-title">
+                <h2>Items for Sale</h2>
+                <a href="?action=post_sell" class="admin-btn">Post New Item</a>
             </div>
 
-        <?php elseif ($_GET['action'] == 'buy_requests'): ?>
-            <!-- Active Buy Requests -->
-            <div class="table-card">
-                <h2><i class="fas fa-hand-holding-usd"></i> Active Buy Requests</h2>
-                <?php if (empty($requests)): ?>
-                    <p>No buy requests found.</p>
-                <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Item Name</th>
-                                    <th>Item Types</th>
-                                    <th>Description</th>
-                                    <th>Max Price ($)</th>
-                                    <th>Quantity</th>
-                                    <th>Status</th>
-                                    <th>Image</th>
-                                    <th>Close Time</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($requests as $request): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($request['id'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($request['item_type'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($request['description'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($request['max_price'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($request['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($request['status'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td>
-                                            <?php if (!empty($request['image']) && file_exists('../' . $request['image'])): ?>
-                                                <img src="../<?php echo htmlspecialchars($request['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="Request Image" class="item-image" style="max-width: 100px;">
-                                            <?php else: ?>
-                                                No Image
-                                            <?php endif; ?>
-                                        </td>
-                                        <td><?php echo htmlspecialchars($request['close_time'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td>
-                                            <a href="?action=view_offers&request_id=<?php echo $request['id']; ?>" class="admin-btn small">
-                                                <i class="fas fa-eye"></i> View Offers
-                                            </a>
-                                            <?php if ($request['status'] == 'open'): ?>
-                                                <a href="?action=cancel_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn small warning" onclick="return confirm('Are you sure you want to cancel this buy request?');">
-                                                    <i class="fas fa-times"></i> Cancel
-                                                </a>
-                                            <?php else: ?>
-                                                <a href="?action=reopen_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn small success" onclick="return confirm('Are you sure you want to reopen this buy request?');">
-                                                    <i class="fas fa-undo"></i> Reopen
-                                                </a>
-                                            <?php endif; ?>
-                                            <a href="?action=delete_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn small danger" onclick="return confirm('Are you sure you want to delete this buy request? This will also delete all related offers and transactions.');">
-                                                <i class="fas fa-trash"></i> Delete
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                    <!-- Pagination -->
-                    <div class="pagination">
-                        <?php
-                        $total_pages = ceil($total_requests / $items_per_page);
-                        if ($total_pages > 1):
-                        ?>
-                            <div class="pagination-links">
-                                <?php if ($page > 1): ?>
-                                    <a href="?action=buy_requests&page=<?php echo $page - 1; ?>" class="admin-btn small">Previous</a>
+            <?php if (empty($items)): ?>
+                <div class="no-items">
+                    <p>No items found. <a href="?action=post_sell">Post your first item</a></p>
+                </div>
+            <?php else: ?>
+                <div class="items-grid">
+                    <?php foreach ($items as $item): ?>
+                        <div class="item-card">
+                            <?php if ($item['image']): ?>
+                                <img src="../<?php echo htmlspecialchars($item['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?>" class="card-image">
+                            <?php else: ?>
+                                <div class="card-image" style="background: #f8f9fa; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-image" style="font-size: 48px; color: #ced4da;"></i>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <div class="card-content">
+                                <div class="card-status <?php echo $item['status'] == 'open' ? 'status-open' : 'status-closed'; ?>">
+                                    <?php echo htmlspecialchars(ucfirst($item['status']), ENT_QUOTES, 'UTF-8'); ?>
+                                </div>
+                                
+                                <h3 class="card-title"><?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                                
+                                <div class="card-supplier">
+                                    <i class="fas fa-store"></i> <?php echo htmlspecialchars($item['supplier_name'], ENT_QUOTES, 'UTF-8'); ?>
+                                </div>
+                                
+                                <p class="card-description"><?php echo htmlspecialchars($item['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                
+                                <div class="card-details">
+                                    <span class="card-detail">
+                                        <i class="fas fa-tag"></i> <?php echo htmlspecialchars($item['item_type'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </span>
+                                </div>
+                                
+                                <div class="card-price">
+                                    <i class="fas fa-dollar-sign"></i> <?php echo number_format($item['price'], 2); ?>
+                                </div>
+                                
+                                <div class="card-quantity">
+                                    <i class="fas fa-box"></i> <?php echo htmlspecialchars($item['quantity'], ENT_QUOTES, 'UTF-8'); ?> available
+                                </div>
+                                
+                                <?php if ($item['close_time']): ?>
+                                    <div class="card-close-time">
+                                        <i class="fas fa-clock"></i> Closes: <?php echo date('M d, Y H:i', strtotime($item['close_time'])); ?>
+                                    </div>
                                 <?php endif; ?>
-                                <span>Page <?php echo $page; ?> of <?php echo $total_pages; ?></span>
-                                <?php if ($page < $total_pages): ?>
-                                    <a href="?action=buy_requests&page=<?php echo $page + 1; ?>" class="admin-btn small">Next</a>
-                                <?php endif; ?>
+                                
+                                <div class="card-actions">
+                                    <a href="?action=edit_item&id=<?php echo $item['id']; ?>" class="admin-btn small">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <?php if ($item['status'] == 'open'): ?>
+                                        <a href="?action=close_item&id=<?php echo $item['id']; ?>" class="admin-btn small warning" onclick="return confirm('Are you sure you want to close this item?');">
+                                            <i class="fas fa-times"></i> Close
+                                        </a>
+                                    <?php else: ?>
+                                        <a href="?action=reopen_item&id=<?php echo $item['id']; ?>" class="admin-btn small success" onclick="return confirm('Are you sure you want to reopen this item?');">
+                                            <i class="fas fa-undo"></i> Reopen
+                                        </a>
+                                    <?php endif; ?>
+                                    <a href="?action=delete_item&id=<?php echo $item['id']; ?>" class="admin-btn small danger" onclick="return confirm('Are you sure you want to delete this item?');">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </a>
+                                </div>
                             </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <?php if ($total_pages > 1): ?>
+                    <div class="pagination">
+                        <?php if ($page > 1): ?>
+                            <a href="?action=items_for_sell&page=<?php echo $page - 1; ?>" class="admin-btn small">Previous</a>
+                        <?php endif; ?>
+                        
+                        <?php if ($page < $total_pages): ?>
+                            <a href="?action=items_for_sell&page=<?php echo $page + 1; ?>" class="admin-btn small">Next</a>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
-                <a href="?action=post_buy" class="admin-btn">
-                    <i class="fas fa-plus"></i> Create New Buy Request
-                </a>
+            <?php endif; ?>
+
+        <?php elseif ($_GET['action'] == 'buy_requests'): ?>
+            <?php
+            // Initialize buy_requests array
+            $buy_requests = [];
+            
+            // Pagination setup
+            $items_per_page = 12;
+            $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+            $offset = ($page - 1) * $items_per_page;
+            
+            try {
+                // Get total count of buy requests
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM buy_requests WHERE user_id = :user_id");
+                $stmt->execute([':user_id' => $_SESSION['user_id']]);
+                $total_requests = $stmt->fetchColumn();
+                
+                // Calculate total pages
+                $total_pages = ceil($total_requests / $items_per_page);
+                
+                // Fetch buy requests with pagination
+                $stmt = $pdo->prepare("SELECT * FROM buy_requests WHERE user_id = :user_id ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
+                $stmt->bindValue(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
+                $stmt->bindValue(':limit', $items_per_page, PDO::PARAM_INT);
+                $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+                $stmt->execute();
+                $buy_requests = $stmt->fetchAll();
+            } catch (PDOException $e) {
+                error_log("Error fetching buy requests: " . $e->getMessage());
+                $error = "Error fetching buy requests. Please try again later.";
+            }
+            ?>
+            
+            <div class="section-title">
+                <h2>Active Buy Requests</h2>
+                <a href="?action=post_buy" class="admin-btn">Post New Request</a>
             </div>
+
+            <?php if (empty($buy_requests)): ?>
+                <div class="no-items">
+                    <p>No buy requests found. <a href="?action=post_buy">Create your first request</a></p>
+                </div>
+            <?php else: ?>
+                <div class="items-grid">
+                    <?php foreach ($buy_requests as $request): ?>
+                        <div class="buy-request-card">
+                            <?php if ($request['image']): ?>
+                                <img src="../<?php echo htmlspecialchars($request['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?>" class="card-image">
+                            <?php else: ?>
+                                <div class="card-image" style="background: #f8f9fa; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-image" style="font-size: 48px; color: #ced4da;"></i>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <div class="card-content">
+                                <div class="card-status <?php echo $request['status'] == 'open' ? 'status-open' : 'status-closed'; ?>">
+                                    <?php echo htmlspecialchars(ucfirst($request['status']), ENT_QUOTES, 'UTF-8'); ?>
+                                </div>
+                                
+                                <h3 class="card-title"><?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                                
+                                <p class="card-description"><?php echo htmlspecialchars($request['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                
+                                <div class="card-details">
+                                    <span class="card-detail">
+                                        <i class="fas fa-tag"></i> <?php echo htmlspecialchars($request['item_type'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </span>
+                                </div>
+                                
+                                <div class="card-price">
+                                    <i class="fas fa-dollar-sign"></i> Max: <?php echo number_format($request['max_price'], 2); ?>
+                                </div>
+                                
+                                <div class="card-quantity">
+                                    <i class="fas fa-box"></i> <?php echo htmlspecialchars($request['quantity'], ENT_QUOTES, 'UTF-8'); ?> needed
+                                </div>
+                                
+                                <?php if ($request['close_time']): ?>
+                                    <div class="card-close-time">
+                                        <i class="fas fa-clock"></i> Closes: <?php echo date('M d, Y H:i', strtotime($request['close_time'])); ?>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <div class="card-actions">
+                                    <a href="?action=edit_buy_request&id=<?php echo $request['id']; ?>" class="admin-btn small">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <?php if ($request['status'] == 'open'): ?>
+                                        <a href="?action=close_buy_request&id=<?php echo $request['id']; ?>" class="admin-btn small warning" onclick="return confirm('Are you sure you want to close this buy request?');">
+                                            <i class="fas fa-times"></i> Close
+                                        </a>
+                                    <?php else: ?>
+                                        <a href="?action=reopen_buy_request&id=<?php echo $request['id']; ?>" class="admin-btn small success" onclick="return confirm('Are you sure you want to reopen this buy request?');">
+                                            <i class="fas fa-undo"></i> Reopen
+                                        </a>
+                                    <?php endif; ?>
+                                    <a href="?action=delete_buy_request&id=<?php echo $request['id']; ?>" class="admin-btn small danger" onclick="return confirm('Are you sure you want to delete this request?');">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <?php if ($total_pages > 1): ?>
+                    <div class="pagination">
+                        <?php if ($page > 1): ?>
+                            <a href="?action=buy_requests&page=<?php echo $page - 1; ?>" class="admin-btn small">Previous</a>
+                        <?php endif; ?>
+                        
+                        <?php if ($page < $total_pages): ?>
+                            <a href="?action=buy_requests&page=<?php echo $page + 1; ?>" class="admin-btn small">Next</a>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
 
         <?php elseif ($_GET['action'] == 'view_offers' && isset($buy_request_offers)): ?>
             <!-- View Offers for Buy Request -->
