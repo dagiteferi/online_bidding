@@ -1543,11 +1543,11 @@ if (isset($error_message)) {
                     <input type="hidden" name="existing_image" value="<?php echo htmlspecialchars($item_to_edit['image'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                     <div class="form-group">
                         <label>Supplier Name:</label>
-                        <input type="text" name="supplier_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['supplier_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required />
+                        <input type="text" name="supplier_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['supplier_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars($item_to_edit['supplier_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required />
                     </div>
                     <div class="form-group">
                         <label>Item Name:</label>
-                        <input type="text" name="item_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['item_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required />
+                        <input type="text" name="item_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['item_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars($item_to_edit['item_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required />
                     </div>
                     <div class="form-group">
                         <label>Item Types (e.g., computer chair, marker):</label>
@@ -1562,19 +1562,19 @@ if (isset($error_message)) {
                     </div>
                     <div class="form-group">
                         <label>Description:</label>
-                        <textarea name="description" class="input" rows="4" required><?php echo htmlspecialchars($item_to_edit['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+                        <textarea name="description" class="input" rows="4" placeholder="<?php echo htmlspecialchars($item_to_edit['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required><?php echo htmlspecialchars($item_to_edit['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
                     </div>
                     <div class="form-group">
                         <label>Price ($):</label>
-                        <input type="number" name="price" class="input" value="<?php echo htmlspecialchars($item_to_edit['price'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>" step="0.01" required />
+                        <input type="number" name="price" class="input" value="<?php echo htmlspecialchars($item_to_edit['price'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars($item_to_edit['price'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>" step="0.01" required />
                     </div>
                     <div class="form-group">
                         <label>Quantity:</label>
-                        <input type="number" name="quantity" class="input" value="<?php echo htmlspecialchars($item_to_edit['quantity'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>" required />
+                        <input type="number" name="quantity" class="input" value="<?php echo htmlspecialchars($item_to_edit['quantity'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars($item_to_edit['quantity'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>" required />
                     </div>
                     <div class="form-group">
                         <label>Close Time (optional):</label>
-                        <input type="datetime-local" name="close_time" id="close_time" class="input" value="<?php echo !empty($item_to_edit['close_time']) && strtotime($item_to_edit['close_time']) ? date('Y-m-d\TH:i', strtotime($item_to_edit['close_time'])) : ''; ?>" />
+                        <input type="datetime-local" name="close_time" id="close_time" class="input" value="<?php echo !empty($item_to_edit['close_time']) && strtotime($item_to_edit['close_time']) ? date('Y-m-d\TH:i', strtotime($item_to_edit['close_time'])) : ''; ?>" placeholder="<?php echo !empty($item_to_edit['close_time']) && strtotime($item_to_edit['close_time']) ? date('Y-m-d\TH:i', strtotime($item_to_edit['close_time'])) : ''; ?>" />
                     </div>
                     <div class="form-group">
                         <label>Current Image:</label>
