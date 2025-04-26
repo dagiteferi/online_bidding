@@ -976,87 +976,39 @@ try {
 
 // Handle all operations at the top of the file
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
-        switch ($_POST['action']) {
-            case 'delete':
-                if (isset($_POST['item_id'])) {
-                    $item_id = (int)$_POST['item_id'];
-                    try {
-                        $pdo->beginTransaction();
-                        
-                        // Delete related records
-                        $stmt = $pdo->prepare("DELETE FROM bids WHERE item_id = ?");
-                        $stmt->execute([$item_id]);
-                        
-                        $stmt = $pdo->prepare("DELETE FROM offers WHERE item_id = ?");
-                        $stmt->execute([$item_id]);
-                        
-                        // Delete the item
-                        $stmt = $pdo->prepare("DELETE FROM items WHERE id = ?");
-                        $stmt->execute([$item_id]);
-                        
-                        $pdo->commit();
-                        $success_message = "Item deleted successfully";
-                    } catch (PDOException $e) {
-                        $pdo->rollBack();
-                        $error_message = "Error deleting item: " . $e->getMessage();
-                    }
-                }
+    $action = $_POST['action'] ?? '';
+    $item_id = $_POST['item_id'] ?? 0;
+    $item_type = $_POST['item_type'] ?? ''; // Add this line to track item type
+    
+    try {
+        switch ($action) {
+            case 'close':
+                $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE id = ?");
+                $stmt->execute([$item_id]);
+                $success_message = "Item closed successfully";
+                break;
+                
+            case 'reopen':
+                $stmt = $pdo->prepare("UPDATE items SET status = 'open' WHERE id = ?");
+                $stmt->execute([$item_id]);
+                $success_message = "Item reopened successfully";
                 break;
                 
             case 'update':
-                if (isset($_POST['item_id'])) {
-                    $item_id = (int)$_POST['item_id'];
-                    $item_name = sanitizeInput($_POST['item_name']);
-                    $description = sanitizeInput($_POST['description']);
-                    $price = (float)$_POST['price'];
-                    $quantity = (int)$_POST['quantity'];
-                    $close_time = isset($_POST['close_time']) ? $_POST['close_time'] : null;
-                    
-                    try {
-                        $stmt = $pdo->prepare("
-                            UPDATE items 
-                            SET item_name = ?, 
-                                description = ?, 
-                                price = ?, 
-                                quantity = ?, 
-                                close_time = ?
-                            WHERE id = ?
-                        ");
-                        
-                        $stmt->execute([
-                            $item_name,
-                            $description,
-                            $price,
-                            $quantity,
-                            $close_time,
-                            $item_id
-                        ]);
-                        
-                        if ($stmt->rowCount() > 0) {
-                            $success_message = "Item updated successfully";
-                        } else {
-                            $error_message = "No changes made or item not found";
-                        }
-                    } catch (PDOException $e) {
-                        $error_message = "Error updating item: " . $e->getMessage();
-                    }
-                }
-                break;
+                $item_name = sanitizeInput($_POST['item_name']);
+                $description = sanitizeInput($_POST['description']);
+                $price = floatval($_POST['price']);
+                $quantity = intval($_POST['quantity']);
+                $close_time = $_POST['close_time'];
                 
-            case 'close':
-                if (isset($_POST['item_id'])) {
-                    $item_id = (int)$_POST['item_id'];
-                    try {
-                        $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE id = ?");
-                        $stmt->execute([$item_id]);
-                        $success_message = "Item closed successfully";
-                    } catch (PDOException $e) {
-                        $error_message = "Error closing item: " . $e->getMessage();
-                    }
-                }
+                $stmt = $pdo->prepare("UPDATE items SET item_name = ?, description = ?, price = ?, quantity = ?, close_time = ? WHERE id = ?");
+                $stmt->execute([$item_name, $description, $price, $quantity, $close_time, $item_id]);
+                
+                $success_message = "Item updated successfully";
                 break;
         }
+    } catch (Exception $e) {
+        $error_message = "An error occurred: " . $e->getMessage();
     }
 }
 
@@ -1187,6 +1139,17 @@ if (isset($error_message)) {
 
         .item-card {
             position: relative;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .item-card.closed {
+            background: #fff5f5;
+            border: 1px solid #ffcdd2;
         }
 
         .card-content {
@@ -1685,7 +1648,7 @@ if (isset($error_message)) {
             <?php else: ?>
                 <div class="items-grid">
                     <?php foreach ($items as $item): ?>
-                        <div class="item-card" data-item-id="<?php echo $item['id']; ?>">
+                        <div class="item-card <?php echo $item['status'] === 'closed' ? 'closed' : ''; ?>" data-item-id="<?php echo $item['id']; ?>" data-item-type="<?php echo $item['type']; ?>">
                             <?php if ($item['image']): ?>
                                 <img src="../<?php echo htmlspecialchars($item['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?>" class="card-image">
                             <?php else: ?>
@@ -1731,18 +1694,56 @@ if (isset($error_message)) {
                                 <?php endif; ?>
                                 
                                 <div class="card-actions">
-                                    <button class="admin-btn small" onclick="editItem(<?php echo $item['id']; ?>)">
+                                    <button class="admin-btn small" onclick="editItem(<?php echo $item['id']; ?>, '<?php echo $item['type']; ?>')">
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
-                                    <button class="admin-btn small danger" onclick="deleteItem(<?php echo $item['id']; ?>)">
+                                    <button class="admin-btn small danger" onclick="deleteItem(<?php echo $item['id']; ?>, '<?php echo $item['type']; ?>')">
                                         <i class="fas fa-trash"></i> Delete
                                     </button>
-                                    <?php if ($item['status'] !== 'closed'): ?>
-                                    <button class="admin-btn small warning" onclick="closeItem(<?php echo $item['id']; ?>)">
+                                    <?php if ($item['status'] === 'closed'): ?>
+                                    <button class="admin-btn small success" onclick="reopenItem(<?php echo $item['id']; ?>, '<?php echo $item['type']; ?>')">
+                                        <i class="fas fa-redo"></i> Reopen
+                                    </button>
+                                    <?php else: ?>
+                                    <button class="admin-btn small warning" onclick="closeItem(<?php echo $item['id']; ?>, '<?php echo $item['type']; ?>')">
                                         <i class="fas fa-times"></i> Close
                                     </button>
                                     <?php endif; ?>
                                 </div>
+                            </div>
+                            
+                            <div class="edit-form-container" data-item-id="<?php echo $item['id']; ?>" data-item-type="<?php echo $item['type']; ?>">
+                                <form class="edit-form" onsubmit="event.preventDefault(); saveEdit(<?php echo $item['id']; ?>, '<?php echo $item['type']; ?>');">
+                                    <h3>Edit Item</h3>
+                                    <div class="form-group">
+                                        <label for="item_name">Item Name</label>
+                                        <input type="text" name="item_name" value="<?php echo htmlspecialchars($item['item_name']); ?>" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="description">Description</label>
+                                        <textarea name="description" required><?php echo htmlspecialchars($item['description']); ?></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="price">Price</label>
+                                        <input type="number" name="price" value="<?php echo $item['price']; ?>" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="quantity">Quantity</label>
+                                        <input type="number" name="quantity" value="<?php echo $item['quantity']; ?>" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="close_time">Close Time</label>
+                                        <input type="datetime-local" name="close_time" value="<?php echo date('Y-m-d\TH:i', strtotime($item['close_time'])); ?>">
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="submit" class="admin-btn success">
+                                            <i class="fas fa-save"></i> Save Changes
+                                        </button>
+                                        <button type="button" class="admin-btn" onclick="cancelEdit(<?php echo $item['id']; ?>, '<?php echo $item['type']; ?>')">
+                                            <i class="fas fa-times"></i> Cancel
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -1844,13 +1845,13 @@ if (isset($error_message)) {
                                 <?php endif; ?>
                                 
                                 <div class="card-actions">
-                                    <button class="admin-btn small" onclick="editItem(<?php echo $request['id']; ?>)">
+                                    <button class="admin-btn small" onclick="editItem(<?php echo $request['id']; ?>, '<?php echo $request['type']; ?>')">
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
-                                    <button class="admin-btn small warning" onclick="closeItem(<?php echo $request['id']; ?>)">
+                                    <button class="admin-btn small warning" onclick="closeItem(<?php echo $request['id']; ?>, '<?php echo $request['type']; ?>')">
                                         <i class="fas fa-times"></i> Close
                                     </button>
-                                    <button class="admin-btn small danger" onclick="deleteItem(<?php echo $request['id']; ?>)">
+                                    <button class="admin-btn small danger" onclick="deleteItem(<?php echo $request['id']; ?>, '<?php echo $request['type']; ?>')">
                                         <i class="fas fa-trash"></i> Delete
                                     </button>
                                 </div>
@@ -2468,8 +2469,8 @@ if (isset($error_message)) {
     }
 
     // Edit item function
-    function editItem(itemId) {
-        console.log('Edit button clicked for item:', itemId);
+    function editItem(itemId, itemType) {
+        console.log('Edit button clicked for item:', itemId, 'type:', itemType);
         
         // Create overlay
         const overlay = document.createElement('div');
@@ -2477,9 +2478,9 @@ if (isset($error_message)) {
         document.body.appendChild(overlay);
 
         // Find and show edit form
-        const editForm = document.querySelector(`.edit-form-container[data-item-id="${itemId}"]`);
+        const editForm = document.querySelector(`.edit-form-container[data-item-id="${itemId}"][data-item-type="${itemType}"]`);
         if (!editForm) {
-            console.error('Edit form not found for item:', itemId);
+            console.error('Edit form not found for item:', itemId, 'type:', itemType);
             return;
         }
 
@@ -2488,21 +2489,22 @@ if (isset($error_message)) {
 
         // Close form when clicking overlay
         overlay.addEventListener('click', () => {
-            cancelEdit(itemId);
+            cancelEdit(itemId, itemType);
         });
     }
 
     // Save edit function
-    function saveEdit(itemId) {
-        const form = document.querySelector(`.edit-form-container[data-item-id="${itemId}"] .edit-form`);
+    function saveEdit(itemId, itemType) {
+        const form = document.querySelector(`.edit-form-container[data-item-id="${itemId}"][data-item-type="${itemType}"] .edit-form`);
         if (!form) {
-            console.error('Form not found for item:', itemId);
+            console.error('Form not found for item:', itemId, 'type:', itemType);
             return;
         }
 
         const formData = new FormData(form);
         formData.append('action', 'update');
         formData.append('item_id', itemId);
+        formData.append('item_type', itemType);
         
         fetch(window.location.href, {
             method: 'POST',
@@ -2521,8 +2523,8 @@ if (isset($error_message)) {
     }
 
     // Cancel edit function
-    function cancelEdit(itemId) {
-        const editForm = document.querySelector(`.edit-form-container[data-item-id="${itemId}"]`);
+    function cancelEdit(itemId, itemType) {
+        const editForm = document.querySelector(`.edit-form-container[data-item-id="${itemId}"][data-item-type="${itemType}"]`);
         const overlay = document.querySelector('.overlay');
         
         if (editForm) {
@@ -2535,11 +2537,12 @@ if (isset($error_message)) {
     }
 
     // Delete item function
-    function deleteItem(itemId) {
+    function deleteItem(itemId, itemType) {
         if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
             const formData = new FormData();
             formData.append('action', 'delete');
             formData.append('item_id', itemId);
+            formData.append('item_type', itemType);
             
             fetch(window.location.href, {
                 method: 'POST',
@@ -2559,11 +2562,12 @@ if (isset($error_message)) {
     }
 
     // Close item function
-    function closeItem(itemId) {
+    function closeItem(itemId, itemType) {
         if (confirm('Are you sure you want to close this item?')) {
             const formData = new FormData();
             formData.append('action', 'close');
             formData.append('item_id', itemId);
+            formData.append('item_type', itemType);
             
             fetch(window.location.href, {
                 method: 'POST',
@@ -2605,6 +2609,31 @@ if (isset($error_message)) {
         setTimeout(() => {
             alertDiv.remove();
         }, 3000);
+    }
+
+    // Reopen item function
+    function reopenItem(itemId, itemType) {
+        if (confirm('Are you sure you want to reopen this item?')) {
+            const formData = new FormData();
+            formData.append('action', 'reopen');
+            formData.append('item_id', itemId);
+            formData.append('item_type', itemType);
+            
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    throw new Error('Network response was not ok');
+                }
+            })
+            .catch(error => {
+                showAlert('Error reopening item: ' + error.message, 'error');
+            });
+        }
     }
 </script>
 </body>
