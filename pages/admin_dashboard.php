@@ -1133,15 +1133,19 @@ try {
 
         .edit-form-container {
             display: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            z-index: 100;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         .edit-form-container.active {
@@ -1153,7 +1157,6 @@ try {
             background: white;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
             padding: 20px;
             margin-bottom: 20px;
         }
@@ -1218,27 +1221,6 @@ try {
             display: block;
         }
 
-        .edit-form-container {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            z-index: 1000;
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .edit-form-container.active {
-            display: block;
-        }
-
         .countdown-timer {
             background: #f8f9fa;
             padding: 8px 12px;
@@ -1291,11 +1273,6 @@ try {
         .item-card {
             border: 1px solid #e0e0e0;
             overflow: hidden;
-            transition: transform 0.2s;
-        }
-
-        .item-card:hover {
-            transform: translateY(-5px);
         }
 
         .card-image {
@@ -1897,7 +1874,7 @@ try {
                     </div>
                     <div class="edit-form-container" id="edit-request-form-<?php echo $request['id']; ?>">
                         <h3>Edit Buy Request</h3>
-                        <form method="POST mere here" action="?action=edit_buy_request&request_id=<?php echo $request['id']; ?>" enctype="multipart/form-data" onsubmit="return updateHiddenTags('edit-request-types-<?php echo $request['id']; ?>')">
+                        <form method="POST" action="?action=edit_buy_request&request_id=<?php echo $request['id']; ?>" enctype="multipart/form-data" onsubmit="return updateHiddenTags('edit-request-types-<?php echo $request['id']; ?>')">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="existing_image" value="<?php echo htmlspecialchars($request['image'], ENT_QUOTES, 'UTF-8'); ?>">
                             
@@ -2283,7 +2260,7 @@ try {
                             <td>$<?php echo number_format($request['max_price'], 2); ?></td>
                             <td><?php echo htmlspecialchars($request['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
                             <td><?php echo htmlspecialchars($request['status'], ENT_QUOTES, 'UTF-8'); ?></td>
-                            <td><?php echo htmlspecialchars($request['username'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><?php echo htmlspecialchars($request['username'], ENT_QUOTES, 'illi'); ?></td>
                             <td><?php echo htmlspecialchars($request['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -2300,7 +2277,7 @@ try {
 <!-- Footer -->
 <footer class="footer">
     <div class="inner-width">
-        <p>&copy; <?php echo date('Y'); ?> Online Bidding System. All rights reserved.</p>
+        <p>© <?php echo date('Y'); ?> Online Bidding System. All rights reserved.</p>
     </div>
 </footer>
 
