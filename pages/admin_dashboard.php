@@ -2412,26 +2412,26 @@ if (isset($error_message)) {
                         <h3>Edit ${itemType === 'sell' ? 'Item' : 'Buy Request'}</h3>
                         <div class="form-group">
                             <label>Name:</label>
-                            <input type="text" name="item_name" class="input" required>
+                            <input type="text" name="item_name" class="input" required placeholder="Loading...">
                         </div>
                         <div class="form-group">
                             <label>Description:</label>
-                            <textarea name="description" class="input" required></textarea>
+                            <textarea name="description" class="input" required placeholder="Loading..."></textarea>
                         </div>
                         <div class="form-group">
                             <label>${itemType === 'sell' ? 'Price ($):' : 'Max Price ($):'}</label>
-                            <input type="number" name="price" class="input" step="0.01" required>
+                            <input type="number" name="price" class="input" step="0.01" required placeholder="Loading...">
                         </div>
                         <div class="form-group">
                             <label>Quantity:</label>
-                            <input type="number" name="quantity" class="input" required>
+                            <input type="number" name="quantity" class="input" required placeholder="Loading...">
                         </div>
                         <div class="form-group">
                             <label>Close Time (optional):</label>
-                            <input type="datetime-local" name="close_time" class="input">
+                            <input type="datetime-local" name="close_time" class="input" placeholder="Loading...">
                         </div>
                         <div class="form-actions">
-                            <button type="submit" class="admin-btn success">Save</button>
+                            <button type="submit" class="admin-btn success">Save Changes</button>
                             <button type="button" class="admin-btn danger" onclick="hideEditForm(${itemId})">Cancel</button>
                         </div>
                     </form>
