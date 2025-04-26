@@ -1223,13 +1223,12 @@ try {
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Types (e.g., computer chair, marker)</label>
                         <div class="tag-container" id="tag-container-sell">
-                            <!-- Tags will be dynamically added here -->
+                            <div class="tag-input-wrapper">
+                                <input type="text" id="tag-input-sell" class="tag-input" placeholder="Type and press Enter or click + to add a type">
+                                <button type="button" id="add-tag-sell" class="add-tag-btn">+</button>
+                            </div>
+                            <div id="tag-error-sell" class="error-text" style="display: none;"></div>
                         </div>
-                        <div class="tag-input-wrapper">
-                            <input type="text" id="tag-input-sell" class="tag-input" placeholder="Type and press Enter or click + to add a type">
-                            <button type="button" class="add-tag-btn" onclick="addTag('sell')"><i class="fas fa-plus"></i></button>
-                        </div>
-                        <p class="error-text" id="tag-error-sell">Please add at least one item type.</p>
                         <input type="hidden" name="item_types" id="item-types-sell">
                     </div>
                     
@@ -1290,23 +1289,12 @@ try {
                     <div class="form-group">
                         <label>Item Types (e.g., computer chair, marker):</label>
                         <div class="tag-container" id="tag-container-edit">
-                            <?php
-                            // Pre-populate tags from existing item types
-                            if (!empty($item_to_edit['item_type'])) {
-                                $existing_tags = array_map('trim', explode(',', $item_to_edit['item_type']));
-                                foreach ($existing_tags as $tag) {
-                                    if (!empty($tag)) {
-                                        echo '<span class="tag">' . htmlspecialchars($tag, ENT_QUOTES, 'UTF-8') . '<span class="remove-tag" onclick="removeTag(this, \'edit\')">×</span></span>';
-                                    }
-                                }
-                            }
-                            ?>
+                            <div class="tag-input-wrapper">
+                                <input type="text" id="tag-input-edit" class="tag-input" placeholder="Type and press Enter or click + to add a type">
+                                <button type="button" id="add-tag-edit" class="add-tag-btn">+</button>
+                            </div>
+                            <div id="tag-error-edit" class="error-text" style="display: none;"></div>
                         </div>
-                        <div class="tag-input-wrapper">
-                            <input type="text" id="tag-input-edit" class="tag-input" placeholder="Type and press Enter or click + to add a type">
-                            <button type="button" class="add-tag-btn" onclick="addTag('edit')"><i class="fas fa-plus"></i></button>
-                        </div>
-                        <p class="error-text" id="tag-error-edit">Please add at least one item type.</p>
                         <input type="hidden" name="item_types" id="item-types-edit" value="<?php echo htmlspecialchars($item_to_edit['item_type'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                     </div>
                     <div class="form-group">
@@ -1360,13 +1348,12 @@ try {
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Types (e.g., computer chair, marker)</label>
                         <div class="tag-container" id="tag-container-buy">
-                            <!-- Tags will be dynamically added here -->
+                            <div class="tag-input-wrapper">
+                                <input type="text" id="tag-input-buy" class="tag-input" placeholder="Type and press Enter or click + to add a type">
+                                <button type="button" id="add-tag-buy" class="add-tag-btn">+</button>
+                            </div>
+                            <div id="tag-error-buy" class="error-text" style="display: none;"></div>
                         </div>
-                        <div class="tag-input-wrapper">
-                            <input type="text" id="tag-input-buy" class="tag-input" placeholder="Type and press Enter or click + to add a type">
-                            <button type="button" class="add-tag-btn" onclick="addTag('buy')"><i class="fas fa-plus"></i></button>
-                        </div>
-                        <p class="error-text" id="tag-error-buy">Please add at least one item type.</p>
                         <input type="hidden" name="item_types" id="item-types-buy">
                     </div>
                     
@@ -2041,6 +2028,8 @@ try {
         // Prevent duplicate tags (case-insensitive)
         const existingTags = Array.from(container.getElementsByClassName('tag')).map(tag => tag.textContent.replace('×', '').trim().toLowerCase());
         if (existingTags.includes(tagText.toLowerCase())) {
+            errorText.textContent = 'This tag already exists.';
+            errorText.style.display = 'block';
             input.value = '';
             return;
         }
@@ -2060,6 +2049,7 @@ try {
         tag.innerHTML = `${tagText}<span class="remove-tag" onclick="removeTag(this, '${formType}')">×</span>`;
         container.appendChild(tag);
         input.value = '';
+        updateHiddenTags(`item-types-${formType}`);
     }
 
     function removeTag(element, formType) {
@@ -2079,6 +2069,7 @@ try {
 
         // Validate that at least one tag exists
         if (tags.length === 0) {
+            errorText.textContent = 'At least one tag is required.';
             errorText.style.display = 'block';
             return false;
         } else {
@@ -2087,25 +2078,51 @@ try {
         }
     }
 
-    // Add tag on Enter key press
-    document.getElementById('tag-input-sell')?.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addTag('sell');
+    // Add tag on Enter key press or button click
+    document.addEventListener('DOMContentLoaded', function() {
+        // For sell form
+        const sellInput = document.getElementById('tag-input-sell');
+        const sellButton = document.getElementById('add-tag-sell');
+        if (sellInput && sellButton) {
+            sellInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTag('sell');
+                }
+            });
+            sellButton.addEventListener('click', function() {
+                addTag('sell');
+            });
         }
-    });
 
-    document.getElementById('tag-input-buy')?.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addTag('buy');
+        // For buy form
+        const buyInput = document.getElementById('tag-input-buy');
+        const buyButton = document.getElementById('add-tag-buy');
+        if (buyInput && buyButton) {
+            buyInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTag('buy');
+                }
+            });
+            buyButton.addEventListener('click', function() {
+                addTag('buy');
+            });
         }
-    });
 
-    document.getElementById('tag-input-edit')?.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addTag('edit');
+        // For edit form
+        const editInput = document.getElementById('tag-input-edit');
+        const editButton = document.getElementById('add-tag-edit');
+        if (editInput && editButton) {
+            editInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTag('edit');
+                }
+            });
+            editButton.addEventListener('click', function() {
+                addTag('edit');
+            });
         }
     });
 

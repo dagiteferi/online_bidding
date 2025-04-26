@@ -966,3 +966,89 @@ footer .inner-width {
 .item-types-table .admin-btn {
     padding: 0.5rem 1rem;
 }
+
+/* Custom styles for the tag input system */
+.tag-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    min-height: 40px;
+    margin-bottom: 10px;
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    background-color: #e9ecef;
+    color: #2c3e50;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 14px;
+    margin: 2px;
+}
+
+.tag .remove-tag {
+    margin-left: 8px;
+    cursor: pointer;
+    color: #e74c3c;
+    font-weight: bold;
+    transition: color 0.2s ease;
+}
+
+.tag .remove-tag:hover {
+    color: #c0392b;
+}
+
+.tag-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.tag-input {
+    flex-grow: 1;
+    border: none;
+    outline: none;
+    padding: 10px;
+    font-size: 14px;
+    color: #2c3e50;
+    background: transparent;
+}
+
+.add-tag-btn {
+    background-color: #48dbfb;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.add-tag-btn:hover {
+    background-color: #1dc4e9;
+}
+
+.tag-input:focus {
+    outline: none;
+}
+
+.error-text {
+    color: #e74c3c;
+    font-size: 12px;
+    margin-top: -5px;
+    margin-bottom: 10px;
+    display: none;
+}
