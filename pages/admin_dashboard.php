@@ -974,73 +974,6 @@ try {
     $error = "Error fetching transactions: " . $e->getMessage();
 }
 
-// Handle all operations at the top of the file
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    $item_id = $_POST['item_id'] ?? 0;
-    $item_type = $_POST['item_type'] ?? '';
-    
-    try {
-        $pdo->beginTransaction();
-        
-        switch ($action) {
-            case 'delete':
-                // First delete related records
-                if ($item_type === 'buy') {
-                    $stmt = $pdo->prepare("DELETE FROM offers WHERE buy_request_id = ?");
-                } else {
-                    $stmt = $pdo->prepare("DELETE FROM bids WHERE item_id = ?");
-                }
-                $stmt->execute([$item_id]);
-                
-                // Then delete the item
-                $stmt = $pdo->prepare("DELETE FROM items WHERE id = ?");
-                $stmt->execute([$item_id]);
-                $success_message = "Item deleted successfully";
-                break;
-                
-            case 'close':
-                $stmt = $pdo->prepare("UPDATE items SET status = 'closed', close_time = NOW() WHERE id = ?");
-                $stmt->execute([$item_id]);
-                $success_message = "Item closed successfully";
-                break;
-                
-            case 'reopen':
-                $stmt = $pdo->prepare("UPDATE items SET status = 'open', close_time = NULL WHERE id = ?");
-                $stmt->execute([$item_id]);
-                $success_message = "Item reopened successfully";
-                break;
-                
-            case 'update':
-                $item_name = sanitizeInput($_POST['item_name']);
-                $description = sanitizeInput($_POST['description']);
-                $price = floatval($_POST['price']);
-                $quantity = intval($_POST['quantity']);
-                $close_time = !empty($_POST['close_time']) ? $_POST['close_time'] : null;
-                
-                if ($item_type === 'sell') {
-                    $stmt = $pdo->prepare("UPDATE items SET item_name = ?, description = ?, price = ?, quantity = ?, close_time = ? WHERE id = ?");
-                } else {
-                    $stmt = $pdo->prepare("UPDATE buy_requests SET item_name = ?, description = ?, max_price = ?, quantity = ?, close_time = ? WHERE id = ?");
-                }
-                $stmt->execute([$item_name, $description, $price, $quantity, $close_time, $item_id]);
-                
-                $success_message = "Item updated successfully";
-                break;
-                
-            default:
-                throw new Exception("Invalid action specified");
-        }
-        
-        $pdo->commit();
-    } catch (Exception $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        $error_message = "An error occurred: " . $e->getMessage();
-    }
-}
-
 // Handle GET requests for getting item data
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_item') {
     $item_id = intval($_GET['item_id']);
@@ -1065,14 +998,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         echo json_encode(['error' => $e->getMessage()]);
         exit;
     }
-}
-
-// Show success/error messages if they exist
-if (isset($success_message)) {
-    echo "<div class='alert alert-success'>$success_message</div>";
-}
-if (isset($error_message)) {
-    echo "<div class='alert alert-error'>$error_message</div>";
 }
 ?>
 
@@ -1174,7 +1099,6 @@ if (isset($error_message)) {
             display: none;
         }
 
-        /* Add this CSS in the head section */
         .edit-form-container {
             display: none;
             position: absolute;
@@ -1325,15 +1249,158 @@ if (isset($error_message)) {
             background-color: #dc3545;
         }
 
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+
+        .item-card {
+            border: 1px solid #e0e0e0;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+
+        .item-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-image {
+            width: 100%;
+            height: 150px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #dc3545;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        .card-info {
+            padding: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .info-value {
+            color: #333;
+        }
+
+        .card-actions {
+            padding: 10px 15px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .admin-btn {
+            padding: 8px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background-color 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .admin-btn.primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .admin-btn.primary:hover {
+            background-color: #0056b3;
+        }
+
+        .admin-btn.danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .admin-btn.danger:hover {
+            background-color: #b02a37;
+        }
+
+        .admin-btn.warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .admin-btn.warning:hover {
+            background-color: #e0a800;
+        }
+
+        .admin-btn.success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .admin-btn.success:hover {
+            background-color: #218838;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .pagination-links {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .admin-btn.small {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .no-items {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title h2 {
+            margin: 0;
+            font-size: 24px;
+            color: #2c3e50;
         }
     </style>
 </head>
@@ -1389,13 +1456,13 @@ if (isset($error_message)) {
     <!-- Main Content -->
     <div class="main-content">
         <?php if (isset($error)): ?>
-            <div class="alert-card error">
+            <div class="alert alert-error">
                 <p><i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
             </div>
         <?php endif; ?>
         
         <?php if (isset($success)): ?>
-            <div class="alert-card success">
+            <div class="alert alert-success">
                 <p><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success, ENT_QUOTES, 'UTF-8'); ?></p>
             </div>
         <?php endif; ?>
@@ -1468,7 +1535,7 @@ if (isset($error_message)) {
             <!-- Post Sell Item Form -->
             <div class="form-card" style="background: #f8f9fa; padding: 25px; border-radius: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <h2 style="color: #2c3e50; margin-bottom: 25px; text-align: center; font-size: 24px;"><i class="fas fa-tag"></i> Post Item for Sale</h2>
-                <form method="POST" enctype="multipart/form-data" style="max-width: 700px; margin: 0 auto;" onsubmit="updateHiddenTags('item-types-sell')">
+                <form method="POST" enctype="multipart/form-data" style="max-width: 700px; margin: 0 auto;" onsubmit="return updateHiddenTags('item-types-sell')">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
                     
                     <div class="form-group" style="margin-bottom: 15px;">
@@ -1538,60 +1605,72 @@ if (isset($error_message)) {
             <!-- Edit Item Form -->
             <div class="form-card">
                 <h2><i class="fas fa-edit"></i> Edit Item</h2>
-                <form method="POST" enctype="multipart/form-data" onsubmit="updateHiddenTags('item-types-edit')">
+                <form method="POST" enctype="multipart/form-data" onsubmit="return updateHiddenTags('item-types-edit')">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="existing_image" value="<?php echo htmlspecialchars($item_to_edit['image'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                     <div class="form-group">
                         <label>Supplier Name:</label>
-                        <input type="text" name="supplier_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['supplier_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars($item_to_edit['supplier_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required />
+                        <input type="text" name="supplier_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['supplier_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required />
                     </div>
                     <div class="form-group">
                         <label>Item Name:</label>
-                        <input type="text" name="item_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['item_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars($item_to_edit['item_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required />
+                        <input type="text" name="item_name" class="input" value="<?php echo htmlspecialchars($item_to_edit['item_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required />
                     </div>
                     <div class="form-group">
                         <label>Item Types (e.g., computer chair, marker):</label>
                         <div class="tag-container" id="tag-container-edit">
+                            <?php
+                            if (!empty($item_to_edit['item_type'])) {
+                                $tags = array_map('trim', explode(',', $item_to_edit['item_type']));
+                                foreach ($tags as $tag) {
+                                    echo "<span class='tag'>" . htmlspecialchars($tag) . "<span class='remove-tag' onclick=\"removeTag(this, 'edit')\">×</span></span>";
+                                }
+                            }
+                            ?>
                             <div class="tag-input-wrapper">
                                 <input type="text" id="tag-input-edit" class="tag-input" placeholder="Type and press Enter or click + to add a type">
                                 <button type="button" id="add-tag-edit" class="add-tag-btn">+</button>
                             </div>
                             <div id="tag-error-edit" class="error-text" style="display: none;"></div>
                         </div>
-                        <input type="hidden" name="item_types" id="item-types-edit" value="<?php echo htmlspecialchars($item_to_edit['item_type'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="item_types" id="item-types-edit">
                     </div>
                     <div class="form-group">
                         <label>Description:</label>
-                        <textarea name="description" class="input" rows="4" placeholder="<?php echo htmlspecialchars($item_to_edit['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required><?php echo htmlspecialchars($item_to_edit['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+                        <textarea name="description" class="input" rows="4" required><?php echo htmlspecialchars($item_to_edit['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
                     </div>
                     <div class="form-group">
-                        <label>Price ($):</label>
-                        <input type="number" name="price" class="input" value="<?php echo htmlspecialchars($item_to_edit['price'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars($item_to_edit['price'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>" step="0.01" required />
+                    <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Price ($)</label>
+                        <input type="number" name="price" class="input" value="<?php echo htmlspecialchars($item_to_edit['price'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" step="0.01" required 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
                     </div>
                     <div class="form-group">
-                        <label>Quantity:</label>
-                        <input type="number" name="quantity" class="input" value="<?php echo htmlspecialchars($item_to_edit['quantity'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars($item_to_edit['quantity'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>" required />
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Quantity</label>
+                        <input type="number" name="quantity" class="input" value="<?php echo htmlspecialchars($item_to_edit['quantity'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
                     </div>
                     <div class="form-group">
-                        <label>Close Time (optional):</label>
-                        <input type="datetime-local" name="close_time" id="close_time" class="input" value="<?php echo !empty($item_to_edit['close_time']) && strtotime($item_to_edit['close_time']) ? date('Y-m-d\TH:i', strtotime($item_to_edit['close_time'])) : ''; ?>" placeholder="<?php echo !empty($item_to_edit['close_time']) && strtotime($item_to_edit['close_time']) ? date('Y-m-d\TH:i', strtotime($item_to_edit['close_time'])) : ''; ?>" />
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Close Time (optional)</label>
+                        <input type="datetime-local" name="close_time" class="input" value="<?php echo $item_to_edit['close_time'] ? date('Y-m-d\TH:i', strtotime($item_to_edit['close_time'])) : ''; ?>" 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
                     </div>
                     <div class="form-group">
-                        <label>Current Image:</label>
-                        <?php if (!empty($item_to_edit['image']) && file_exists('../' . $item_to_edit['image'])): ?>
-                            <img src="../<?php echo htmlspecialchars($item_to_edit['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="Current Image" class="item-image" style="max-width: 200px;">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Current Image</label>
+                        <?php if (!empty($item_to_edit['image'])): ?>
+                            <img src="../<?php echo htmlspecialchars($item_to_edit['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="Item Image" style="max-width: 150px; border-radius: 8px; margin-bottom: 10px;">
                         <?php else: ?>
-                            <p>No image uploaded.</p>
+                            <p>No image uploaded</p>
                         <?php endif; ?>
-                        <label for="item_image">Upload New Image (optional):</label>
-                        <input type="file" name="image" id="item_image" class="input" accept="image/*" />
                     </div>
-                    <button type="submit" class="admin-btn full-width">
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Upload New Image (optional)</label>
+                        <input type="file" name="image" class="input" accept="image/*" 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+                    </div>
+                    <button type="submit" class="admin-btn" 
+                        style="width: 100%; padding: 12px; background: #48dbfb; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; transition: background 0.3s;">
                         <i class="fas fa-save"></i> Update Item
                     </button>
-                    <a href="?action=items_for_sell" class="admin-btn danger full-width">
-                        <i class="fas fa-arrow-left"></i> Cancel
-                    </a>
                 </form>
             </div>
 
@@ -1599,13 +1678,13 @@ if (isset($error_message)) {
             <!-- Post Buy Item Form -->
             <div class="form-card" style="background: #f8f9fa; padding: 25px; border-radius: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <h2 style="color: #2c3e50; margin-bottom: 25px; text-align: center; font-size: 24px;"><i class="fas fa-shopping-cart"></i> Post Buy Request</h2>
-                <form method="POST" enctype="multipart/form-data" style="max-width: 700px; margin: 0 auto;" onsubmit="updateHiddenTags('item-types-buy')">
+                <form method="POST" enctype="multipart/form-data" style="max-width: 700px; margin: 0 auto;" onsubmit="return updateHiddenTags('item-types-buy')">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
                     
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Name</label>
                         <input type="text" name="item_name" class="input" placeholder="Enter item name" required 
-                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
@@ -1623,33 +1702,33 @@ if (isset($error_message)) {
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Description</label>
                         <textarea name="description" class="input" placeholder="Enter item description" rows="4" required 
-                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;"></textarea>
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;"></textarea>
                     </div>
                     
                     <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
                         <div class="form-group" style="flex: 1;">
-                            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Maximum Price ($)</label>
-                            <input type="number" name="max_price" class="input" placeholder="Enter maximum price" step="0.01" required 
-                                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
+                            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Max Price ($)</label>
+                            <input type="number" name="max_price" class="input" placeholder="Enter max price" step="0.01" required 
+                                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
                         </div>
                         
                         <div class="form-group" style="flex: 1;">
                             <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Quantity</label>
                             <input type="number" name="quantity" class="input" placeholder="Enter quantity" required 
-                                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
+                                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
                         </div>
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Close Time (optional)</label>
-                        <input type="datetime-local" name="close_time" id="close_time" class="input" 
-                        style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
+                        <input type="datetime-local" name="close_time" class="input" 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Upload Image (optional)</label>
-                        <input type="file" name="image" id="item_image" class="input" accept="image/*" 
-                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;" />
+                        <input type="file" name="image" class="input" accept="image/*" 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
                     </div>
                     
                     <button type="submit" class="admin-btn" 
@@ -1660,828 +1739,786 @@ if (isset($error_message)) {
             </div>
 
         <?php elseif ($_GET['action'] == 'items_for_sell'): ?>
-            <?php
-            // Initialize items array
-            $items = [];
-            
-            // Pagination setup
-            $items_per_page = 12;
-            $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-            $offset = ($page - 1) * $items_per_page;
-            
-            try {
-                // Get total count of items
-                $stmt = $pdo->prepare("SELECT COUNT(*) FROM items WHERE posted_by = :user_id");
-                $stmt->execute([':user_id' => $_SESSION['user_id']]);
-                $total_items = $stmt->fetchColumn();
-                
-                // Calculate total pages
-                $total_pages = ceil($total_items / $items_per_page);
-                
-                // Fetch items with pagination
-                $stmt = $pdo->prepare("SELECT * FROM items WHERE posted_by = :user_id ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
-                $stmt->bindValue(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
-                $stmt->bindValue(':limit', $items_per_page, PDO::PARAM_INT);
-                $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-                $stmt->execute();
-                $items = $stmt->fetchAll();
-            } catch (PDOException $e) {
-                error_log("Error fetching items: " . $e->getMessage());
-                $error = "Error fetching items. Please try again later.";
-            }
-            ?>
-            
+            <!-- Items for Sale Section -->
             <div class="section-title">
-                <h2>Items for Sale</h2>
-                <a href="?action=post_sell" class="admin-btn">Post New Item</a>
+                <h2><i class="fas fa-box-open"></i> Items for Sale</h2>
+                <a href="?action=post_sell" class="admin-btn success"><i class="fas fa-plus"></i> Add New Item</a>
             </div>
-
-            <?php if (empty($items)): ?>
-                <div class="no-items">
-                    <p>No items found. <a href="?action=post_sell">Post your first item</a></p>
-                </div>
-            <?php else: ?>
-                <div class="items-grid">
+            
+            <div class="items-grid">
+                <?php if (empty($items)): ?>
+                    <div class="no-items">
+                        <p>No items found. Start by adding a new item!</p>
+                    </div>
+                <?php else: ?>
                     <?php foreach ($items as $item): ?>
-                        <div class="item-card <?php echo $item['status'] === 'closed' ? 'closed' : ''; ?>" data-id="<?php echo $item['id']; ?>">
+                        <div class="item-card <?php echo $item['status'] === 'closed' ? 'closed' : ''; ?>">
                             <div class="card-image">
-                                <img src="<?php echo htmlspecialchars($item['image_path']); ?>" alt="<?php echo htmlspecialchars($item['item_name']); ?>">
+                                <?php if (!empty($item['image'])): ?>
+                                    <img src="../<?php echo htmlspecialchars($item['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?>">
+                                <?php else: ?>
+                                    <img src="../images/placeholder.jpg" alt="No Image">
+                                <?php endif; ?>
                                 <?php if ($item['status'] === 'closed'): ?>
-                                    <div class="card-status">Closed</div>
+                                    <span class="card-status">Closed</span>
                                 <?php endif; ?>
                             </div>
-                            <div class="card-content">
-                                <div class="card-info">
-                                    <div class="info-row">
-                                        <span class="info-label">Name:</span>
-                                        <span class="info-value"><?php echo htmlspecialchars($item['item_name']); ?></span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Description:</span>
-                                        <span class="info-value"><?php echo htmlspecialchars($item['description']); ?></span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Price:</span>
-                                        <span class="info-value">$<?php echo number_format($item['price'], 2); ?></span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Quantity:</span>
-                                        <span class="info-value"><?php echo $item['quantity']; ?> available</span>
-                                    </div>
-                                    <?php if ($item['close_time']): ?>
-                                        <div class="info-row">
-                                            <span class="info-label">Closes:</span>
-                                            <span class="info-value countdown" data-close-time="<?php echo $item['close_time']; ?>">
-                                                <?php echo date('M d, Y H:i', strtotime($item['close_time'])); ?>
-                                            </span>
-                                        </div>
-                                    <?php endif; ?>
+                            <div class="card-info">
+                                <div class="info-row">
+                                    <span class="info-label">Name:</span>
+                                    <span class="info-value"><?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?></span>
                                 </div>
-                                <div class="card-actions">
-                                    <button class="admin-btn primary" onclick="showEditForm(<?php echo $item['id']; ?>, 'sell')">Edit</button>
-                                    <button class="admin-btn danger" onclick="deleteItem(<?php echo $item['id']; ?>, 'sell')">Delete</button>
-                                    <?php if ($item['status'] === 'active'): ?>
-                                        <button class="admin-btn warning" onclick="closeItem(<?php echo $item['id']; ?>, 'sell')">Close</button>
-                                    <?php else: ?>
-                                        <button class="admin-btn success" onclick="reopenItem(<?php echo $item['id']; ?>, 'sell')">Reopen</button>
-                                    <?php endif; ?>
+                                <div class="info-row">
+                                    <span class="info-label">Supplier:</span>
+                                    <span class="info-value"><?php echo htmlspecialchars($item['supplier_name'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></span>
                                 </div>
+                                <div class="info-row">
+                                    <span class="info-label">Price:</span>
+                                    <span class="info-value">$<?php echo number_format($item['price'], 2); ?></span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Quantity:</span>
+                                    <span class="info-value"><?php echo htmlspecialchars($item['quantity'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Types:</span>
+                                    <span class="info-value"><?php echo htmlspecialchars($item['item_type'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+                                <?php if ($item['close_time']): ?>
+                                    <div class="info-row">
+                                        <span class="info-label">Closes:</span>
+                                        <span class="info-value countdown-timer" data-close-time="<?php echo htmlspecialchars($item['close_time'], ENT_QUOTES, 'UTF-8'); ?>">
+                                            <i class="fas fa-clock"></i> Loading...
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="card-actions">
+                                <button class="admin-btn primary edit-btn" data-item-id="<?php echo $item['id']; ?>" data-item-type="sell"><i class="fas fa-edit"></i> Edit</button>
+                                <?php if ($item['status'] === 'open'): ?>
+                                    <a href="?action=close_item&item_id=<?php echo $item['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to close this item?');"><i class="fas fa-times"></i> Close</a>
+                                <?php else: ?>
+                                    <a href="?action=reopen_item&item_id=<?php echo $item['id']; ?>" class="admin-btn success"><i class="fas fa-redo"></i> Reopen</a>
+                                <?php endif; ?>
+                                <a href="?action=delete_item&item_id=<?php echo $item['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to delete this item? This will also delete related offers and transactions.');"><i class="fas fa-trash"></i> Delete</a>
                             </div>
                         </div>
                     <?php endforeach; ?>
-                </div>
+                <?php endif; ?>
+            </div>
 
-                <?php if ($total_pages > 1): ?>
-                    <div class="pagination">
+            <!-- Pagination -->
+            <?php if ($total_items > $items_per_page): ?>
+                <div class="pagination">
+                    <div class="pagination-links">
                         <?php if ($page > 1): ?>
-                            <a href="?action=items_for_sell&page=<?php echo $page - 1; ?>" class="admin-btn small">Previous</a>
+                            <a href="?action=items_for_sell&page=<?php echo $page - 1; ?>" class="admin-btn small"><i class="fas fa-chevron-left"></i> Previous</a>
                         <?php endif; ?>
-                        
-                        <?php if ($page < $total_pages): ?>
-                            <a href="?action=items_for_sell&page=<?php echo $page + 1; ?>" class="admin-btn small">Next</a>
+                        <span>Page <?php echo $page; ?> of <?php echo ceil($total_items / $items_per_page); ?></span>
+                        <?php if ($page < ceil($total_items / $items_per_page)): ?>
+                            <a href="?action=items_for_sell&page=<?php echo $page + 1; ?>" class="admin-btn small">Next <i class="fas fa-chevron-right"></i></a>
                         <?php endif; ?>
                     </div>
-                <?php endif; ?>
+                </div>
             <?php endif; ?>
 
         <?php elseif ($_GET['action'] == 'buy_requests'): ?>
-            <?php
-            // Initialize buy_requests array
-            $buy_requests = [];
-            
-            // Pagination setup
-            $items_per_page = 12;
-            $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-            $offset = ($page - 1) * $items_per_page;
-            
-            try {
-                // Get total count of buy requests
-                $stmt = $pdo->prepare("SELECT COUNT(*) FROM buy_requests WHERE user_id = :user_id");
-                $stmt->execute([':user_id' => $_SESSION['user_id']]);
-                $total_requests = $stmt->fetchColumn();
-                
-                // Calculate total pages
-                $total_pages = ceil($total_requests / $items_per_page);
-                
-                // Fetch buy requests with pagination
-                $stmt = $pdo->prepare("SELECT * FROM buy_requests WHERE user_id = :user_id ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
-                $stmt->bindValue(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
-                $stmt->bindValue(':limit', $items_per_page, PDO::PARAM_INT);
-                $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-                $stmt->execute();
-                $buy_requests = $stmt->fetchAll();
-            } catch (PDOException $e) {
-                error_log("Error fetching buy requests: " . $e->getMessage());
-                $error = "Error fetching buy requests. Please try again later.";
-            }
-            ?>
-            
+            <!-- Active Buy Requests Section -->
             <div class="section-title">
-                <h2>Active Buy Requests</h2>
-                <a href="?action=post_buy" class="admin-btn">Post New Request</a>
+                <h2><i class="fas fa-hand-holding-usd"></i> Active Buy Requests</h2>
+                <a href="?action=post_buy" class="admin-btn success"><i class="fas fa-plus"></i> Add New Request</a>
             </div>
-
-            <?php if (empty($buy_requests)): ?>
-                <div class="no-items">
-                    <p>No buy requests found. <a href="?action=post_buy">Create your first request</a></p>
-                </div>
-            <?php else: ?>
-                <div class="items-grid">
-                    <?php foreach ($buy_requests as $request): ?>
-                        <div class="item-card <?php echo $request['status'] === 'closed' ? 'closed' : ''; ?>" data-id="<?php echo $request['id']; ?>">
+            
+            <div class="items-grid">
+                <?php if (empty($requests)): ?>
+                    <div class="no-items">
+                        <p>No buy requests found. Start by creating a new request!</p>
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($requests as $request): ?>
+                        <div class="item-card <?php echo $request['status'] === 'closed' ? 'closed' : ''; ?>">
                             <div class="card-image">
-                                <img src="<?php echo htmlspecialchars($request['image_path']); ?>" alt="<?php echo htmlspecialchars($request['item_name']); ?>">
+                                <?php if (!empty($request['image'])): ?>
+                                    <img src="../<?php echo htmlspecialchars($request['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?>">
+                                <?php else: ?>
+                                    <img src="../images/placeholder.jpg" alt="No Image">
+                                <?php endif; ?>
                                 <?php if ($request['status'] === 'closed'): ?>
-                                    <div class="card-status">Closed</div>
+                                    <span class="card-status">Closed</span>
                                 <?php endif; ?>
                             </div>
-                            <div class="card-content">
-                                <div class="card-info">
-                                    <div class="info-row">
-                                        <span class="info-label">Name:</span>
-                                        <span class="info-value"><?php echo htmlspecialchars($request['item_name']); ?></span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Description:</span>
-                                        <span class="info-value"><?php echo htmlspecialchars($request['description']); ?></span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Max Price:</span>
-                                        <span class="info-value">$<?php echo number_format($request['max_price'], 2); ?></span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Quantity:</span>
-                                        <span class="info-value"><?php echo $request['quantity']; ?> needed</span>
-                                    </div>
-                                    <?php if ($request['close_time']): ?>
-                                        <div class="info-row">
-                                            <span class="info-label">Closes:</span>
-                                            <span class="info-value countdown" data-close-time="<?php echo $request['close_time']; ?>">
-                                                <?php echo date('M d, Y H:i', strtotime($request['close_time'])); ?>
-                                            </span>
-                                        </div>
-                                    <?php endif; ?>
+                            <div class="card-info">
+                                <div class="info-row">
+                                    <span class="info-label">Name:</span>
+                                    <span class="info-value"><?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?></span>
                                 </div>
-                                <div class="card-actions">
-                                    <button class="admin-btn primary" onclick="showEditForm(<?php echo $request['id']; ?>, 'buy')">Edit</button>
-                                    <button class="admin-btn danger" onclick="deleteItem(<?php echo $request['id']; ?>, 'buy')">Delete</button>
-                                    <?php if ($request['status'] === 'active'): ?>
-                                        <button class="admin-btn warning" onclick="closeItem(<?php echo $request['id']; ?>, 'buy')">Close</button>
-                                    <?php else: ?>
-                                        <button class="admin-btn success" onclick="reopenItem(<?php echo $request['id']; ?>, 'buy')">Reopen</button>
-                                    <?php endif; ?>
+                                <div class="info-row">
+                                    <span class="info-label">Max Price:</span>
+                                    <span class="info-value">$<?php echo number_format($request['max_price'], 2); ?></span>
                                 </div>
+                                <div class="info-row">
+                                    <span class="info-label">Quantity:</span>
+                                    <span class="info-value"><?php echo htmlspecialchars($request['quantity'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Types:</span>
+                                    <span class="info-value"><?php echo htmlspecialchars($request['item_type'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+                                <?php if ($request['close_time']): ?>
+                                    <div class="info-row">
+                                        <span class="info-label">Closes:</span>
+                                        <span class="info-value countdown-timer" data-close-time="<?php echo htmlspecialchars($request['close_time'], ENT_QUOTES, 'UTF-8'); ?>">
+                                            <i class="fas fa-clock"></i> Loading...
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="card-actions">
+                                <a href="?action=view_offers&request_id=<?php echo $request['id']; ?>" class="admin-btn primary"><i class="fas fa-eye"></i> View Offers</a>
+                                <?php if ($request['status'] === 'open'): ?>
+                                    <a href="?action=cancel_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to cancel this buy request?');"><i class="fas fa-times"></i> Cancel</a>
+                                <?php else: ?>
+                                    <a href="?action=reopen_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn success"><i class="fas fa-redo"></i> Reopen</a>
+                                <?php endif; ?>
+                                <a href="?action=delete_buy_request&request_id=<?php echo $request['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to delete this buy request? This will also delete related offers and transactions.');"><i class="fas fa-trash"></i> Delete</a>
                             </div>
                         </div>
                     <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+
+            <!-- Pagination -->
+            <?php if ($total_requests > $items_per_page): ?>
+                <div class="pagination">
+                    <div class="pagination-links">
+                        <?php if ($page > 1): ?>
+                            <a href="?action=buy_requests&page=<?php echo $page - 1; ?>" class="admin-btn small"><i class="fas fa-chevron-left"></i> Previous</a>
+                        <?php endif; ?>
+                        <span>Page <?php echo $page; ?> of <?php echo ceil($total_requests / $items_per_page); ?></span>
+                        <?php if ($page < ceil($total_requests / $items_per_page)): ?>
+                            <a href="?action=buy_requests&page=<?php echo $page + 1; ?>" class="admin-btn small">Next <i class="fas fa-chevron-right"></i></a>
+                        <?php endif; ?>
+                    </div>
                 </div>
             <?php endif; ?>
 
+        <?php elseif ($_GET['action'] == 'view_offers' && isset($buy_request_offers)): ?>
+            <!-- View Offers for Buy Request -->
+            <h2><i class="fas fa-exchange-alt"></i> Offers for Buy Request</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Offered By</th>
+                        <th>Offered Price</th>
+                        <th>Quantity</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($buy_request_offers)): ?>
+                        <tr>
+                            <td colspan="5">No offers found for this buy request.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($buy_request_offers as $offer): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($offer['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars($offer['username'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
+                                <td><?php echo htmlspecialchars($offer['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td>
+                                    <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=accept" class="admin-btn success" onclick="return confirm('Are you sure you want to accept this offer?');"><i class="fas fa-check"></i> Accept</a>
+                                    <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=reject" class="admin-btn danger" onclick="return confirm('Are you sure you want to reject this offer?');"><i class="fas fa-times"></i> Reject</a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+            <a href="?action=buy_requests" class="admin-btn"><i class="fas fa-arrow-left"></i> Back to Buy Requests</a>
+
+        <?php elseif ($_GET['action'] == 'offers'): ?>
+            <!-- Offers Section -->
+            <h2><i class="fas fa-exchange-alt"></i> Offers</h2>
+            
+            <h3>Buy Offers (Offers on Your Items)</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Offered By</th>
+                        <th>
+                            <a href="?action=offers&buy_sort_field=offered_price&buy_sort_order=<?php echo $buy_sort_order === 'ASC' ? 'DESC' : 'ASC'; ?>">
+                                Offered Price <i class="fas fa-sort"></i>
+                            </a>
+                        </th>
+                        <th>Quantity</th>
+                        <th>
+                            <a href="?action=offers&buy_sort_field=created_at&buy_sort_order=<?php echo $buy_sort_order === 'ASC' ? 'DESC' : 'ASC'; ?>">
+                                Date <i class="fas fa-sort"></i>
+                            </a>
+                        </th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($buy_offers)): ?>
+                        <tr>
+                            <td colspan="6">No buy offers found.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($buy_offers as $offer): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($offer['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars($offer['username'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
+                                <td><?php echo htmlspecialchars($offer['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars($offer['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td>
+                                    <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=accept" class="admin-btn success" onclick="return confirm('Are you sure you want to accept this offer?');"><i class="fas fa-check"></i> Accept</a>
+                                    <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=reject" class="admin-btn danger" onclick="return confirm('Are you sure you want to reject this offer?');"><i class="fas fa-times"></i> Reject</a>
+                                    <a href="?action=close_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');"><i class="fas fa-ban"></i> Close</a>
+                                    <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to delete this offer?');"><i class="fas fa-trash"></i> Delete</a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+
+            <h3>Sell Offers (Offers on Your Buy Requests)</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Offered By</th>
+                        <th>
+                            <a href="?action=offers&sell_sort_field=offered_price&sell_sort_order=<?php echo $sell_sort_order === 'ASC' ? 'DESC' : 'ASC'; ?>">
+                                Offered Price <i class="fas fa-sort"></i>
+                            </a>
+                        </th>
+                        <th>Quantity</th>
+                        <th>
+                            <a href="?action=offers&sell_sort_field=created_at&sell_sort_order=<?php echo $sell_sort_order === 'ASC' ? 'DESC' : 'ASC'; ?>">
+                                Date <i class="fas fa-sort"></i>
+                            </a>
+                        </th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($sell_offers)): ?>
+                        <tr>
+                            <td colspan="6">No sell offers found.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($sell_offers as $offer): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($offer['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars($offer['username'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td>$<?php echo number_format($offer['offered_price'], 2); ?></td>
+                                <td><?php echo htmlspecialchars($offer['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars($offer['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td>
+                                    <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=accept" class="admin-btn success" onclick="return confirm('Are you sure you want to accept this offer?');"><i class="fas fa-check"></i> Accept</a>
+                                    <a href="?action=offer_action&offer_id=<?php echo $offer['id']; ?>&type=reject" class="admin-btn danger" onclick="return confirm('Are you sure you want to reject this offer?');"><i class="fas fa-times"></i> Reject</a>
+                                    <a href="?action=close_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn warning" onclick="return confirm('Are you sure you want to close this offer?');"><i class="fas fa-ban"></i> Close</a>
+                                    <a href="?action=delete_offer&offer_id=<?php echo $offer['id']; ?>" class="admin-btn danger" onclick="return confirm('Are you sure you want to delete this offer?');"><i class="fas fa-trash"></i> Delete</a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+
         <?php elseif ($_GET['action'] == 'transactions'): ?>
-            <!-- Transactions -->
-            <div class="table-card">
-                <h2><i class="fas fa-receipt"></i> Transactions</h2>
-                <?php if (empty($transactions)): ?>
-                    <p>No transactions found.</p>
-                <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Item Name</th>
-                                    <th>Type</th>
-                                    <th>Buyer</th>
-                                    <th>Seller</th>
-                                    <th>Final Price ($)</th>
-                                    <th>Quantity</th>
-                                    <th>Total Amount ($)</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($transactions as $t): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($t['id'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo $t['item_id'] ? 'Sell' : 'Buy'; ?></td>
-                                        <td><?php echo htmlspecialchars($t['buyer'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($t['seller'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($t['final_price'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($t['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($t['final_price'] * $t['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($t['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                    <!-- Pagination -->
-                    <div class="pagination">
-                        <?php
-                        $total_pages = ceil($total_transactions / $items_per_page);
-                        if ($total_pages > 1):
-                        ?>
-                            <div class="pagination-links">
-                                <?php if ($page > 1): ?>
-                                    <a href="?action=transactions&page=<?php echo $page - 1; ?>" class="admin-btn small">Previous</a>
-                                <?php endif; ?>
-                                <span>Page <?php echo $page; ?> of <?php echo $total_pages; ?></span>
-                                <?php if ($page < $total_pages): ?>
-                                    <a href="?action=transactions&page=<?php echo $page + 1; ?>" class="admin-btn small">Next</a>
-                                <?php endif; ?>
-                            </div>
+            <!-- Transactions Section -->
+            <h2><i class="fas fa-receipt"></i> Transactions</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Type</th>
+                        <th>Buyer</th>
+                        <th>Seller</th>
+                        <th>Final Price</th>
+                        <th>Quantity</th>
+                        <th>Total Amount</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($transactions)): ?>
+                        <tr>
+                            <td colspan="8">No transactions found.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($transactions as $t): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo $t['item_id'] ? 'Sell' : 'Buy'; ?></td>
+                                <td><?php echo htmlspecialchars($t['buyer'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars($t['seller'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td>$<?php echo number_format($t['final_price'], 2); ?></td>
+                                <td><?php echo htmlspecialchars($t['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td>$<?php echo number_format($t['final_price'] * $t['quantity'], 2); ?></td>
+                                <td><?php echo htmlspecialchars($t['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+
+            <!-- Pagination -->
+            <?php if ($total_transactions > $items_per_page): ?>
+                <div class="pagination">
+                    <div class="pagination-links">
+                        <?php if ($page > 1): ?>
+                            <a href="?action=transactions&page=<?php echo $page - 1; ?>" class="admin-btn small"><i class="fas fa-chevron-left"></i> Previous</a>
+                        <?php endif; ?>
+                        <span>Page <?php echo $page; ?> of <?php echo ceil($total_transactions / $items_per_page); ?></span>
+                        <?php if ($page < ceil($total_transactions / $items_per_page)): ?>
+                            <a href="?action=transactions&page=<?php echo $page + 1; ?>" class="admin-btn small">Next <i class="fas fa-chevron-right"></i></a>
                         <?php endif; ?>
                     </div>
-                <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
+        <?php elseif ($_GET['action'] == 'report'): ?>
+            <!-- Reports Section -->
+            <h2><i class="fas fa-chart-pie"></i> Generate Report</h2>
+            <div class="form-card">
+                <form method="POST" action="?action=report&generate_report=1">
+                    <div class="form-group">
+                        <label>Start Date:</label>
+                        <input type="date" name="start_date" class="input" />
+                    </div>
+                    <div class="form-group">
+                        <label>End Date:</label>
+                        <input type="date" name="end_date" class="input" />
+                    </div>
+                    <div class="form-group">
+                        <label>Transaction Type:</label>
+                        <select name="transaction_type" class="input">
+                            <option value="all">All</option>
+                            <option value="sell">Sell</option>
+                            <option value="buy">Buy</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status:</label>
+                        <select name="status" class="input">
+                            <option value="all">All</option>
+                            <option value="open">Open</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="admin-btn"><i class="fas fa-eye"></i> Generate Report</button>
+                    <button type="submit" name="export_csv" value="1" class="admin-btn"><i class="fas fa-download"></i> Export to CSV</button>
+                </form>
             </div>
+
+            <?php if (isset($report_transactions)): ?>
+                <h3>Transactions Report</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Type</th>
+                            <th>Buyer</th>
+                            <th>Seller</th>
+                            <th>Supplier</th>
+                            <th>Original Price/Max Price</th>
+                            <th>Final Price</th>
+                            <th>Quantity</th>
+                            <th>Total Amount</th>
+                            <th>Description</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($report_transactions)): ?>
+                            <tr>
+                                <td colspan="11">No transactions found for the selected criteria.</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($report_transactions as $t): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($t['item_name_sell'] ?? $t['item_name_buy'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo $t['item_id'] ? 'Sell' : 'Buy'; ?></td>
+                                    <td><?php echo htmlspecialchars($t['buyer'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($t['seller'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($t['supplier_name_sell'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo $t['item_id'] ? '$' . number_format($t['original_price_sell'], 2) : '$' . number_format($t['max_price_buy'], 2); ?></td>
+                                    <td>$<?php echo number_format($t['final_price'], 2); ?></td>
+                                    <td><?php echo htmlspecialchars($t['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td>$<?php echo number_format($t['final_price'] * $t['quantity'], 2); ?></td>
+                                    <td><?php echo htmlspecialchars($t['description_sell'] ?? $t['description_buy'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($t['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+
+                <h3>Inventory Report</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Supplier</th>
+                            <th>Description</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Posted By</th>
+                            <th>Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($report_items)): ?>
+                            <tr>
+                                <td colspan="8">No items found for the selected criteria.</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($report_items as $item): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($item['supplier_name'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($item['description'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td>$<?php echo number_format($item['price'], 2); ?></td>
+                                    <td><?php echo htmlspecialchars($item['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($item['status'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($item['posted_by_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($item['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+
+                <h3>Buy Requests Report</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Description</th>
+                            <th>Max Price</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>User</th>
+                            <th>Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($report_requests)): ?>
+                            <tr>
+                                <td colspan="7">No buy requests found for the selected criteria.</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($report_requests as $request): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($request['item_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($request['description'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td>$<?php echo number_format($request['max_price'], 2); ?></td>
+                                    <td><?php echo htmlspecialchars($request['quantity'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($request['status'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($request['username'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($request['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>
 
-<!-- Footer -->
-<footer id="footer">
-    <div class="inner-width">
-        <div class="footer-content">
-            <div class="footer-section">
-                <h3>About Us</h3>
-                <p>We are a platform dedicated to facilitating online bidding and transactions securely and efficiently.</p>
+<!-- Overlay and Edit Form Container -->
+<div class="overlay" id="overlay"></div>
+<div class="edit-form-container" id="edit-form-container">
+    <h2><i class="fas fa-edit"></i> Edit Item</h2>
+    <form id="edit-form" method="POST" enctype="multipart/form-data" onsubmit="return updateHiddenTags('item-types-modal')">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
+        <input type="hidden" name="existing_image" id="edit-existing-image">
+        <input type="hidden" name="action" value="edit_item">
+        <input type="hidden" name="item_id" id="edit-item-id">
+        
+        <div class="form-group">
+            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Supplier Name</label>
+            <input type="text" name="supplier_name" id="edit-supplier-name" class="input" required 
+                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+        </div>
+        <div class="form-group">
+            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Name</label>
+            <input type="text" name="item_name" id="edit-item-name" class="input" required 
+                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+        </div>
+        <div class="form-group">
+            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Types (e.g., computer chair, marker)</label>
+            <div class="tag-container" id="tag-container-modal">
+                <div class="tag-input-wrapper">
+                    <input type="text" id="tag-input-modal" class="tag-input" placeholder="Type and press Enter or click + to add a type">
+                    <button type="button" id="add-tag-modal" class="add-tag-btn">+</button>
+                </div>
+                <div id="tag-error-modal" class="error-text" style="display: none;"></div>
             </div>
-            <div class="footer-section">
-                <h3>Quick Links</h3>
-                <ul>
-                    <li><a href="../index.php">Home</a></li>
-                    <li><a href="../index.php#about">About</a></li>
-                    <li><a href="../index.php#contact">Contact</a></li>
-                    <li><a href="admin_dashboard.php">Dashboard</a></li>
-                </ul>
+            <input type="hidden" name="item_types" id="item-types-modal">
+        </div>
+        <div class="form-group">
+            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Description</label>
+            <textarea name="description" id="edit-description" class="input" rows="4" required 
+                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;"></textarea>
+        </div>
+        <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
+            <div class="form-group" style="flex: 1;">
+                <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Price ($)</label>
+                <input type="number" name="price" id="edit-price" class="input" step="0.01" required 
+                    style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
             </div>
-            <div class="footer-section">
-                <h3>Contact Us</h3>
-                <p>Email: support@example.com</p>
-                <p>Phone: (123) 456-7890</p>
+            <div class="form-group" style="flex: 1;">
+                <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Quantity</label>
+                <input type="number" name="quantity" id="edit-quantity" class="input" required 
+                    style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
             </div>
         </div>
+        <div class="form-group">
+            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Close Time (optional)</label>
+            <input type="datetime-local" name="close_time" id="edit-close-time" class="input" 
+                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+        </div>
+        <div class="form-group">
+            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Current Image</label>
+            <div id="edit-image-preview">
+                <p>No image uploaded</p>
+            </div>
+        </div>
+        <div class="form-group">
+            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Upload New Image (optional)</label>
+            <input type="file" name="image" class="input" accept="image/*" 
+                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+        </div>
+        <div class="form-actions" style="display: flex; gap: 10px;">
+            <button type="submit" class="admin-btn success" style="flex: 1;"><i class="fas fa-save"></i> Update</button>
+            <button type="button" class="admin-btn danger" onclick="closeEditForm()" style="flex: 1;"><i class="fas fa-times"></i> Cancel</button>
+        </div>
+    </form>
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="inner-width">
         <div class="footer-bottom">
-            <p>&copy; <?php echo date('Y'); ?> Online Bidding System. All rights reserved.</p>
+            &copy; 2025 Bidding System | Designed by Your Company
         </div>
     </div>
 </footer>
 
 <script>
-    // Navbar toggle
-    $(document).ready(function () {
-        $('.menu-toggler').on('click', function () {
-            $(this).toggleClass('active');
-            $('.navbar-menu').toggleClass('active');
-        });
+// Tag Management System
+function addTag(containerId, inputId, errorId) {
+    const container = document.getElementById(containerId);
+    const input = document.getElementById(inputId);
+    const error = document.getElementById(errorId);
+    let tagText = input.value.trim();
 
-        $('.navbar-menu a').on('click', function () {
-            $('.menu-toggler').removeClass('active');
-            $('.navbar-menu').removeClass('active');
-        });
-    });
-
-    // Tag input functionality
-    function addTag(formType) {
-        const input = document.getElementById(`tag-input-${formType}`);
-        const container = document.getElementById(`tag-container-${formType}`);
-        const errorText = document.getElementById(`tag-error-${formType}`);
-        let tagText = input.value.trim();
-
-        if (tagText === '') return;
-
-        // Prevent duplicate tags (case-insensitive)
-        const existingTags = Array.from(container.getElementsByClassName('tag')).map(tag => tag.textContent.replace('×', '').trim().toLowerCase());
-        if (existingTags.includes(tagText.toLowerCase())) {
-            errorText.textContent = 'This tag already exists.';
-            errorText.style.display = 'block';
-            input.value = '';
-            return;
-        }
-
-        // Validate tag format (only letters, numbers, spaces, and hyphens)
-        const tagRegex = /^[a-zA-Z0-9\s-]+$/;
-        if (!tagRegex.test(tagText)) {
-            errorText.textContent = 'Tags can only contain letters, numbers, spaces, and hyphens.';
-            errorText.style.display = 'block';
-            return;
-        }
-
-        errorText.style.display = 'none';
-
-        const tag = document.createElement('span');
-        tag.className = 'tag';
-        tag.innerHTML = `${tagText}<span class="remove-tag" onclick="removeTag(this, '${formType}')">×</span>`;
-        container.appendChild(tag);
-        input.value = '';
-        updateHiddenTags(`item-types-${formType}`);
+    if (tagText === '') {
+        error.textContent = 'Please enter a tag.';
+        error.style.display = 'block';
+        return;
     }
 
-    function removeTag(element, formType) {
-        element.parentElement.remove();
-        updateHiddenTags(`item-types-${formType}`);
+    // Prevent duplicate tags
+    const existingTags = Array.from(container.getElementsByClassName('tag')).map(tag => tag.textContent.replace('×', '').trim());
+    if (existingTags.includes(tagText)) {
+        error.textContent = 'This tag already exists.';
+        error.style.display = 'block';
+        return;
     }
 
-    function updateHiddenTags(hiddenInputId) {
-        const container = document.getElementById(`tag-container-${hiddenInputId.split('-').pop()}`);
-        const hiddenInput = document.getElementById(hiddenInputId);
-        const errorText = document.getElementById(`tag-error-${hiddenInputId.split('-').pop()}`);
-        const tags = Array.from(container.getElementsByClassName('tag'))
-            .map(tag => tag.textContent.replace('×', '').trim())
-            .filter(tag => tag !== '');
-        
-        hiddenInput.value = tags.join(', ');
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = tagText;
+    const removeBtn = document.createElement('span');
+    removeBtn.className = 'remove-tag';
+    removeBtn.textContent = '×';
+    removeBtn.onclick = () => removeTag(removeBtn, containerId.replace('tag-container-', ''));
+    tag.appendChild(removeBtn);
 
-        // Validate that at least one tag exists
-        if (tags.length === 0) {
-            errorText.textContent = 'At least one tag is required.';
-            errorText.style.display = 'block';
-            return false;
-        } else {
-            errorText.style.display = 'none';
-            return true;
-        }
+    container.insertBefore(tag, container.querySelector('.tag-input-wrapper'));
+    input.value = '';
+    error.style.display = 'none';
+}
+
+function removeTag(element, formType) {
+    element.parentElement.remove();
+    updateHiddenTags(`item-types-${formType}`);
+}
+
+function updateHiddenTags(hiddenInputId) {
+    const container = document.getElementById(`tag-container-${hiddenInputId.split('-').slice(2).join('-')}`);
+    const tags = Array.from(container.getElementsByClassName('tag')).map(tag => tag.textContent.replace('×', '').trim());
+    const hiddenInput = document.getElementById(hiddenInputId);
+    hiddenInput.value = tags.join(', ');
+
+    if (tags.length === 0) {
+        const error = document.getElementById(`tag-error-${hiddenInputId.split('-').slice(2).join('-')}`);
+        error.textContent = 'At least one item type is required.';
+        error.style.display = 'block';
+        return false;
     }
+    return true;
+}
 
-    // Add tag on Enter key press or button click
-    document.addEventListener('DOMContentLoaded', function() {
-        // For sell form
-        const sellInput = document.getElementById('tag-input-sell');
-        const sellButton = document.getElementById('add-tag-sell');
-        if (sellInput && sellButton) {
-            sellInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addTag('sell');
-                }
-            });
-            sellButton.addEventListener('click', function() {
-                addTag('sell');
-            });
-        }
+// Event Listeners for Tag Inputs
+['sell', 'buy', 'edit', 'modal'].forEach(type => {
+    const input = document.getElementById(`tag-input-${type}`);
+    const addBtn = document.getElementById(`add-tag-${type}`);
 
-        // For buy form
-        const buyInput = document.getElementById('tag-input-buy');
-        const buyButton = document.getElementById('add-tag-buy');
-        if (buyInput && buyButton) {
-            buyInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addTag('buy');
-                }
-            });
-            buyButton.addEventListener('click', function() {
-                addTag('buy');
-            });
-        }
-
-        // For edit form
-        const editInput = document.getElementById('tag-input-edit');
-        const editButton = document.getElementById('add-tag-edit');
-        if (editInput && editButton) {
-            editInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addTag('edit');
-                }
-            });
-            editButton.addEventListener('click', function() {
-                addTag('edit');
-            });
-        }
-    });
-
-    // Ensure form submission validates tags
-    document.querySelectorAll('form').forEach(form => {
-        form.addEventListener('submit', function (e) {
-            const hiddenInput = form.querySelector('input[name="item_types"]');
-            if (hiddenInput) {
-                const formType = hiddenInput.id.split('-').pop();
-                if (!updateHiddenTags(`item-types-${formType}`)) {
-                    e.preventDefault();
-                }
+    if (input && addBtn) {
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addTag(`tag-container-${type}`, `tag-input-${type}`, `tag-error-${type}`);
             }
         });
-    });
 
-    // Countdown timer function
-    function updateCountdown(itemId, closeTime) {
-        const timerElement = document.querySelector(`.countdown-timer[data-item-id="${itemId}"]`);
-        if (!timerElement) return;
+        addBtn.addEventListener('click', () => {
+            addTag(`tag-container-${type}`, `tag-input-${type}`, `tag-error-${type}`);
+        });
+    }
+});
 
+// Countdown Timer Functionality
+function updateCountdownTimers() {
+    const timers = document.querySelectorAll('.countdown-timer');
+    timers.forEach(timer => {
+        const closeTimeStr = timer.getAttribute('data-close-time');
+        if (!closeTimeStr) return;
+
+        const closeTime = new Date(closeTimeStr).getTime();
         const now = new Date().getTime();
-        const closeDate = new Date(closeTime).getTime();
-        const distance = closeDate - now;
+        const distance = closeTime - now;
 
-        if (distance < 0) {
-            timerElement.innerHTML = '<i class="fas fa-clock"></i> Closed';
-            timerElement.classList.add('closed');
+        if (distance <= 0) {
+            timer.textContent = 'Closed';
+            timer.classList.add('closed');
             return;
         }
 
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
         const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        timerElement.innerHTML = `<i class="fas fa-clock"></i> ${hours}h ${minutes}m ${seconds}s`;
-        
-        if (hours < 1) {
-            timerElement.classList.add('closing-soon');
+        let timeStr = '';
+        if (days > 0) timeStr += `${days}d `;
+        if (hours > 0 || days > 0) timeStr += `${hours}h `;
+        if (minutes > 0 || hours > 0 || days > 0) timeStr += `${minutes}m `;
+        timeStr += `${seconds}s`;
+
+        timer.textContent = timeStr;
+        if (distance < 24 * 60 * 60 * 1000) {
+            timer.classList.add('closing-soon');
         }
-    }
-
-    // Edit item function
-    function editItem(itemId, itemType) {
-        console.log('Edit button clicked for item:', itemId, 'type:', itemType);
-        
-        // Create overlay
-        const overlay = document.createElement('div');
-        overlay.className = 'overlay active';
-        document.body.appendChild(overlay);
-
-        // Find and show edit form
-        const editForm = document.querySelector(`.edit-form-container[data-item-id="${itemId}"][data-item-type="${itemType}"]`);
-        if (!editForm) {
-            console.error('Edit form not found for item:', itemId, 'type:', itemType);
-            return;
-        }
-
-        editForm.style.display = 'block';
-        editForm.classList.add('active');
-
-        // Close form when clicking overlay
-        overlay.addEventListener('click', () => {
-            cancelEdit(itemId, itemType);
-        });
-    }
-
-    // Save edit function
-    function saveEdit(itemId, itemType) {
-        const form = document.querySelector(`.edit-form-container[data-item-id="${itemId}"][data-item-type="${itemType}"] .edit-form`);
-        if (!form) {
-            console.error('Form not found for item:', itemId, 'type:', itemType);
-            return;
-        }
-
-        const formData = new FormData(form);
-        formData.append('action', 'update');
-        formData.append('item_id', itemId);
-        formData.append('item_type', itemType);
-        
-        fetch(window.location.href, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (response.ok) {
-                window.location.reload();
-            } else {
-                throw new Error('Network response was not ok');
-            }
-        })
-        .catch(error => {
-            showAlert('Error saving changes: ' + error.message, 'error');
-        });
-    }
-
-    // Cancel edit function
-    function cancelEdit(itemId, itemType) {
-        const editForm = document.querySelector(`.edit-form-container[data-item-id="${itemId}"][data-item-type="${itemType}"]`);
-        const overlay = document.querySelector('.overlay');
-        
-        if (editForm) {
-            editForm.style.display = 'none';
-            editForm.classList.remove('active');
-        }
-        if (overlay) {
-            overlay.remove();
-        }
-    }
-
-    // Delete item function
-    function deleteItem(itemId, itemType) {
-        if (confirm('Are you sure you want to delete this item?')) {
-            $.ajax({
-                url: 'admin_dashboard.php',
-                type: 'POST',
-                data: {
-                    action: 'delete',
-                    item_id: itemId,
-                    item_type: itemType
-                },
-                success: function(response) {
-                    showAlert('Item deleted successfully', 'success');
-                    setTimeout(() => location.reload(), 1500);
-                },
-                error: function() {
-                    showAlert('Error deleting item', 'error');
-                }
-            });
-        }
-    }
-
-    // Close item function
-    function closeItem(itemId) {
-        if (confirm('Are you sure you want to close this item?')) {
-            $.ajax({
-                url: 'admin_dashboard.php',
-                type: 'POST',
-                data: {
-                    action: 'close',
-                    item_id: itemId
-                },
-                success: function(response) {
-                    showAlert('Item closed successfully', 'success');
-                    setTimeout(() => location.reload(), 1500);
-                },
-                error: function() {
-                    showAlert('Error closing item', 'error');
-                }
-            });
-        }
-    }
-
-    // Initialize countdown timers
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.countdown-timer').forEach(timer => {
-            const itemId = timer.dataset.itemId;
-            const closeTime = timer.dataset.closeTime;
-            if (itemId && closeTime) {
-                updateCountdown(itemId, closeTime);
-                setInterval(() => updateCountdown(itemId, closeTime), 1000);
-            }
-        });
     });
+}
 
-    // Show success/error messages
-    function showAlert(message, type) {
-        const alertDiv = $('<div>')
-            .addClass(`alert alert-${type}`)
-            .text(message)
-            .appendTo('body');
-        
-        setTimeout(() => alertDiv.remove(), 3000);
-    }
+// Update timers every second
+setInterval(updateCountdownTimers, 1000);
+updateCountdownTimers();
 
-    // Reopen item function
-    function reopenItem(itemId) {
-        if (confirm('Are you sure you want to reopen this item?')) {
-            $.ajax({
-                url: 'admin_dashboard.php',
-                type: 'POST',
-                data: {
-                    action: 'reopen',
-                    item_id: itemId
-                },
-                success: function(response) {
-                    showAlert('Item reopened successfully', 'success');
-                    setTimeout(() => location.reload(), 1500);
-                },
-                error: function() {
-                    showAlert('Error reopening item', 'error');
-                }
-            });
+// Edit Form Handling
+function openEditForm(itemId, itemType) {
+    fetch(`admin_dashboard.php?action=get_item&item_id=${itemId}&item_type=${itemType}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
         }
-    }
-
-    // JavaScript functions for item actions
-    function deleteItem(itemId, itemType) {
-        if (confirm('Are you sure you want to delete this item?')) {
-            $.ajax({
-                url: 'admin_dashboard.php',
-                type: 'POST',
-                data: {
-                    action: 'delete',
-                    item_id: itemId,
-                    item_type: itemType
-                },
-                success: function(response) {
-                    showAlert('Item deleted successfully', 'success');
-                    setTimeout(() => location.reload(), 1500);
-                },
-                error: function() {
-                    showAlert('Error deleting item', 'error');
-                }
-            });
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error loading item: ' + data.error);
+            return;
         }
-    }
 
-    function closeItem(itemId) {
-        if (confirm('Are you sure you want to close this item?')) {
-            $.ajax({
-                url: 'admin_dashboard.php',
-                type: 'POST',
-                data: {
-                    action: 'close',
-                    item_id: itemId
-                },
-                success: function(response) {
-                    showAlert('Item closed successfully', 'success');
-                    setTimeout(() => location.reload(), 1500);
-                },
-                error: function() {
-                    showAlert('Error closing item', 'error');
-                }
-            });
-        }
-    }
+        // Populate form fields
+        document.getElementById('edit-item-id').value = data.id;
+        document.getElementById('edit-supplier-name').value = data.supplier_name || '';
+        document.getElementById('edit-item-name').value = data.item_name;
+        document.getElementById('edit-description').value = data.description;
+        document.getElementById('edit-price').value = data.price || data.max_price;
+        document.getElementById('edit-quantity').value = data.quantity;
+        document.getElementById('edit-close-time').value = data.close_time ? data.close_time.replace(' ', 'T').substring(0, 16) : '';
+        document.getElementById('edit-existing-image').value = data.image || '';
 
-    function reopenItem(itemId) {
-        if (confirm('Are you sure you want to reopen this item?')) {
-            $.ajax({
-                url: 'admin_dashboard.php',
-                type: 'POST',
-                data: {
-                    action: 'reopen',
-                    item_id: itemId
-                },
-                success: function(response) {
-                    showAlert('Item reopened successfully', 'success');
-                    setTimeout(() => location.reload(), 1500);
-                },
-                error: function() {
-                    showAlert('Error reopening item', 'error');
-                }
-            });
-        }
-    }
-
-    function showEditForm(itemId, itemType) {
-        // Create overlay
-        const overlay = document.createElement('div');
-        overlay.className = 'overlay';
-        document.body.appendChild(overlay);
-        
-        // Show form
-        const form = $(`#edit-form-${itemId}`);
-        if (form.length) {
-            form.show();
-            form.addClass('active');
-            overlay.classList.add('active');
+        // Populate image preview
+        const imagePreview = document.getElementById('edit-image-preview');
+        imagePreview.innerHTML = '';
+        if (data.image) {
+            const img = document.createElement('img');
+            img.src = `../${data.image}`;
+            img.alt = 'Item Image';
+            img.style.maxWidth = '150px';
+            img.style.borderRadius = '8px';
+            imagePreview.appendChild(img);
         } else {
-            // If form doesn't exist, create it
-            const formHtml = `
-                <div class="edit-form-container" id="edit-form-${itemId}">
-                    <form class="edit-form" onsubmit="saveEdit(${itemId}, '${itemType}'); return false;">
-                        <h3>Edit ${itemType === 'sell' ? 'Item' : 'Buy Request'}</h3>
-                        <div class="form-group">
-                            <label>Name:</label>
-                            <input type="text" name="item_name" class="input" required placeholder="Enter item name">
-                        </div>
-                        <div class="form-group">
-                            <label>Description:</label>
-                            <textarea name="description" class="input" required placeholder="Enter item description"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>${itemType === 'sell' ? 'Price ($):' : 'Max Price ($):'}</label>
-                            <input type="number" name="price" class="input" step="0.01" required placeholder="Enter price">
-                        </div>
-                        <div class="form-group">
-                            <label>Quantity:</label>
-                            <input type="number" name="quantity" class="input" required placeholder="Enter quantity">
-                        </div>
-                        <div class="form-group">
-                            <label>Close Time (optional):</label>
-                            <input type="datetime-local" name="close_time" class="input" placeholder="Select close time">
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" class="admin-btn success">Save Changes</button>
-                            <button type="button" class="admin-btn danger" onclick="hideEditForm(${itemId})">Cancel</button>
-                        </div>
-                    </form>
-                </div>
-            `;
-            $('body').append(formHtml);
-            const newForm = $(`#edit-form-${itemId}`);
-            newForm.show();
-            newForm.addClass('active');
-            overlay.classList.add('active');
-            
-            // Load current values
-            $.ajax({
-                url: 'admin_dashboard.php',
-                type: 'GET',
-                data: {
-                    action: 'get_item',
-                    item_id: itemId,
-                    item_type: itemType
-                },
-                success: function(response) {
-                    const data = JSON.parse(response);
-                    if (data) {
-                        newForm.find('[name="item_name"]').val(data.item_name);
-                        newForm.find('[name="description"]').val(data.description);
-                        newForm.find('[name="price"]').val(data.price || data.max_price);
-                        newForm.find('[name="quantity"]').val(data.quantity);
-                        if (data.close_time) {
-                            newForm.find('[name="close_time"]').val(data.close_time.replace(' ', 'T'));
-                        }
-                    }
-                }
+            imagePreview.innerHTML = '<p>No image uploaded</p>';
+        }
+
+        // Populate tags
+        const tagContainer = document.getElementById('tag-container-modal');
+        tagContainer.querySelectorAll('.tag').forEach(tag => tag.remove());
+        if (data.item_type) {
+            const tags = data.item_type.split(',').map(tag => tag.trim());
+            tags.forEach(tagText => {
+                const tag = document.createElement('span');
+                tag.className = 'tag';
+                tag.textContent = tagText;
+                const removeBtn = document.createElement('span');
+                removeBtn.className = 'remove-tag';
+                removeBtn.textContent = '×';
+                removeBtn.onclick = () => removeTag(removeBtn, 'modal');
+                tag.appendChild(removeBtn);
+                tagContainer.insertBefore(tag, tagContainer.querySelector('.tag-input-wrapper'));
             });
         }
-    }
 
-    function hideEditForm(itemId) {
-        const form = $(`#edit-form-${itemId}`);
-        const overlay = $('.overlay');
-        
-        if (form.length) {
-            form.hide();
-            form.removeClass('active');
-        }
-        if (overlay.length) {
-            overlay.remove();
-        }
-    }
-
-    function saveEdit(itemId, itemType) {
-        const form = $(`#edit-form-${itemId}`);
-        const formData = new FormData(form[0]);
-        formData.append('action', 'update');
-        formData.append('item_id', itemId);
-        formData.append('item_type', itemType);
-
-        $.ajax({
-            url: 'admin_dashboard.php',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                showAlert('Item updated successfully', 'success');
-                setTimeout(() => location.reload(), 1500);
-            },
-            error: function() {
-                showAlert('Error updating item', 'error');
-            }
-        });
-    }
-
-    // Add overlay click handler to close form
-    $(document).on('click', '.overlay', function() {
-        $('.edit-form-container').hide().removeClass('active');
-        $(this).remove();
+        // Show the form
+        document.getElementById('edit-form-container').classList.add('active');
+        document.getElementById('overlay').classList.add('active');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to load item data.');
     });
+}
 
-    // Prevent form click from closing the overlay
-    $(document).on('click', '.edit-form-container', function(e) {
-        e.stopPropagation();
+function closeEditForm() {
+    document.getElementById('edit-form-container').classList.remove('active');
+    document.getElementById('overlay').classList.remove('active');
+    document.getElementById('edit-form').reset();
+    document.getElementById('tag-container-modal').querySelectorAll('.tag').forEach(tag => tag.remove());
+}
+
+document.querySelectorAll('.edit-btn').forEach(button => {
+    button.addEventListener('click', () => {
+        const itemId = button.getAttribute('data-item-id');
+        const itemType = button.getAttribute('data-item-type');
+        openEditForm(itemId, itemType);
     });
+});
 
-    // Initialize countdown timers
-    function initializeCountdowns() {
-        $('.countdown').each(function() {
-            const endTime = new Date($(this).data('end-time')).getTime();
-            const timer = $(this);
-            
-            const updateTimer = () => {
-                const now = new Date().getTime();
-                const distance = endTime - now;
-                
-                if (distance < 0) {
-                    timer.html('Closed');
-                    return;
-                }
-                
-                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                
-                timer.html(`${days}d ${hours}h ${minutes}m ${seconds}s`);
-            };
-            
-            updateTimer();
-            setInterval(updateTimer, 1000);
-        });
-    }
-
-    // Initialize when document is ready
-    $(document).ready(function() {
-        initializeCountdowns();
-    });
+// Alert Auto-Close
+document.querySelectorAll('.alert').forEach(alert => {
+    setTimeout(() => {
+        alert.style.animation = 'slideOut 0.3s ease-in forwards';
+    }, 5000);
+});
 </script>
+
 </body>
 </html>
