@@ -985,20 +985,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $pdo->beginTransaction();
                         
                         // Delete related records
-                        $stmt = $conn->prepare("DELETE FROM bids WHERE item_id = ?");
+                        $stmt = $pdo->prepare("DELETE FROM bids WHERE item_id = ?");
                         $stmt->execute([$item_id]);
                         
-                        $stmt = $conn->prepare("DELETE FROM offers WHERE item_id = ?");
+                        $stmt = $pdo->prepare("DELETE FROM offers WHERE item_id = ?");
                         $stmt->execute([$item_id]);
                         
                         // Delete the item
-                        $stmt = $conn->prepare("DELETE FROM items WHERE id = ?");
+                        $stmt = $pdo->prepare("DELETE FROM items WHERE id = ?");
                         $stmt->execute([$item_id]);
                         
-                        $conn->commit();
+                        $pdo->commit();
                         $success_message = "Item deleted successfully";
                     } catch (PDOException $e) {
-                        $conn->rollBack();
+                        $pdo->rollBack();
                         $error_message = "Error deleting item: " . $e->getMessage();
                     }
                 }
@@ -1014,7 +1014,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $close_time = isset($_POST['close_time']) ? $_POST['close_time'] : null;
                     
                     try {
-                        $stmt = $conn->prepare("
+                        $stmt = $pdo->prepare("
                             UPDATE items 
                             SET item_name = ?, 
                                 description = ?, 
@@ -1048,7 +1048,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (isset($_POST['item_id'])) {
                     $item_id = (int)$_POST['item_id'];
                     try {
-                        $stmt = $conn->prepare("UPDATE items SET status = 'closed' WHERE id = ?");
+                        $stmt = $pdo->prepare("UPDATE items SET status = 'closed' WHERE id = ?");
                         $stmt->execute([$item_id]);
                         $success_message = "Item closed successfully";
                     } catch (PDOException $e) {
