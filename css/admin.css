@@ -977,7 +977,7 @@ footer .inner-width {
     border-radius: 6px;
     background: #fff;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    min-height: 35px;
+    min-height: 40px;
     margin-bottom: 10px;
     max-height: 120px;
     overflow-y: auto;
@@ -990,7 +990,7 @@ footer .inner-width {
     color: #2c3e50;
     padding: 4px 8px;
     border-radius: 15px;
-    font-size: 13px;
+    font-size: 14px;
     margin: 2px;
 }
 
@@ -1011,18 +1011,18 @@ footer .inner-width {
     align-items: center;
     gap: 8px;
     width: 100%;
-    min-height: 35px;
+    min-height: 40px;
 }
 
 .tag-input {
     flex-grow: 1;
     border: none;
     outline: none;
-    padding: 6px 8px;
-    font-size: 13px;
+    padding: 8px 12px;
+    font-size: 14px;
     color: #2c3e50;
     background: transparent;
-    height: 35px;
+    height: 40px;
 }
 
 .add-tag-btn {
@@ -1030,8 +1030,8 @@ footer .inner-width {
     color: white;
     border: none;
     border-radius: 50%;
-    width: 25px;
-    height: 25px;
+    width: 30px;
+    height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
