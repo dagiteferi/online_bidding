@@ -1703,102 +1703,49 @@ if (isset($error_message)) {
             <?php else: ?>
                 <div class="items-grid">
                     <?php foreach ($items as $item): ?>
-                        <div class="item-card <?php echo $item['status'] === 'closed' ? 'closed' : ''; ?>" data-item-id="<?php echo $item['id']; ?>" data-item-type="sale">
-                            <?php if ($item['image']): ?>
-                                <img src="../<?php echo htmlspecialchars($item['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?>" class="card-image">
-                            <?php else: ?>
-                                <div class="card-image" style="background: #f8f9fa; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-image" style="font-size: 48px; color: #ced4da;"></i>
-                                </div>
-                            <?php endif; ?>
-                            
-                            <div class="card-content">
-                                <div class="card-status <?php echo $item['status'] == 'open' ? 'status-open' : 'status-closed'; ?>">
-                                    <?php echo htmlspecialchars(ucfirst($item['status']), ENT_QUOTES, 'UTF-8'); ?>
-                                </div>
-                                
-                                <h3 class="card-title"><?php echo htmlspecialchars($item['item_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
-                                
-                                <div class="card-supplier">
-                                    <i class="fas fa-store"></i> <?php echo htmlspecialchars($item['supplier_name'], ENT_QUOTES, 'UTF-8'); ?>
-                                </div>
-                                
-                                <p class="card-description"><?php echo htmlspecialchars($item['description'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                
-                                <div class="card-details">
-                                    <span class="card-detail">
-                                        <i class="fas fa-tag"></i> <?php echo htmlspecialchars($item['item_type'], ENT_QUOTES, 'UTF-8'); ?>
-                                    </span>
-                                </div>
-                                
-                                <div class="card-price">
-                                    <i class="fas fa-dollar-sign"></i> <?php echo number_format($item['price'], 2); ?>
-                                </div>
-                                
-                                <div class="card-quantity">
-                                    <i class="fas fa-box"></i> <?php echo htmlspecialchars($item['quantity'], ENT_QUOTES, 'UTF-8'); ?> available
-                                </div>
-                                
-                                <?php if ($item['close_time']): ?>
-                                    <div class="card-close-time" data-end-time="<?php echo strtotime($item['close_time']); ?>">
-                                        <i class="fas fa-clock"></i> 
-                                        <span class="countdown" data-close-time="<?php echo strtotime($item['close_time']); ?>">
-                                            Closes in: <span class="time-remaining"></span>
-                                        </span>
-                                    </div>
+                        <div class="item-card <?php echo $item['status'] === 'closed' ? 'closed' : ''; ?>" data-id="<?php echo $item['id']; ?>">
+                            <div class="card-image">
+                                <img src="<?php echo htmlspecialchars($item['image_path']); ?>" alt="<?php echo htmlspecialchars($item['item_name']); ?>">
+                                <?php if ($item['status'] === 'closed'): ?>
+                                    <div class="card-status">Closed</div>
                                 <?php endif; ?>
-                                
-                                <div class="card-actions">
-                                    <button class="admin-btn small" onclick="showEditForm(<?php echo $item['id']; ?>, 'sell')">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </button>
-                                    <button class="admin-btn small danger" onclick="deleteItem(<?php echo $item['id']; ?>, 'sale')">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
-                                    <?php if ($item['status'] === 'closed'): ?>
-                                    <button class="admin-btn small success" onclick="reopenItem(<?php echo $item['id']; ?>, 'sale')">
-                                        <i class="fas fa-redo"></i> Reopen
-                                    </button>
-                                    <?php else: ?>
-                                    <button class="admin-btn small warning" onclick="closeItem(<?php echo $item['id']; ?>, 'sale')">
-                                        <i class="fas fa-times"></i> Close
-                                    </button>
+                            </div>
+                            <div class="card-content">
+                                <div class="card-info">
+                                    <div class="info-row">
+                                        <span class="info-label">Name:</span>
+                                        <span class="info-value"><?php echo htmlspecialchars($item['item_name']); ?></span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Description:</span>
+                                        <span class="info-value"><?php echo htmlspecialchars($item['description']); ?></span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Price:</span>
+                                        <span class="info-value">$<?php echo number_format($item['price'], 2); ?></span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Quantity:</span>
+                                        <span class="info-value"><?php echo $item['quantity']; ?> available</span>
+                                    </div>
+                                    <?php if ($item['close_time']): ?>
+                                        <div class="info-row">
+                                            <span class="info-label">Closes:</span>
+                                            <span class="info-value countdown" data-close-time="<?php echo $item['close_time']; ?>">
+                                                <?php echo date('M d, Y H:i', strtotime($item['close_time'])); ?>
+                                            </span>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
-                            </div>
-                            
-                            <div class="edit-form-container" data-item-id="<?php echo $item['id']; ?>" data-item-type="sale">
-                                <form class="edit-form" onsubmit="event.preventDefault(); saveEdit(<?php echo $item['id']; ?>, 'sale');">
-                                    <h3>Edit Item</h3>
-                                    <div class="form-group">
-                                        <label for="item_name">Item Name</label>
-                                        <input type="text" name="item_name" value="<?php echo htmlspecialchars($item['item_name']); ?>" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="description">Description</label>
-                                        <textarea name="description" required><?php echo htmlspecialchars($item['description']); ?></textarea>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="price">Price</label>
-                                        <input type="number" name="price" value="<?php echo $item['price']; ?>" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="quantity">Quantity</label>
-                                        <input type="number" name="quantity" value="<?php echo $item['quantity']; ?>" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="close_time">Close Time</label>
-                                        <input type="datetime-local" name="close_time" value="<?php echo date('Y-m-d\TH:i', strtotime($item['close_time'])); ?>">
-                                    </div>
-                                    <div class="form-actions">
-                                        <button type="submit" class="admin-btn success">
-                                            <i class="fas fa-save"></i> Save Changes
-                                        </button>
-                                        <button type="button" class="admin-btn" onclick="cancelEdit(<?php echo $item['id']; ?>, 'sale')">
-                                            <i class="fas fa-times"></i> Cancel
-                                        </button>
-                                    </div>
-                                </form>
+                                <div class="card-actions">
+                                    <button class="admin-btn primary" onclick="showEditForm(<?php echo $item['id']; ?>, 'sell')">Edit</button>
+                                    <button class="admin-btn danger" onclick="deleteItem(<?php echo $item['id']; ?>, 'sell')">Delete</button>
+                                    <?php if ($item['status'] === 'active'): ?>
+                                        <button class="admin-btn warning" onclick="closeItem(<?php echo $item['id']; ?>, 'sell')">Close</button>
+                                    <?php else: ?>
+                                        <button class="admin-btn success" onclick="reopenItem(<?php echo $item['id']; ?>, 'sell')">Reopen</button>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
