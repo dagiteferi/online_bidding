@@ -1016,9 +1016,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $description = sanitizeInput($_POST['description']);
                 $price = floatval($_POST['price']);
                 $quantity = intval($_POST['quantity']);
-                $close_time = $_POST['close_time'];
+                $close_time = !empty($_POST['close_time']) ? $_POST['close_time'] : null;
                 
-                $stmt = $pdo->prepare("UPDATE items SET item_name = ?, description = ?, price = ?, quantity = ?, close_time = ? WHERE id = ?");
+                if ($item_type === 'sell') {
+                    $stmt = $pdo->prepare("UPDATE items SET item_name = ?, description = ?, price = ?, quantity = ?, close_time = ? WHERE id = ?");
+                } else {
+                    $stmt = $pdo->prepare("UPDATE buy_requests SET item_name = ?, description = ?, max_price = ?, quantity = ?, close_time = ? WHERE id = ?");
+                }
                 $stmt->execute([$item_name, $description, $price, $quantity, $close_time, $item_id]);
                 
                 $success_message = "Item updated successfully";
@@ -1034,6 +1038,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->rollBack();
         }
         $error_message = "An error occurred: " . $e->getMessage();
+    }
+}
+
+// Handle GET requests for getting item data
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_item') {
+    $item_id = intval($_GET['item_id']);
+    $item_type = $_GET['item_type'];
+    
+    try {
+        if ($item_type === 'sell') {
+            $stmt = $pdo->prepare("SELECT * FROM items WHERE id = ?");
+        } else {
+            $stmt = $pdo->prepare("SELECT * FROM buy_requests WHERE id = ?");
+        }
+        $stmt->execute([$item_id]);
+        $item = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($item) {
+            header('Content-Type: application/json');
+            echo json_encode($item);
+            exit;
+        }
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+        exit;
     }
 }
 
@@ -2374,6 +2404,67 @@ if (isset($error_message)) {
             form.show();
             form.addClass('active');
             overlay.classList.add('active');
+        } else {
+            // If form doesn't exist, create it
+            const formHtml = `
+                <div class="edit-form-container" id="edit-form-${itemId}">
+                    <form class="edit-form" onsubmit="saveEdit(${itemId}, '${itemType}'); return false;">
+                        <h3>Edit ${itemType === 'sell' ? 'Item' : 'Buy Request'}</h3>
+                        <div class="form-group">
+                            <label>Name:</label>
+                            <input type="text" name="item_name" class="input" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Description:</label>
+                            <textarea name="description" class="input" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>${itemType === 'sell' ? 'Price ($):' : 'Max Price ($):'}</label>
+                            <input type="number" name="price" class="input" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Quantity:</label>
+                            <input type="number" name="quantity" class="input" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Close Time (optional):</label>
+                            <input type="datetime-local" name="close_time" class="input">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="admin-btn success">Save</button>
+                            <button type="button" class="admin-btn danger" onclick="hideEditForm(${itemId})">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            $('body').append(formHtml);
+            const newForm = $(`#edit-form-${itemId}`);
+            newForm.show();
+            newForm.addClass('active');
+            overlay.classList.add('active');
+            
+            // Load current values
+            $.ajax({
+                url: 'admin_dashboard.php',
+                type: 'GET',
+                data: {
+                    action: 'get_item',
+                    item_id: itemId,
+                    item_type: itemType
+                },
+                success: function(response) {
+                    const data = JSON.parse(response);
+                    if (data) {
+                        newForm.find('[name="item_name"]').val(data.item_name);
+                        newForm.find('[name="description"]').val(data.description);
+                        newForm.find('[name="price"]').val(data.price || data.max_price);
+                        newForm.find('[name="quantity"]').val(data.quantity);
+                        if (data.close_time) {
+                            newForm.find('[name="close_time"]').val(data.close_time.replace(' ', 'T'));
+                        }
+                    }
+                }
+            });
         }
     }
 
