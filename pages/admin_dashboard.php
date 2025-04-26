@@ -1228,6 +1228,95 @@ if (isset($error_message)) {
                 opacity: 1;
             }
         }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        .overlay.active {
+            display: block;
+        }
+
+        .edit-form-container {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .edit-form-container.active {
+            display: block;
+        }
+
+        .countdown-timer {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            color: #333;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .countdown-timer.closing-soon {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .countdown-timer.closed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .alert-success {
+            background-color: #28a745;
+        }
+
+        .alert-error {
+            background-color: #dc3545;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 
@@ -2351,130 +2440,162 @@ if (isset($error_message)) {
             }
         });
     });
-</script>
 
-<!-- Add this JavaScript at the bottom of the file, before the closing </body> tag -->
-<script>
-// Countdown timer function
-function updateCountdown() {
-    const countdownElements = document.querySelectorAll('.card-close-time');
-    const now = new Date().getTime();
+    // Countdown timer function
+    function updateCountdown(itemId, closeTime) {
+        const timerElement = document.querySelector(`.countdown-timer[data-item-id="${itemId}"]`);
+        if (!timerElement) return;
 
-    countdownElements.forEach(element => {
-        const endTime = new Date(element.getAttribute('data-end-time')).getTime();
-        const itemId = element.getAttribute('data-item-id');
-        const statusBadge = document.querySelector(`.item-card[data-item-id="${itemId}"] .card-status`);
-        
-        // Only stop countdown if manually closed by admin
-        if (statusBadge.textContent.trim() === 'CLOSED') {
-            element.innerHTML = '<i class="fas fa-clock"></i> CLOSED';
-            const card = document.querySelector(`.item-card[data-item-id="${itemId}"]`);
-            card.classList.add('closed');
+        const now = new Date().getTime();
+        const closeDate = new Date(closeTime).getTime();
+        const distance = closeDate - now;
+
+        if (distance < 0) {
+            timerElement.innerHTML = '<i class="fas fa-clock"></i> Closed';
+            timerElement.classList.add('closed');
             return;
         }
 
-        const distance = endTime - now;
-        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
         const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        element.innerHTML = `<i class="fas fa-clock"></i> ${days}d ${hours}h ${minutes}m ${seconds}s`;
-    });
-}
+        timerElement.innerHTML = `<i class="fas fa-clock"></i> ${hours}h ${minutes}m ${seconds}s`;
+        
+        if (hours < 1) {
+            timerElement.classList.add('closing-soon');
+        }
+    }
 
-// Update countdown every second
-setInterval(updateCountdown, 1000);
-updateCountdown();
+    // Edit item function
+    function editItem(itemId) {
+        const editForm = document.querySelector(`.edit-form-container[data-item-id="${itemId}"]`);
+        if (!editForm) return;
 
-// Close item function
-function closeItem(itemId) {
-    if (confirm('Are you sure you want to close this item?')) {
-        fetch('close_item.php', {
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'overlay active';
+        document.body.appendChild(overlay);
+
+        // Show edit form
+        editForm.classList.add('active');
+
+        // Close form when clicking overlay
+        overlay.addEventListener('click', () => {
+            cancelEdit(itemId);
+        });
+    }
+
+    // Save edit function
+    function saveEdit(itemId) {
+        const form = document.querySelector(`.edit-form-container[data-item-id="${itemId}"] .edit-form`);
+        if (!form) return;
+
+        const formData = new FormData(form);
+        formData.append('action', 'update');
+        formData.append('item_id', itemId);
+        
+        fetch(window.location.href, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `item_id=${itemId}`
+            body: formData
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const card = document.querySelector(`.item-card[data-item-id="${itemId}"]`);
-                card.classList.add('closed');
-                const statusBadge = card.querySelector('.card-status');
-                statusBadge.textContent = 'CLOSED';
-                statusBadge.classList.remove('status-open');
-                statusBadge.classList.add('status-closed');
-                const closeTime = card.querySelector('.card-close-time');
-                closeTime.innerHTML = '<i class="fas fa-clock"></i> CLOSED';
+        .then(response => {
+            if (response.ok) {
+                window.location.reload();
             } else {
-                alert('Error closing item: ' + data.message);
+                throw new Error('Network response was not ok');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while closing the item');
+            showAlert('Error saving changes: ' + error.message, 'error');
         });
     }
-}
 
-// Edit item function
-function editItem(itemId) {
-    const card = document.querySelector(`.item-card[data-item-id="${itemId}"]`);
-    const editForm = card.querySelector('.edit-form-container');
-    const cardContent = card.querySelector('.card-content');
-    
-    cardContent.style.display = 'none';
-    editForm.classList.add('active');
-}
-
-// Save edit function
-function saveEdit(itemId) {
-    const form = document.querySelector(`.item-card[data-item-id="${itemId}"] .edit-form`);
-    const formData = new FormData(form);
-    
-    fetch('update_item.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('Error updating item: ' + data.message);
+    // Cancel edit function
+    function cancelEdit(itemId) {
+        const editForm = document.querySelector(`.edit-form-container[data-item-id="${itemId}"]`);
+        const overlay = document.querySelector('.overlay');
+        
+        if (editForm) {
+            editForm.classList.remove('active');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while updating the item');
-    });
-}
-
-// Cancel edit function
-function cancelEdit(itemId) {
-    const card = document.querySelector(`.item-card[data-item-id="${itemId}"]`);
-    const editForm = card.querySelector('.edit-form-container');
-    const cardContent = card.querySelector('.card-content');
-    
-    editForm.classList.remove('active');
-    cardContent.style.display = 'block';
-}
-
-// Delete item function
-function deleteItem(itemId) {
-    if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.innerHTML = `
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" name="item_id" value="${itemId}">
-        `;
-        document.body.appendChild(form);
-        form.submit();
+        if (overlay) {
+            overlay.remove();
+        }
     }
-}
+
+    // Delete item function
+    function deleteItem(itemId) {
+        if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+            const formData = new FormData();
+            formData.append('action', 'delete');
+            formData.append('item_id', itemId);
+            
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    throw new Error('Network response was not ok');
+                }
+            })
+            .catch(error => {
+                showAlert('Error deleting item: ' + error.message, 'error');
+            });
+        }
+    }
+
+    // Close item function
+    function closeItem(itemId) {
+        if (confirm('Are you sure you want to close this item?')) {
+            const formData = new FormData();
+            formData.append('action', 'close');
+            formData.append('item_id', itemId);
+            
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    throw new Error('Network response was not ok');
+                }
+            })
+            .catch(error => {
+                showAlert('Error closing item: ' + error.message, 'error');
+            });
+        }
+    }
+
+    // Initialize countdown timers
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.countdown-timer').forEach(timer => {
+            const itemId = timer.dataset.itemId;
+            const closeTime = timer.dataset.closeTime;
+            if (itemId && closeTime) {
+                updateCountdown(itemId, closeTime);
+                setInterval(() => updateCountdown(itemId, closeTime), 1000);
+            }
+        });
+    });
+
+    // Show success/error messages
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.textContent = message;
+        
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 3000);
+    }
 </script>
 </body>
 </html>
