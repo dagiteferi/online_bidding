@@ -1531,7 +1531,10 @@ if (isset($_GET['action']) && $_GET['action'] == 'reopen_buy_request' && isset($
                                 
                                 <?php if ($item['close_time']): ?>
                                     <div class="card-close-time">
-                                        <i class="fas fa-clock"></i> Closes: <?php echo date('M d, Y H:i', strtotime($item['close_time'])); ?>
+                                        <i class="fas fa-clock"></i> 
+                                        <span class="countdown" data-close-time="<?php echo strtotime($item['close_time']); ?>">
+                                            Closes in: <span class="time-remaining"></span>
+                                        </span>
                                     </div>
                                 <?php endif; ?>
                                 
@@ -2255,6 +2258,43 @@ if (isset($_GET['action']) && $_GET['action'] == 'reopen_buy_request' && isset($
             }
         });
     });
+</script>
+
+<!-- Add this JavaScript at the bottom of the file, before the closing </body> tag -->
+<script>
+// Countdown timer function
+function updateCountdowns() {
+    const countdowns = document.querySelectorAll('.countdown');
+    const now = Math.floor(Date.now() / 1000);
+
+    countdowns.forEach(countdown => {
+        const closeTime = parseInt(countdown.dataset.closeTime);
+        const timeRemaining = closeTime - now;
+        const timeSpan = countdown.querySelector('.time-remaining');
+
+        if (timeRemaining <= 0) {
+            timeSpan.textContent = 'Closed';
+            countdown.parentElement.style.backgroundColor = '#ffe6e6';
+        } else {
+            const days = Math.floor(timeRemaining / 86400);
+            const hours = Math.floor((timeRemaining % 86400) / 3600);
+            const minutes = Math.floor((timeRemaining % 3600) / 60);
+            const seconds = timeRemaining % 60;
+
+            let timeString = '';
+            if (days > 0) timeString += `${days}d `;
+            if (hours > 0) timeString += `${hours}h `;
+            if (minutes > 0) timeString += `${minutes}m `;
+            timeString += `${seconds}s`;
+
+            timeSpan.textContent = timeString;
+        }
+    });
+}
+
+// Update countdowns every second
+setInterval(updateCountdowns, 1000);
+updateCountdowns(); // Initial update
 </script>
 </body>
 </html>

@@ -1168,18 +1168,22 @@ textarea:focus {
     top: 10px;
     right: 10px;
     padding: 5px 10px;
-    border-radius: 4px;
+    border-radius: 15px;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1;
 }
 
 .status-open {
-    background: #10b981;
+    background-color: #2ecc71;
     color: white;
 }
 
 .status-closed {
-    background: #ef4444;
+    background-color: #e74c3c;
     color: white;
 }
 
@@ -1190,9 +1194,67 @@ textarea:focus {
 }
 
 .card-close-time {
-    font-size: 13px;
-    color: #666;
-    margin-bottom: 10px;
+    background-color: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin: 10px 0;
+    font-size: 14px;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.card-close-time i {
+    color: #48dbfb;
+}
+
+.countdown {
+    font-weight: 600;
+    color: #e74c3c;
+}
+
+/* Action Buttons */
+.card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.admin-btn.small {
+    padding: 8px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
+.admin-btn.warning {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.admin-btn.warning:hover {
+    background-color: #c0392b;
+}
+
+.admin-btn.success {
+    background-color: #2ecc71;
+    color: white;
+}
+
+.admin-btn.success:hover {
+    background-color: #27ae60;
+}
+
+/* Card Hover Effects */
+.item-card:hover .card-status.status-closed,
+.buy-request-card:hover .card-status.status-closed {
+    background-color: #c0392b;
+}
+
+.item-card:hover .card-status.status-open,
+.buy-request-card:hover .card-status.status-open {
+    background-color: #27ae60;
 }
 
 /* Responsive adjustments */
