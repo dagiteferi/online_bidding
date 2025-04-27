@@ -2927,7 +2927,6 @@ tagContainerBuy.addEventListener('click', (e) => {
     }
 });
 
-// Update form submission to handle buy form tags
 document.querySelector('form[onsubmit="return updateHiddenTags(\'item-types-buy\')"]').addEventListener('submit', function(e) {
     if (tagsBuy.length === 0) {
         e.preventDefault();
