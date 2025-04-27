@@ -2621,6 +2621,69 @@ try {
                     </div>
                 <?php endif; ?>
             <?php endif; ?>
+        <?php elseif ($_GET['action'] == 'post_buy'): ?>
+            <!-- Post Buy Item Form -->
+            <div class="form-card" style="background: #f8f9fa; padding: 25px; border-radius: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h2 style="color: #2c3e50; margin-bottom: 25px; text-align: center; font-size: 24px;"><i class="fas fa-shopping-cart"></i> Post Buy Request</h2>
+                <form method="POST" enctype="multipart/form-data" style="max-width: 700px; margin: 0 auto;" onsubmit="return updateHiddenTags('item-types-buy')">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Name</label>
+                        <input type="text" name="item_name" class="input" placeholder="Enter item name" required 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Types (e.g., computer chair, marker)</label>
+                        <div class="tag-container" id="tag-container-buy">
+                            <div class="tag-input-wrapper">
+                                <input type="text" id="tag-input-buy" class="tag-input" placeholder="Type and press Enter or click + to add a type">
+                                <button type="button" id="add-tag-buy" class="add-tag-btn">+</button>
+                            </div>
+                            <div id="tag-error-buy" class="error-text" style="display: none;"></div>
+                        </div>
+                        <input type="hidden" name="item_types" id="item-types-buy">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Description</label>
+                        <textarea name="description" class="input" placeholder="Enter item description" rows="4" required 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;"></textarea>
+                    </div>
+
+                    <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Max Price ($)</label>
+                            <input type="number" name="max_price" class="input" placeholder="Enter max price" step="0.01" required 
+                                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+                        </div>
+
+                        <div class="form-group" style="flex: 1;">
+                            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Quantity</label>
+                            <input type="number" name="quantity" class="input" placeholder="Enter quantity" required 
+                                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Close Time (optional)</label>
+                        <input type="datetime-local" name="close_time" id="close_time_buy" class="input" 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Upload Image (optional)</label>
+                        <input type="file" name="image" class="input" accept="image/jpeg,image/png,image/gif" 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+                    </div>
+
+                    <button type="submit" class="admin-btn primary" 
+                        style="width: 100%; padding: 12px; font-size: 16px; font-weight: 500; background: #007bff; color: white; border: none; border-radius: 8px; transition: background 0.3s ease; cursor: pointer;">
+                        Post Buy Request
+                    </button>
+                </form>
+            </div>
         <?php endif; ?>
     </div>
 </div>
@@ -2805,6 +2868,75 @@ document.querySelectorAll('.edit-btn').forEach(btn => {
         const type = this.getAttribute('data-type');
         showEditForm(requestId, type);
     });
+});
+</script>
+
+<script>
+// Tag system for buy form
+const tagContainerBuy = document.getElementById('tag-container-buy');
+const tagInputBuy = document.getElementById('tag-input-buy');
+const addTagBtnBuy = document.getElementById('add-tag-buy');
+const tagErrorBuy = document.getElementById('tag-error-buy');
+const itemTypesBuy = document.getElementById('item-types-buy');
+let tagsBuy = [];
+
+// Add tag function for buy form
+function addTagBuy() {
+    const tag = tagInputBuy.value.trim();
+    if (tag) {
+        if (tagsBuy.includes(tag)) {
+            tagErrorBuy.textContent = 'This type is already added';
+            tagErrorBuy.style.display = 'block';
+            return;
+        }
+        tagsBuy.push(tag);
+        const tagElement = document.createElement('div');
+        tagElement.className = 'tag';
+        tagElement.innerHTML = `
+            <span>${tag}</span>
+            <button type="button" class="remove-tag">&times;</button>
+        `;
+        tagContainerBuy.insertBefore(tagElement, tagContainerBuy.firstChild);
+        tagInputBuy.value = '';
+        tagErrorBuy.style.display = 'none';
+        updateHiddenTagsBuy();
+    }
+}
+
+// Update hidden input for buy form
+function updateHiddenTagsBuy() {
+    itemTypesBuy.value = JSON.stringify(tagsBuy);
+}
+
+// Event listeners for buy form
+addTagBtnBuy.addEventListener('click', addTagBuy);
+tagInputBuy.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        addTagBuy();
+    }
+});
+
+tagContainerBuy.addEventListener('click', (e) => {
+    if (e.target.classList.contains('remove-tag')) {
+        const tagElement = e.target.parentElement;
+        const tag = tagElement.querySelector('span').textContent;
+        tagsBuy = tagsBuy.filter(t => t !== tag);
+        tagElement.remove();
+        updateHiddenTagsBuy();
+    }
+});
+
+// Update form submission to handle buy form tags
+document.querySelector('form[onsubmit="return updateHiddenTags(\'item-types-buy\')"]').addEventListener('submit', function(e) {
+    if (tagsBuy.length === 0) {
+        e.preventDefault();
+        tagErrorBuy.textContent = 'Please add at least one item type';
+        tagErrorBuy.style.display = 'block';
+        return false;
+    }
+    updateHiddenTagsBuy();
+    return true;
 });
 </script>
 
