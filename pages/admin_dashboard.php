@@ -2042,6 +2042,169 @@ document.addEventListener('DOMContentLoaded', function() {
             background: #e3f2fd;
             color: #1565c0;
         }
+
+        .report-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .report-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .report-section h3 {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-badge.open {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .status-badge.closed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-badge.accepted {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-badge.completed {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        /* New styles for charts */
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-title {
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+
+        .report-filters {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            margin-bottom: 15px;
+        }
+
+        .filter-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .report-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .report-actions button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .report-actions button i {
+            font-size: 16px;
+        }
+
+        .report-actions .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .report-actions .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .report-actions .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .report-actions button:hover {
+            opacity: 0.9;
+        }
+
+        @media print {
+            .sidebar, .navbar, .form-card, .admin-btn, .charts-container {
+                display: none !important;
+            }
+            .report-section {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .table {
+                width: 100% !important;
+            }
+            .table th, .table td {
+                padding: 8px !important;
+                font-size: 12px !important;
+            }
+        }
     </style>
 </head>
 
@@ -3295,6 +3458,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
 
+                <!-- Charts Section -->
+                <div class="charts-container">
+                    <?php if (isset($report_transactions) && !empty($report_transactions)): ?>
+                        <div class="chart-card">
+                            <div class="chart-title">Transaction Type Distribution</div>
+                            <div class="chart-wrapper">
+                                <canvas id="transactionTypeChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-title">Revenue Over Time</div>
+                            <div class="chart-wrapper">
+                                <canvas id="revenueChart"></canvas>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (isset($report_items) && !empty($report_items)): ?>
+                        <div class="chart-card">
+                            <div class="chart-title">Inventory Status Distribution</div>
+                            <div class="chart-wrapper">
+                                <canvas id="inventoryChart"></canvas>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
                 <!-- Transactions Report -->
                 <?php if (($_POST['report_type'] ?? 'all') == 'all' || ($_POST['report_type'] ?? '') == 'transactions'): ?>
                     <div class="report-section">
@@ -3449,86 +3639,183 @@ document.addEventListener('DOMContentLoaded', function() {
                 <?php endif; ?>
             <?php endif; ?>
 
-            <style>
-                .report-summary {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                    gap: 20px;
-                    margin: 20px 0;
-                }
-                
-                .report-section {
-                    margin: 30px 0;
-                    padding: 20px;
-                    background: white;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }
-                
-                .report-section h3 {
-                    margin-bottom: 20px;
-                    padding-bottom: 10px;
-                    border-bottom: 2px solid #eee;
-                }
-                
-                .table-responsive {
-                    overflow-x: auto;
-                }
-                
-                .status-badge {
-                    padding: 4px 8px;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    font-weight: 500;
-                }
-                
-                .status-badge.open {
-                    background: #e3f2fd;
-                    color: #1976d2;
-                }
-                
-                .status-badge.closed {
-                    background: #f8d7da;
-                    color: #721c24;
-                }
-                
-                .status-badge.accepted {
-                    background: #d4edda;
-                    color: #155724;
-                }
-                
-                .status-badge.completed {
-                    background: #d1ecf1;
-                    color: #0c5460;
-                }
-            </style>
-
             <script>
                 function printReport() {
                     window.print();
                 }
                 
-                // Add print-specific styles
-                const style = document.createElement('style');
-                style.textContent = `
-                    @media print {
-                        .sidebar, .navbar, .form-card, .admin-btn {
-                            display: none !important;
+                // Initialize charts when the page loads
+                document.addEventListener('DOMContentLoaded', function() {
+                    <?php if (isset($report_transactions) && !empty($report_transactions)): ?>
+                        // Transaction Type Distribution Chart
+                        const transactionTypeCtx = document.getElementById('transactionTypeChart');
+                        if (transactionTypeCtx) {
+                            const transactionTypeData = {
+                                labels: ['Sell', 'Buy'],
+                                datasets: [{
+                                    data: [
+                                        <?php 
+                                            $sellCount = 0;
+                                            $buyCount = 0;
+                                            foreach ($report_transactions as $t) {
+                                                if ($t['item_id']) $sellCount++;
+                                                else $buyCount++;
+                                            }
+                                            echo $sellCount . ', ' . $buyCount;
+                                        ?>
+                                    ],
+                                    backgroundColor: ['#007bff', '#28a745'],
+                                    borderWidth: 1
+                                }]
+                            };
+                            new Chart(transactionTypeCtx, {
+                                type: 'pie',
+                                data: transactionTypeData,
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: {
+                                            position: 'bottom',
+                                            labels: {
+                                                padding: 20,
+                                                font: {
+                                                    size: 12
+                                                }
+                                            }
+                                        },
+                                        title: {
+                                            display: true,
+                                            text: 'Transaction Types',
+                                            font: {
+                                                size: 16,
+                                                weight: 'bold'
+                                            }
+                                        }
+                                    }
+                                }
+                            });
                         }
-                        .report-section {
-                            break-inside: avoid;
-                            page-break-inside: avoid;
+
+                        // Revenue Over Time Chart
+                        const revenueCtx = document.getElementById('revenueChart');
+                        if (revenueCtx) {
+                            const revenueData = {
+                                labels: <?php 
+                                    $dates = [];
+                                    $revenues = [];
+                                    foreach ($report_transactions as $t) {
+                                        $date = date('M j', strtotime($t['created_at']));
+                                        if (!in_array($date, $dates)) {
+                                            $dates[] = $date;
+                                            $revenues[] = $t['final_price'] * $t['quantity'];
+                                        } else {
+                                            $revenues[array_search($date, $dates)] += $t['final_price'] * $t['quantity'];
+                                        }
+                                    }
+                                    echo json_encode($dates);
+                                ?>,
+                                datasets: [{
+                                    label: 'Daily Revenue',
+                                    data: <?php echo json_encode($revenues); ?>,
+                                    borderColor: '#007bff',
+                                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                                    fill: true,
+                                    tension: 0.4
+                                }]
+                            };
+                            new Chart(revenueCtx, {
+                                type: 'line',
+                                data: revenueData,
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: {
+                                            position: 'bottom',
+                                            labels: {
+                                                padding: 20,
+                                                font: {
+                                                    size: 12
+                                                }
+                                            }
+                                        },
+                                        title: {
+                                            display: true,
+                                            text: 'Revenue Over Time',
+                                            font: {
+                                                size: 16,
+                                                weight: 'bold'
+                                            }
+                                        }
+                                    },
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            ticks: {
+                                                callback: function(value) {
+                                                    return '$' + value.toLocaleString();
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            });
                         }
-                        .table {
-                            width: 100% !important;
+                    <?php endif; ?>
+
+                    <?php if (isset($report_items) && !empty($report_items)): ?>
+                        // Inventory Status Distribution
+                        const inventoryCtx = document.getElementById('inventoryChart');
+                        if (inventoryCtx) {
+                            const inventoryData = {
+                                labels: ['Open', 'Closed'],
+                                datasets: [{
+                                    data: [
+                                        <?php 
+                                            $openCount = 0;
+                                            $closedCount = 0;
+                                            foreach ($report_items as $item) {
+                                                if ($item['status'] == 'open') $openCount++;
+                                                else $closedCount++;
+                                            }
+                                            echo $openCount . ', ' . $closedCount;
+                                        ?>
+                                    ],
+                                    backgroundColor: ['#28a745', '#dc3545'],
+                                    borderWidth: 1
+                                }]
+                            };
+                            new Chart(inventoryCtx, {
+                                type: 'doughnut',
+                                data: inventoryData,
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: {
+                                            position: 'bottom',
+                                            labels: {
+                                                padding: 20,
+                                                font: {
+                                                    size: 12
+                                                }
+                                            }
+                                        },
+                                        title: {
+                                            display: true,
+                                            text: 'Inventory Status',
+                                            font: {
+                                                size: 16,
+                                                weight: 'bold'
+                                            }
+                                        }
+                                    }
+                                }
+                            });
                         }
-                        .table th, .table td {
-                            padding: 8px !important;
-                            font-size: 12px !important;
-                        }
-                    }
-                `;
-                document.head.appendChild(style);
+                    <?php endif; ?>
+                });
             </script>
         <?php elseif ($_GET['action'] == 'edit_item' && isset($_GET['item_id'])): ?>
             <div class="edit-form-overlay active"></div>
