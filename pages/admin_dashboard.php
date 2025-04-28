@@ -197,6 +197,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'post_buy') {
 // Handle Edit Item (Items for Sale)
 if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($_GET['item_id'])) {
     $item_id = intval($_GET['item_id']);
+    
     if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
             $error = "Invalid CSRF token.";
@@ -207,87 +208,83 @@ if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($_GET['ite
                 $description = sanitizeInput($_POST['description']);
                 $price = floatval($_POST['price']);
                 $quantity = intval($_POST['quantity']);
-                $close_time = !empty($_POST['close_time']) ? date('Y-m-d H:i:s', strtotime($_POST['close_time'])) : null;
-                $image_path = $_POST['existing_image'] ?? null;
-                $item_types = isset($_POST['item_types']) ? sanitizeInput(trim($_POST['item_types'])) : '';
+                $item_types = isset($_POST['item_types']) ? sanitizeInput($_POST['item_types']) : '';
 
+                // Validate inputs
                 if (empty($supplier_name) || empty($item_name) || empty($description) || $price <= 0 || $quantity < 0) {
-                    $error = "All fields are required, and price must be positive, quantity must be non-negative.";
-                } elseif (empty($item_types)) {
-                    $error = "At least one item type is required.";
-                } elseif ($close_time && $close_time <= date('Y-m-d H:i:s')) {
-                    $error = "Close time must be in the future.";
+                    $error = "All fields are required and must be valid.";
                 } else {
+                    // Handle image upload if new image is provided
+                    $image_path = $_POST['existing_image'] ?? null;
                     if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
                         $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
-                        $max_size = 5 * 1024 * 1024;
-                        $upload_dir = dirname(__DIR__) . '/Uploads/';
-                        $file_name = uniqid('item_') . '_' . basename($_FILES['image']['name']);
-                        $file_path = $upload_dir . $file_name;
-                        $file_type = mime_content_type($_FILES['image']['tmp_name']);
-
-                        if (!is_dir($upload_dir) && !mkdir($upload_dir, 0775, true)) {
-                            $error = "Failed to create uploads directory.";
-                        }
-
-                        if (!isset($error) && !in_array($file_type, $allowed_types)) {
-                            $error = "Only JPEG, PNG, and GIF images are allowed.";
-                        } elseif (!isset($error) && $_FILES['image']['size'] > $max_size) {
-                            $error = "Image size must be less than 5MB.";
-                        } elseif (!isset($error) && !move_uploaded_file($_FILES['image']['tmp_name'], $file_path)) {
-                            $error = "Failed to upload image.";
+                        $max_size = 5 * 1024 * 1024; // 5MB
+                        
+                        if (!in_array($_FILES['image']['type'], $allowed_types)) {
+                            $error = "Invalid file type. Only JPG, PNG and GIF are allowed.";
+                        } elseif ($_FILES['image']['size'] > $max_size) {
+                            $error = "File is too large. Maximum size is 5MB.";
                         } else {
-                            $image_path = 'Uploads/' . $file_name;
-                            if (!empty($_POST['existing_image'])) {
-                                $old_image = dirname(__DIR__) . '/' . $_POST['existing_image'];
-                                if (file_exists($old_image)) {
-                                    unlink($old_image);
-                                }
+                            $upload_dir = '../uploads/';
+                            if (!is_dir($upload_dir)) {
+                                mkdir($upload_dir, 0777, true);
+                            }
+                            
+                            $file_extension = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+                            $new_filename = uniqid('item_') . '.' . $file_extension;
+                            $upload_path = $upload_dir . $new_filename;
+                            
+                            if (move_uploaded_file($_FILES['image']['tmp_name'], $upload_path)) {
+                                $image_path = 'uploads/' . $new_filename;
+                            } else {
+                                $error = "Failed to upload image.";
                             }
                         }
                     }
 
                     if (!isset($error)) {
-                        $stmt = $pdo->prepare("UPDATE items SET supplier_name = :supplier_name, item_name = :item_name, item_type = :item_type, description = :description, price = :price, quantity = :quantity, image = :image, close_time = :close_time WHERE id = :item_id AND posted_by = :posted_by");
-                        $stmt->execute([
+                        // Update the database
+                        $stmt = $pdo->prepare("
+                            UPDATE items 
+                            SET supplier_name = :supplier_name,
+                                item_name = :item_name,
+                                description = :description,
+                                price = :price,
+                                quantity = :quantity,
+                                item_type = :item_types" . 
+                                ($image_path ? ", image = :image" : "") . "
+                            WHERE id = :item_id AND posted_by = :user_id
+                        ");
+
+                        $params = [
                             ':supplier_name' => $supplier_name,
                             ':item_name' => $item_name,
-                            ':item_type' => $item_types,
                             ':description' => $description,
                             ':price' => $price,
                             ':quantity' => $quantity,
-                            ':image' => $image_path,
-                            ':close_time' => $close_time,
+                            ':item_types' => $item_types,
                             ':item_id' => $item_id,
-                            ':posted_by' => $_SESSION['user_id']
-                        ]);
+                            ':user_id' => $_SESSION['user_id']
+                        ];
+
+                        if ($image_path) {
+                            $params[':image'] = $image_path;
+                        }
+
+                        $stmt->execute($params);
 
                         if ($stmt->rowCount() > 0) {
-                            $success = "Item updated successfully!";
+                            $_SESSION['success_message'] = "Item updated successfully!";
                             header("Location: admin_dashboard.php?action=items_for_sell");
                             exit();
                         } else {
-                            $error = "Item not found or you don't have permission to edit it.";
+                            $error = "No changes were made or you don't have permission to edit this item.";
                         }
                     }
                 }
             } catch (PDOException $e) {
                 $error = "Error updating item: " . $e->getMessage();
             }
-        }
-    } else {
-        try {
-            $stmt = $pdo->prepare("SELECT * FROM items WHERE id = :item_id AND posted_by = :posted_by");
-            $stmt->execute([
-                ':item_id' => $item_id,
-                ':posted_by' => $_SESSION['user_id']
-            ]);
-            $item_to_edit = $stmt->fetch();
-            if (!$item_to_edit) {
-                $error = "Item not found or you don't have permission to edit it.";
-            }
-        } catch (PDOException $e) {
-            $error = "Error fetching item: " . $e->getMessage();
         }
     }
 }
@@ -1521,9 +1518,18 @@ try {
 
     <!-- Main Content -->
     <div class="main-content">
+        <?php if (isset($_SESSION['success_message'])): ?>
+            <div class="alert alert-success" id="success-alert">
+                <?php 
+                echo $_SESSION['success_message'];
+                unset($_SESSION['success_message']); 
+                ?>
+            </div>
+        <?php endif; ?>
+
         <?php if (isset($error)): ?>
-            <div class="alert alert-error">
-                <p><i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
+            <div class="alert alert-error" id="error-alert">
+                <?php echo $error; ?>
             </div>
         <?php endif; ?>
         
