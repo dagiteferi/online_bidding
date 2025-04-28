@@ -1572,6 +1572,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Custom styles for the tag input system */
         .tag-container {
@@ -2101,6 +2102,9 @@ document.addEventListener('DOMContentLoaded', function() {
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
             gap: 20px;
             margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
         }
 
         .chart-card {
@@ -2108,6 +2112,7 @@ document.addEventListener('DOMContentLoaded', function() {
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
 
         .chart-title {
@@ -2115,11 +2120,14 @@ document.addEventListener('DOMContentLoaded', function() {
             font-size: 16px;
             font-weight: 600;
             color: #333;
+            text-align: center;
         }
 
         .chart-wrapper {
             position: relative;
             height: 300px;
+            width: 100%;
+            min-height: 300px;
         }
 
         .report-filters {
@@ -3464,13 +3472,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="chart-card">
                             <div class="chart-title">Transaction Type Distribution</div>
                             <div class="chart-wrapper">
-                                <canvas id="transactionTypeChart"></canvas>
+                                <canvas id="transactionTypeChart" width="400" height="300"></canvas>
                             </div>
                         </div>
                         <div class="chart-card">
                             <div class="chart-title">Revenue Over Time</div>
                             <div class="chart-wrapper">
-                                <canvas id="revenueChart"></canvas>
+                                <canvas id="revenueChart" width="400" height="300"></canvas>
                             </div>
                         </div>
                     <?php endif; ?>
@@ -3479,7 +3487,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="chart-card">
                             <div class="chart-title">Inventory Status Distribution</div>
                             <div class="chart-wrapper">
-                                <canvas id="inventoryChart"></canvas>
+                                <canvas id="inventoryChart" width="400" height="300"></canvas>
                             </div>
                         </div>
                     <?php endif; ?>
