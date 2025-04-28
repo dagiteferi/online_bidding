@@ -2265,6 +2265,131 @@ try {
                 <?php endif; ?>
             <?php endif; ?>
 
+        <?php elseif ($_GET['action'] == 'edit_item' && isset($_GET['item_id'])): ?>
+            <div class="edit-form-overlay active"></div>
+            <div class="edit-form-container active">
+                <button class="close-btn" onclick="window.history.back()">&times;</button>
+                <h2><i class="fas fa-edit"></i> Edit Item</h2>
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                    <input type="hidden" name="existing_image" value="<?php echo htmlspecialchars($item_to_edit['image'] ?? ''); ?>">
+
+                    <div class="form-group">
+                        <label>Supplier Name</label>
+                        <input type="text" name="supplier_name" value="<?php echo htmlspecialchars($item_to_edit['supplier_name']); ?>" required class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Item Name</label>
+                        <input type="text" name="item_name" value="<?php echo htmlspecialchars($item_to_edit['item_name']); ?>" required class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea name="description" required class="form-control" rows="4"><?php echo htmlspecialchars($item_to_edit['description']); ?></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Price ($)</label>
+                        <input type="number" name="price" value="<?php echo htmlspecialchars($item_to_edit['price']); ?>" step="0.01" required class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" name="quantity" value="<?php echo htmlspecialchars($item_to_edit['quantity']); ?>" required class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Item Types</label>
+                        <div class="tag-container" id="tag-container-edit">
+                            <div class="tag-input-wrapper">
+                                <input type="text" id="tag-input-edit" class="tag-input" placeholder="Type and press Enter or click + to add a type">
+                                <button type="button" id="add-tag-edit" class="add-tag-btn">+</button>
+                            </div>
+                        </div>
+                        <input type="hidden" name="item_types" id="item-types-edit" value="<?php echo htmlspecialchars($item_to_edit['item_type']); ?>">
+                        <div id="tag-error-edit" class="error-text"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload New Image (optional)</label>
+                        <input type="file" name="image" accept="image/*" class="form-control">
+                        <?php if (!empty($item_to_edit['image'])): ?>
+                            <p class="mt-2">Current image: <img src="<?php echo htmlspecialchars($item_to_edit['image']); ?>" alt="Current Item Image" style="max-width: 100px;"></p>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="admin-btn danger" onclick="window.history.back()">Cancel</button>
+                        <button type="submit" class="admin-btn primary">Update Item</button>
+                    </div>
+                </form>
+            </div>
+
+            <script>
+            // Initialize tags for edit form
+            const tagsEdit = <?php echo json_encode(explode(',', $item_to_edit['item_type'])); ?>.filter(tag => tag.trim());
+            const tagContainerEdit = document.getElementById('tag-container-edit');
+            const tagInputEdit = document.getElementById('tag-input-edit');
+            const addTagButtonEdit = document.getElementById('add-tag-edit');
+            const hiddenTagsEdit = document.getElementById('item-types-edit');
+            const tagErrorEdit = document.getElementById('tag-error-edit');
+
+            function renderTagsEdit() {
+                const tagWrapper = tagContainerEdit.querySelector('.tag-input-wrapper');
+                tagContainerEdit.innerHTML = '';
+                tagContainerEdit.appendChild(tagWrapper);
+                tagsEdit.forEach(tag => {
+                    const tagElement = document.createElement('span');
+                    tagElement.className = 'tag';
+                    tagElement.innerHTML = `${tag} <span class="remove-tag" data-tag="${tag}">&times;</span>`;
+                    tagContainerEdit.insertBefore(tagElement, tagWrapper);
+                });
+                hiddenTagsEdit.value = tagsEdit.join(',');
+            }
+
+            function addTagEdit(tag) {
+                tag = tag.trim();
+                if (!tag) {
+                    tagErrorEdit.textContent = 'Tag cannot be empty';
+                    tagErrorEdit.style.display = 'block';
+                    return;
+                }
+                if (tagsEdit.includes(tag)) {
+                    tagErrorEdit.textContent = 'Tag already exists';
+                    tagErrorEdit.style.display = 'block';
+                    return;
+                }
+                tagErrorEdit.style.display = 'none';
+                tagsEdit.push(tag);
+                renderTagsEdit();
+                tagInputEdit.value = '';
+            }
+
+            renderTagsEdit();
+
+            tagInputEdit.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTagEdit(tagInputEdit.value);
+                }
+            });
+
+            addTagButtonEdit.addEventListener('click', () => {
+                addTagEdit(tagInputEdit.value);
+            });
+
+            tagContainerEdit.addEventListener('click', (e) => {
+                if (e.target.classList.contains('remove-tag')) {
+                    const tag = e.target.getAttribute('data-tag');
+                    const index = tagsEdit.indexOf(tag);
+                    if (index > -1) {
+                        tagsEdit.splice(index, 1);
+                        renderTagsEdit();
+                    }
+                }
+            });
+            </script>
         <?php endif; ?>
     </div>
 </div>
