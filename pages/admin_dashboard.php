@@ -2760,11 +2760,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // Edit form functionality
 function showEditForm(requestId, type) {
     const overlay = document.createElement('div');
-    overlay.className = 'edit-form-overlay';
+    overlay.className = 'edit-form-overlay active';
     document.body.appendChild(overlay);
     
     const formContainer = document.createElement('div');
-    formContainer.className = 'edit-form-container';
+    formContainer.className = 'edit-form-container active';
     formContainer.innerHTML = `
         <button class="close-btn">&times;</button>
         <h2>Edit ${type === 'sale' ? 'Item' : 'Request'}</h2>
@@ -2807,8 +2807,14 @@ function showEditForm(requestId, type) {
     
     // Close button functionality
     formContainer.querySelector('.close-btn').addEventListener('click', () => {
-        document.body.removeChild(overlay);
-        document.body.removeChild(formContainer);
+        closeEditForm();
+    });
+    
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closeEditForm();
+        }
     });
     
     // Form submission
@@ -2825,6 +2831,7 @@ function showEditForm(requestId, type) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                closeEditForm();
                 location.reload();
             } else {
                 alert('Error updating: ' + data.message);
@@ -2832,9 +2839,13 @@ function showEditForm(requestId, type) {
         })
         .catch(error => console.error('Error:', error));
     });
-    
-    // Show overlay and form
-    overlay.style.display = 'block';
+}
+
+function closeEditForm() {
+    const overlay = document.querySelector('.edit-form-overlay');
+    const formContainer = document.querySelector('.edit-form-container');
+    if (overlay) overlay.remove();
+    if (formContainer) formContainer.remove();
 }
 
 // Add click handlers to edit buttons
