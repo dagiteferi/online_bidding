@@ -1,16 +1,71 @@
 <?php
+/**
+ * User Dashboard - Online Bidding System
+ * 
+ * This file serves as the main interface for regular users in the online bidding system.
+ * It provides functionality for viewing and making offers on items and buy requests.
+ * 
+ * Key Features:
+ * 1. Item Browsing
+ *    - View available items
+ *    - View item details
+ *    - Make offers on items
+ * 
+ * 2. Buy Request Management
+ *    - View buy requests
+ *    - Submit offers for buy requests
+ *    - Track offer status
+ * 
+ * 3. Offer Management
+ *    - View all offers
+ *    - Edit pending offers
+ *    - Track offer status
+ * 
+ * 4. Security Features
+ *    - Session validation
+ *    - User authentication
+ *    - Input sanitization
+ *    - Error handling and logging
+ *    - CSRF protection
+ * 
+ * Database Tables Used:
+ * - users: User authentication
+ * - items: Available items
+ * - buy_requests: Buy requests
+ * - offers: User offers
+ * 
+ * @author [Your Name]
+ * @version 1.0
+ * @package User
+ */
+
+// Start output buffering and session
 ob_start();
 session_start();
 require_once '../config/db_connect.php';
 
-// Check if user is logged in and is not an admin
+/**
+ * User Authentication Check
+ * 
+ * Verifies that:
+ * 1. User is logged in (session exists)
+ * 2. User is not an admin
+ * 3. User ID is valid in the database
+ * 
+ * Redirects to login page if any check fails
+ */
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['is_admin']) || $_SESSION['is_admin']) {
     error_log("Session validation failed: user_id or is_admin not set, or user is admin. Redirecting to login.");
     header("Location: ../login.php");
     exit();
 }
 
-// Validate user_id against the users table
+/**
+ * Database Validation
+ * 
+ * Verifies that the user exists in the database and is not an admin
+ * This provides an additional layer of security beyond session checks
+ */
 try {
     $stmt = $pdo->prepare("SELECT id, username FROM users WHERE id = ? AND is_admin = 0");
     $stmt->execute([$_SESSION['user_id']]);
@@ -30,13 +85,23 @@ try {
     exit();
 }
 
-// Handle offer submission
+/**
+ * Offer Submission Handler
+ * 
+ * Processes the form submission for creating new offers
+ * Includes:
+ * - Input validation
+ * - Database checks
+ * - Transaction handling
+ * - Error logging
+ */
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
     error_log("Offer submission POST data: " . print_r($_POST, true));
     error_log("Request headers: " . print_r(getallheaders(), true));
 
-    $item_id = isset($_POST['item_id']) && $_POST['item_id'] !== '' ? intval($_POST['item_id']) : null;
-    $request_id = isset($_POST['request_id']) && $_POST['request_id'] !== '' ? intval($_POST['request_id']) : null;
+    // Sanitize and validate input data
+    $item_id = !empty($_POST['item_id']) ? intval($_POST['item_id']) : null;
+    $request_id = !empty($_POST['request_id']) ? intval($_POST['request_id']) : null;
     $offer_type = trim($_POST['offer_type'] ?? '');
     $offered_price = trim($_POST['offered_price'] ?? '');
     $quantity = trim($_POST['quantity'] ?? '');
@@ -46,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
 
     error_log("Parsed values - item_id: " . ($item_id ?? 'null') . ", request_id: " . ($request_id ?? 'null') . ", offer_type: $offer_type, item_type: $item_type");
 
+    // Input validation
     if (empty($buyer_name)) {
         $error_msg = "Please enter your buyer name.";
     } elseif (empty($item_type)) {
@@ -64,6 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
         try {
             $pdo->beginTransaction();
 
+            // Validate item or request status
             if ($item_id !== null) {
                 $stmt = $pdo->prepare("SELECT status FROM items WHERE id = ?");
                 $stmt->execute([$item_id]);
@@ -74,6 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
                 } elseif ($item['status'] != 'open') {
                     $error_msg = "This item is no longer available for offers.";
                 } else {
+                    // Check for existing offers
                     $stmt = $pdo->prepare("SELECT COUNT(*) FROM offers WHERE item_id = ? AND user_id = ? AND request_id IS NULL AND status IN ('pending', 'accepted', 'rejected')");
                     $stmt->execute([$item_id, $_SESSION['user_id']]);
                     if ($stmt->fetchColumn() > 0) {
@@ -90,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
                 } elseif ($request['status'] != 'open') {
                     $error_msg = "This buy request is no longer available for offers.";
                 } else {
+                    // Check for existing offers
                     $stmt = $pdo->prepare("SELECT COUNT(*) FROM offers WHERE request_id = ? AND user_id = ? AND item_id IS NULL AND status IN ('pending', 'accepted', 'rejected')");
                     $stmt->execute([$request_id, $_SESSION['user_id']]);
                     if ($stmt->fetchColumn() > 0) {
@@ -98,14 +167,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
                 }
             }
 
+            // Insert offer if validation passes
             if (!isset($error_msg)) {
                 $description = empty($description) ? NULL : $description;
-                $stmt = $pdo->prepare("INSERT INTO offers (item_id, request_id, user_id, offer_type, offered_price, quantity, description, buyer_name, item_type, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
-                $result = $stmt->execute([$item_id, $request_id, $_SESSION['user_id'], $offer_type, $offered_price, $quantity, $description, $buyer_name, $item_type]);
+                
+                // Prepare the SQL with explicit NULL handling
+                $stmt = $pdo->prepare("
+                    INSERT INTO offers (
+                        item_id, 
+                        request_id, 
+                        user_id, 
+                        offer_type, 
+                        offered_price, 
+                        quantity, 
+                        description, 
+                        buyer_name, 
+                        item_type, 
+                        status, 
+                        created_at
+                    ) VALUES (
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW()
+                    )
+                ");
+
+                // If it's a buy request, item_id should be NULL and vice versa
+                $result = $stmt->execute([
+                    ($item_id !== null) ? $item_id : null,
+                    ($request_id !== null) ? $request_id : null,
+                    $_SESSION['user_id'],
+                    $offer_type,
+                    $offered_price,
+                    $quantity,
+                    $description,
+                    $buyer_name,
+                    $item_type
+                ]);
+
                 if ($result) {
                     $offer_id = $pdo->lastInsertId();
                     $success_msg = "Offer submitted successfully!";
-                    error_log("Offer inserted - offer_id: $offer_id, item_id: $item_id, request_id: $request_id, user_id: {$_SESSION['user_id']}, offer_type: $offer_type, price: $offered_price, quantity: $quantity, buyer_name: $buyer_name, item_type: $item_type");
+                    error_log("Offer inserted - offer_id: $offer_id, item_id: " . ($item_id ?? 'NULL') . ", request_id: " . ($request_id ?? 'NULL') . ", user_id: {$_SESSION['user_id']}, offer_type: $offer_type, price: $offered_price, quantity: $quantity, buyer_name: $buyer_name, item_type: $item_type");
                     $pdo->commit();
                 } else {
                     $error_msg = "Failed to submit offer. Please try again.";
@@ -121,11 +222,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
         }
     }
 
+    // Redirect on success
     if (isset($success_msg)) {
-        // Assuming dashboard.php is in the same directory (C:\xampp\htdocs\e commerce project\online_bidding\pages)
         $dashboard_path = __DIR__ . '/dashboard.php';
         if (file_exists($dashboard_path)) {
-            // Use an absolute URL path for the redirect to ensure it works regardless of the current URL
             $base_url = "/e%20commerce%20project/online_bidding/pages/dashboard.php";
             header("Location: $base_url?success=" . urlencode($success_msg));
             exit();
@@ -136,14 +236,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
     }
 }
 
-// Handle offer editing
+/**
+ * Offer Editing Handler
+ * 
+ * Processes the form submission for editing existing offers
+ * Includes:
+ * - Input validation
+ * - Status checks
+ * - Database updates
+ * - Error handling
+ */
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_offer'])) {
+    // Sanitize and validate input data
     $offer_id = isset($_POST['offer_id']) ? intval($_POST['offer_id']) : 0;
     $offered_price = trim($_POST['offered_price'] ?? '');
     $quantity = trim($_POST['quantity'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $buyer_name = trim($_POST['buyer_name'] ?? '');
 
+    // Input validation
     if (empty($buyer_name)) {
         $error_msg = "Please enter your buyer name.";
     } elseif (empty($offered_price) || !is_numeric($offered_price) || $offered_price <= 0) {
@@ -156,6 +267,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_offer'])) {
         try {
             $pdo->beginTransaction();
 
+            // Validate offer status and permissions
             $stmt = $pdo->prepare("SELECT status, item_id, request_id FROM offers WHERE id = ? AND user_id = ?");
             $stmt->execute([$offer_id, $_SESSION['user_id']]);
             $offer = $stmt->fetch();
@@ -165,6 +277,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_offer'])) {
             } elseif ($offer['status'] != 'pending') {
                 $error_msg = "This offer can no longer be edited as it is " . htmlspecialchars($offer['status']) . ".";
             } else {
+                // Validate associated item or request status
                 if ($offer['item_id']) {
                     $stmt = $pdo->prepare("SELECT status FROM items WHERE id = ?");
                     $stmt->execute([$offer['item_id']]);
@@ -181,6 +294,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_offer'])) {
                     }
                 }
 
+                // Update offer if validation passes
                 if (!isset($error_msg)) {
                     $description = empty($description) ? NULL : $description;
                     $stmt = $pdo->prepare("UPDATE offers SET offered_price = ?, quantity = ?, description = ?, buyer_name = ? WHERE id = ? AND user_id = ?");
@@ -188,6 +302,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_offer'])) {
                     $success_msg = "Offer updated successfully!";
                     error_log("Offer updated - offer_id: $offer_id, user_id: {$_SESSION['user_id']}, price: $offered_price, quantity: $quantity, buyer_name: $buyer_name");
                     $pdo->commit();
+                    
+                    // Redirect on success
                     if (file_exists(__DIR__ . '/dashboard.php')) {
                         $base_url = "/e%20commerce%20project/online_bidding/pages/dashboard.php";
                         header("Location: $base_url?success=" . urlencode($success_msg));
@@ -208,7 +324,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_offer'])) {
     }
 }
 
-// Fetch all admin-posted items with close_time, quantity, and item_type
+/**
+ * Data Fetching Section
+ * 
+ * Retrieves necessary data for the dashboard:
+ * 1. Available items
+ * 2. Buy requests
+ * 3. Item types
+ * 4. User's offers
+ */
+
+// Fetch admin-posted items
 try {
     $stmt = $pdo->prepare("SELECT i.id, i.item_name AS title, i.description, i.price, i.quantity, i.item_type, 'for_sale' AS type, i.status, i.created_at, i.image, u.username AS admin_name, i.close_time 
                            FROM items i 
@@ -223,7 +349,7 @@ try {
     $items = [];
 }
 
-// Fetch all admin-posted buy requests with close_time, quantity, and item_type
+// Fetch admin-posted buy requests
 try {
     $stmt = $pdo->prepare("SELECT br.id, br.item_name, br.description, br.max_price, br.quantity, br.item_type, br.status, br.created_at, br.image, u.username AS admin_name, br.close_time 
                            FROM buy_requests br 
@@ -238,7 +364,13 @@ try {
     $buy_requests = [];
 }
 
-// Fetch distinct item_types from both items and buy_requests, then reorder them
+// Add these variables after fetching items and buy_requests
+$initial_items = array_slice($items, 0, 3);
+$remaining_items = array_slice($items, 3);
+$initial_buy_requests = array_slice($buy_requests, 0, 3);
+$remaining_buy_requests = array_slice($buy_requests, 3);
+
+// Fetch and organize item types
 try {
     // Fetch distinct item_types from items
     $stmt = $pdo->prepare("SELECT DISTINCT item_type 
@@ -256,30 +388,26 @@ try {
     $stmt->execute();
     $item_types_from_buy_requests = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-    // Combine and get distinct item_types from both sources
+    // Combine and get distinct item_types
     $all_item_types = array_unique(array_merge($item_types_from_items, $item_types_from_buy_requests));
 
-    // Define the desired order for specific item_types
+    // Define desired order for specific item_types
     $desired_order = ['pc', 'desktop', 'ball'];
 
-    // Reorder item_types: prioritize "pc", "desktop", "ball" in that order, then append others
+    // Reorder item_types
     $reordered_item_types = [];
     foreach ($desired_order as $type) {
         if (in_array($type, $all_item_types)) {
             $reordered_item_types[] = $type;
         }
     }
-    // Add remaining item_types that are not in the desired order
     foreach ($all_item_types as $type) {
         if (!in_array($type, $desired_order)) {
             $reordered_item_types[] = $type;
         }
     }
 
-    // Since the dropdown is populated dynamically via JavaScript for both items and buy requests,
-    // we'll use the same reordered list for both
     $item_types_for_sale = $item_types_for_buy = $reordered_item_types;
-
     error_log("Reordered item_types: " . print_r($reordered_item_types, true));
 } catch (PDOException $e) {
     $error_msg = "Error fetching item types: " . $e->getMessage();
@@ -295,7 +423,6 @@ try {
     $stmt->execute([$_SESSION['user_id']]);
     $raw_offers = $stmt->fetchAll();
     error_log("Raw offers fetched from offers table: " . count($raw_offers));
-    error_log("Raw offers data: " . print_r($raw_offers, true));
 
     $stmt = $pdo->prepare("SELECT o.id, o.item_id, o.request_id, o.offer_type, o.offered_price, o.quantity, o.description, o.buyer_name, o.item_type, o.status, o.created_at, 
                            COALESCE(i.item_name, br.item_name) AS item_name,
@@ -307,9 +434,6 @@ try {
     $stmt->execute([$_SESSION['user_id']]);
     $user_offers = $stmt->fetchAll();
     error_log("Fetched " . count($user_offers) . " offers with joins for user_id: {$_SESSION['user_id']}");
-    if (count($user_offers) === 0 && count($raw_offers) > 0) {
-        error_log("Discrepancy detected: Raw offers exist but join query returned 0. Possible issue with items or buy_requests tables.");
-    }
 } catch (PDOException $e) {
     $error_msg = "Error fetching offers: " . $e->getMessage();
     error_log("Offer fetch failed: " . $e->getMessage());
@@ -397,6 +521,87 @@ try {
         .countdown-expired i {
             margin-right: 6px;
         }
+        
+        .btn-see-more {
+            background: linear-gradient(135deg, #3ac8e6, #2b95ac);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 10px rgba(58, 200, 230, 0.2);
+            position: relative;
+            overflow: hidden;
+            min-width: 180px;
+            max-width: 250px;
+            justify-content: center;
+            margin: 0 auto;
+        }
+
+        .btn-see-more::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .btn-see-more:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(58, 200, 230, 0.3);
+            background: linear-gradient(135deg, #3ac8e6, #3ac8e6);
+        }
+
+        .btn-see-more:hover::before {
+            transform: translateX(0);
+        }
+
+        .btn-see-more i {
+            transition: transform 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-see-more.expanded i {
+            transform: rotate(180deg);
+        }
+
+        .btn-see-more:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(58, 200, 230, 0.2);
+        }
+
+        .remaining-items,
+        .remaining-buy-requests {
+            margin-top: 20px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .text-center.mt-4 {
+            margin: 30px 0;
+            display: flex;
+            justify-content: center;
+        }
     </style>
 </head>
 <body>
@@ -451,7 +656,7 @@ try {
         </div>
     <?php else: ?>
         <div class="items-grid">
-            <?php foreach ($items as $item): ?>
+            <?php foreach ($initial_items as $item): ?>
                 <?php 
                 $item_id = isset($item['id']) && is_numeric($item['id']) ? $item['id'] : null;
                 if ($item_id === null) {
@@ -526,6 +731,90 @@ try {
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <?php if (count($remaining_items) > 0): ?>
+            <div class="items-grid remaining-items" style="display: none;">
+                <?php foreach ($remaining_items as $item): ?>
+                    <?php 
+                    $item_id = isset($item['id']) && is_numeric($item['id']) ? $item['id'] : null;
+                    if ($item_id === null) {
+                        error_log("Invalid item ID for item: " . print_r($item, true));
+                        continue;
+                    }
+                    ?>
+                    <div class="item-card">
+                        <div class="item-img-container">
+                            <?php if (!empty($item['image'])): ?>
+                                <img src="../<?php echo htmlspecialchars($item['image']); ?>" class="item-img" alt="<?php echo htmlspecialchars($item['title']); ?>">
+                            <?php else: ?>
+                                <div class="no-image">
+                                    <i class="fas fa-image fa-3x"></i>
+                                    <p>No Image Available</p>
+                                </div>
+                            <?php endif; ?>
+                            <span class="item-status <?php echo $item['status'] == 'open' ? 'status-open' : 'status-closed'; ?>">
+                                <?php echo htmlspecialchars($item['status']); ?>
+                            </span>
+                        </div>
+                        <div class="item-body">
+                            <h3 class="item-title"><?php echo htmlspecialchars($item['title']); ?></h3>
+                            <div class="item-price">$<?php echo number_format($item['price'], 2); ?></div>
+                            <p class="item-desc"><?php echo htmlspecialchars($item['description'] ?? 'No description provided'); ?></p>
+                            <p class="item-admin"><i class="fas fa-user-tie"></i> <?php echo htmlspecialchars($item['admin_name']); ?> | Qty: <?php echo htmlspecialchars($item['quantity']); ?></p>
+                            
+                            <div class="item-footer">
+                                <?php if (!empty($item['close_time']) && $item['status'] === 'open'): ?>
+                                    <div class="countdown-container">
+                                        <i class="fas fa-clock countdown-icon"></i>
+                                        <div class="countdown-timer" data-close-time="<?php echo htmlspecialchars($item['close_time']); ?>">
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value days">00</span>
+                                                <span class="countdown-unit">days</span>
+                                            </div>
+                                            <span class="countdown-separator">:</span>
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value hours">00</span>
+                                                <span class="countdown-unit">hours</span>
+                                            </div>
+                                            <span class="countdown-separator">:</span>
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value minutes">00</span>
+                                                <span class="countdown-unit">mins</span>
+                                            </div>
+                                            <span class="countdown-separator">:</span>
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value seconds">00</span>
+                                                <span class="countdown-unit">secs</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php elseif (!empty($item['close_time'])): ?>
+                                    <div class="countdown-expired">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        Closed at: <?php echo date('M j, Y g:i A', strtotime($item['close_time'])); ?>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if ($item['status'] == 'open'): ?>
+                                    <button class="btn-offer" onclick="openOfferModal(<?php echo $item_id; ?>, null, '<?php echo $item['type'] == 'for_sale' ? 'buy' : 'sell'; ?>', '<?php echo htmlspecialchars($item['title']); ?>', <?php echo $item['quantity']; ?>)">
+                                        <i class="fas fa-handshake"></i> Make Offer
+                                    </button>
+                                <?php else: ?>
+                                    <button class="btn-offer btn-disabled" disabled>
+                                        <i class="fas fa-lock"></i> Closed
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <div class="text-center mt-4">
+                <button class="btn-see-more" onclick="toggleItems('items')">
+                    <i class="fas fa-chevron-down"></i> See More Items
+                </button>
+            </div>
+        <?php endif; ?>
     <?php endif; ?>
     
     <h2 class="section-title"><i class="fas fa-hand-holding-usd"></i> Purchase Inquiries</h2>
@@ -538,7 +827,7 @@ try {
         </div>
     <?php else: ?>
         <div class="items-grid">
-            <?php foreach ($buy_requests as $request): ?>
+            <?php foreach ($initial_buy_requests as $request): ?>
                 <?php 
                 $request_id = isset($request['id']) && is_numeric($request['id']) ? $request['id'] : null;
                 if ($request_id === null) {
@@ -613,6 +902,90 @@ try {
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <?php if (count($remaining_buy_requests) > 0): ?>
+            <div class="items-grid remaining-buy-requests" style="display: none;">
+                <?php foreach ($remaining_buy_requests as $request): ?>
+                    <?php 
+                    $request_id = isset($request['id']) && is_numeric($request['id']) ? $request['id'] : null;
+                    if ($request_id === null) {
+                        error_log("Invalid buy request ID for request: " . print_r($request, true));
+                        continue;
+                    }
+                    ?>
+                    <div class="item-card">
+                        <div class="item-img-container">
+                            <?php if (!empty($request['image'])): ?>
+                                <img src="../<?php echo htmlspecialchars($request['image']); ?>" class="item-img" alt="<?php echo htmlspecialchars($request['item_name']); ?>">
+                            <?php else: ?>
+                                <div class="no-image">
+                                    <i class="fas fa-image fa-3x"></i>
+                                    <p>No Image Available</p>
+                                </div>
+                            <?php endif; ?>
+                            <span class="item-status <?php echo $request['status'] == 'open' ? 'status-open' : 'status-closed'; ?>">
+                                <?php echo htmlspecialchars($request['status']); ?>
+                            </span>
+                        </div>
+                        <div class="item-body">
+                            <h3 class="item-title"><?php echo htmlspecialchars($request['item_name']); ?></h3>
+                            <div class="item-price">Max Price: $<?php echo number_format($request['max_price'], 2); ?></div>
+                            <p class="item-desc"><?php echo htmlspecialchars($request['description'] ?? 'No description provided'); ?></p>
+                            <p class="item-admin"><i class="fas fa-user-tie"></i> <?php echo htmlspecialchars($request['admin_name']); ?> | Qty: <?php echo htmlspecialchars($request['quantity']); ?></p>
+                            
+                            <div class="item-footer">
+                                <?php if (!empty($request['close_time']) && $request['status'] === 'open'): ?>
+                                    <div class="countdown-container">
+                                        <i class="fas fa-clock countdown-icon"></i>
+                                        <div class="countdown-timer" data-close-time="<?php echo htmlspecialchars($request['close_time']); ?>">
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value days">00</span>
+                                                <span class="countdown-unit">days</span>
+                                            </div>
+                                            <span class="countdown-separator">:</span>
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value hours">00</span>
+                                                <span class="countdown-unit">hours</span>
+                                            </div>
+                                            <span class="countdown-separator">:</span>
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value minutes">00</span>
+                                                <span class="countdown-unit">mins</span>
+                                            </div>
+                                            <span class="countdown-separator">:</span>
+                                            <div class="countdown-segment">
+                                                <span class="countdown-value seconds">00</span>
+                                                <span class="countdown-unit">secs</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php elseif (!empty($request['close_time'])): ?>
+                                    <div class="countdown-expired">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        Closed at: <?php echo date('M j, Y g:i A', strtotime($request['close_time'])); ?>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if ($request['status'] == 'open'): ?>
+                                    <button class="btn-offer" onclick="openOfferModal(null, <?php echo $request_id; ?>, 'sell', '<?php echo htmlspecialchars($request['item_name']); ?>', <?php echo $request['quantity']; ?>)">
+                                        <i class="fas fa-handshake"></i> Make Offer
+                                    </button>
+                                <?php else: ?>
+                                    <button class="btn-offer btn-disabled" disabled>
+                                        <i class="fas fa-lock"></i> Closed
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <div class="text-center mt-4">
+                <button class="btn-see-more" onclick="toggleItems('buy-requests')">
+                    <i class="fas fa-chevron-down"></i> See More Buy Requests
+                </button>
+            </div>
+        <?php endif; ?>
     <?php endif; ?>
     
     <h2 class="section-title" id="your-offers"><i class="fas fa-handshake"></i> Your Offers (<?php echo count($user_offers); ?>)</h2>
@@ -947,6 +1320,24 @@ try {
             });
         }, 5000);
     });
+
+    function toggleItems(type) {
+        const button = event.currentTarget;
+        const container = type === 'items' 
+            ? document.querySelector('.remaining-items')
+            : document.querySelector('.remaining-buy-requests');
+        
+        if (container.style.display === 'none') {
+            container.style.display = 'grid';
+            button.innerHTML = '<i class="fas fa-chevron-up"></i> Show Less';
+            button.classList.add('expanded');
+        } else {
+            container.style.display = 'none';
+            button.innerHTML = '<i class="fas fa-chevron-down"></i> See More ' + 
+                (type === 'items' ? 'Items' : 'Buy Requests');
+            button.classList.remove('expanded');
+        }
+    }
 </script>
 </body>
 </html>
