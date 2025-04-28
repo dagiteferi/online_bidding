@@ -2139,7 +2139,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <!-- Post Sell Item Form -->
             <div class="form-card" style="background: #f8f9fa; padding: 25px; border-radius: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <h2 style="color: #2c3e50; margin-bottom: 25px; text-align: center; font-size: 24px;"><i class="fas fa-tag"></i> Post Item for Sale</h2>
-                <form method="POST" enctype="multipart/form-data" style="max-width: 700px; margin: 0 auto;" onsubmit="return updateHiddenTags('item-types-sell')">
+                <form method="POST" enctype="multipart/form-data" style="max-width: 700px; margin: 0 auto;" id="post-sell-form">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
                     
                     <div class="form-group" style="margin-bottom: 15px;">
@@ -2155,42 +2155,46 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Types (e.g., computer chair, marker)</label>
-                        <div class="tag-container" id="tag-container-sell">
-                            <div class="tag-input-wrapper">
-                                <input type="text" id="tag-input-sell" class="tag-input" placeholder="Type and press Enter or click + to add a type">
-                                <button type="button" id="add-tag-sell" class="add-tag-btn">+</button>
-                            </div>
-                            <div id="tag-error-sell" class="error-text" style="display: none;"></div>
-                        </div>
-                        <input type="hidden" name="item_types" id="item-types-sell">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Description</label>
+                        <textarea name="description" class="input" placeholder="Enter item description" required rows="4" 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50; resize: vertical;"></textarea>
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Description</label>
-                        <textarea name="description" class="input" placeholder="Enter item description" rows="4" required 
-                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;"></textarea>
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Price ($)</label>
+                        <input type="number" name="price" class="input" placeholder="Enter price" required step="0.01" min="0.01"
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
                     </div>
                     
-                    <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Price ($)</label>
-                            <input type="number" name="price" class="input" placeholder="Enter price" step="0.01" required 
-                                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Quantity</label>
+                        <input type="number" name="quantity" class="input" placeholder="Enter quantity" required min="1"
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Types (e.g., computer chair, marker)</label>
+                        <div class="tag-container" id="tag-container-sell">
+                            <div class="tag-input-wrapper">
+                                <input type="text" id="tag-input-sell" class="tag-input" placeholder="Type and press Enter or click + to add a type"
+                                    style="width: calc(100% - 40px); padding: 12px; border: 1px solid #ced4da; border-radius: 8px 0 0 8px; font-size: 14px; background: #fff;">
+                                <button type="button" id="add-tag-sell" class="add-tag-btn" style="width: 40px; padding: 12px; border: 1px solid #ced4da; border-left: none; border-radius: 0 8px 8px 0; background: #fff; cursor: pointer;">+</button>
+                            </div>
                         </div>
-                        
-                        <div class="form-group" style="flex: 1;">
-                            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Quantity</label>
-                            <input type="number" name="quantity" class="input" placeholder="Enter quantity" required 
-                                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
-                        </div>
+                        <input type="hidden" name="item_types" id="item-types-sell" required>
+                        <div id="tag-error-sell" class="error-text" style="color: #dc3545; font-size: 12px; margin-top: 5px; display: none;"></div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Upload Image</label>
+                        <input type="file" name="image" accept="image/*" class="input" required
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Close Time (optional)</label>
                         <input type="datetime-local" name="close_time" id="close_time" class="input" 
                             style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
-                            #2c3e50;" />
                     </div>
                     
                     <div class="form-group" style="text-align: center; margin-top: 20px;">
@@ -2201,11 +2205,136 @@ document.addEventListener('DOMContentLoaded', function() {
                 </form>
             </div>
 
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Tag Input System for Sell Form
+                const sellForm = document.getElementById('post-sell-form');
+                if (sellForm) {
+                    const tagContainerSell = document.getElementById('tag-container-sell');
+                    const tagInputSell = document.getElementById('tag-input-sell');
+                    const addTagBtnSell = document.getElementById('add-tag-sell');
+                    const hiddenInputSell = document.getElementById('item-types-sell');
+                    const tagErrorSell = document.getElementById('tag-error-sell');
+                    let tagsSell = [];
+
+                    function renderTagsSell() {
+                        const wrapper = tagContainerSell.querySelector('.tag-input-wrapper');
+                        tagContainerSell.innerHTML = '';
+                        tagContainerSell.appendChild(wrapper);
+                        tagsSell.forEach(tag => {
+                            const tagElement = document.createElement('span');
+                            tagElement.className = 'tag';
+                            tagElement.innerHTML = `${tag} <span class="remove-tag" data-tag="${tag}">&times;</span>`;
+                            tagContainerSell.insertBefore(tagElement, wrapper);
+                        });
+                        hiddenInputSell.value = tagsSell.join(',');
+                    }
+
+                    function addTagSell(tag) {
+                        tag = tag.trim();
+                        if (!tag) {
+                            tagErrorSell.textContent = 'Tag cannot be empty';
+                            tagErrorSell.style.display = 'block';
+                            return;
+                        }
+                        if (tagsSell.includes(tag)) {
+                            tagErrorSell.textContent = 'Tag already exists';
+                            tagErrorSell.style.display = 'block';
+                            return;
+                        }
+                        tagErrorSell.style.display = 'none';
+                        tagsSell.push(tag);
+                        renderTagsSell();
+                        tagInputSell.value = '';
+                    }
+
+                    tagInputSell.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addTagSell(tagInputSell.value);
+                        }
+                    });
+
+                    addTagBtnSell.addEventListener('click', () => {
+                        addTagSell(tagInputSell.value);
+                    });
+
+                    tagContainerSell.addEventListener('click', (e) => {
+                        if (e.target.classList.contains('remove-tag')) {
+                            const tag = e.target.getAttribute('data-tag');
+                            tagsSell = tagsSell.filter(t => t !== tag);
+                            renderTagsSell();
+                        }
+                    });
+
+                    sellForm.addEventListener('submit', function(e) {
+                        if (tagsSell.length === 0) {
+                            e.preventDefault();
+                            tagErrorSell.textContent = 'Please add at least one item type';
+                            tagErrorSell.style.display = 'block';
+                            return;
+                        }
+                        hiddenInputSell.value = tagsSell.join(',');
+                    });
+                }
+            });
+            </script>
+
+            <style>
+            .tag-container {
+                border: 1px solid #ced4da;
+                border-radius: 8px;
+                padding: 10px;
+                background: #fff;
+                min-height: 50px;
+                margin-bottom: 5px;
+            }
+
+            .tag {
+                display: inline-block;
+                background: #e9ecef;
+                padding: 5px 10px;
+                border-radius: 15px;
+                margin: 2px 5px;
+                font-size: 14px;
+            }
+
+            .tag .remove-tag {
+                cursor: pointer;
+                margin-left: 5px;
+                color: #dc3545;
+            }
+
+            .tag-input-wrapper {
+                display: flex;
+                margin-top: 10px;
+            }
+
+            .add-tag-btn {
+                background: #007bff;
+                color: white;
+                border: none;
+                padding: 5px 10px;
+                cursor: pointer;
+                transition: background-color 0.3s;
+            }
+
+            .add-tag-btn:hover {
+                background: #0056b3;
+            }
+
+            .error-text {
+                color: #dc3545;
+                font-size: 12px;
+                margin-top: 5px;
+            }
+            </style>
+
         <?php elseif ($_GET['action'] == 'post_buy'): ?>
             <!-- Post Buy Request Form -->
             <div class="form-card" style="background: #f8f9fa; padding: 25px; border-radius: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <h2 style="color: #2c3e50; margin-bottom: 25px; text-align: center; font-size: 24px;"><i class="fas fa-hand-holding-usd"></i> Post Buy Request</h2>
-                <form method="POST" enctype="multipart/form-data" style="max-width: 700px; margin: 0 auto;" onsubmit="return updateHiddenTags('item-types-buy')">
+                <form method="POST" enctype="multipart/form-data" style="max-width: 700px; margin: 0 auto;" id="post-buy-form">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
                     
                     <div class="form-group" style="margin-bottom: 15px;">
@@ -2215,56 +2344,130 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Types (e.g., computer chair, marker)</label>
-                        <div class="tag-container" id="tag-container-buy">
-                            <div class="tag-input-wrapper">
-                                <input type="text" id="tag-input-buy" class="tag-input" placeholder="Type and press Enter or click + to add a type">
-                                <button type="button" id="add-tag-buy" class="add-tag-btn">+</button>
-                            </div>
-                            <div id="tag-error-buy" class="error-text" style="display: none;"></div>
-                        </div>
-                        <input type="hidden" name="item_types" id="item-types-buy">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Description</label>
+                        <textarea name="description" class="input" placeholder="Enter item description" required rows="4" 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50; resize: vertical;"></textarea>
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Description</label>
-                        <textarea name="description" class="input" placeholder="Enter item description" rows="4" required 
-                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;"></textarea>
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Maximum Price ($)</label>
+                        <input type="number" name="max_price" class="input" placeholder="Enter maximum price" required step="0.01" min="0.01"
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
                     </div>
                     
-                    <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Max Price ($)</label>
-                            <input type="number" name="max_price" class="input" placeholder="Enter maximum price" step="0.01" required 
-                                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Quantity</label>
+                        <input type="number" name="quantity" class="input" placeholder="Enter quantity" required min="1"
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Item Types (e.g., computer chair, marker)</label>
+                        <div class="tag-container" id="tag-container-buy">
+                            <div class="tag-input-wrapper">
+                                <input type="text" id="tag-input-buy" class="tag-input" placeholder="Type and press Enter or click + to add a type"
+                                    style="width: calc(100% - 40px); padding: 12px; border: 1px solid #ced4da; border-radius: 8px 0 0 8px; font-size: 14px; background: #fff;">
+                                <button type="button" id="add-tag-buy" class="add-tag-btn" style="width: 40px; padding: 12px; border: 1px solid #ced4da; border-left: none; border-radius: 0 8px 8px 0; background: #fff; cursor: pointer;">+</button>
+                            </div>
                         </div>
-                        
-                        <div class="form-group" style="flex: 1;">
-                            <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Quantity</label>
-                            <input type="number" name="quantity" class="input" placeholder="Enter quantity" required 
-                                style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
-                        </div>
+                        <input type="hidden" name="item_types" id="item-types-buy" required>
+                        <div id="tag-error-buy" class="error-text" style="color: #dc3545; font-size: 12px; margin-top: 5px; display: none;"></div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Upload Image (optional)</label>
+                        <input type="file" name="image" class="input" accept="image/*" 
+                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Close Time (optional)</label>
-                        <input type="datetime-local" name="close_time" id="close_time_buy" class="input" 
-                            style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 500;">Upload Image (optional)</label>
-                        <input type="file" name="image" class="input" accept="image/jpeg,image/png,image/gif" 
+                        <input type="datetime-local" name="close_time" class="input" 
                             style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease; color: #2c3e50;" />
                     </div>
                     
                     <div class="form-group" style="text-align: center; margin-top: 20px;">
-                        <button type="submit" class="admin-btn primary" style="padding: 12px 30px; font-size: 16px; border-radius: 8px;">
+                        <button type="submit" name="post_buy_submit" class="admin-btn primary" style="padding: 12px 30px; font-size: 16px; border-radius: 8px;">
                             <i class="fas fa-upload"></i> Post Buy Request
                         </button>
                     </div>
                 </form>
             </div>
+
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Tag Input System for Buy Form
+                const buyForm = document.getElementById('post-buy-form');
+                if (buyForm) {
+                    const tagContainerBuy = document.getElementById('tag-container-buy');
+                    const tagInputBuy = document.getElementById('tag-input-buy');
+                    const addTagBtnBuy = document.getElementById('add-tag-buy');
+                    const hiddenInputBuy = document.getElementById('item-types-buy');
+                    const tagErrorBuy = document.getElementById('tag-error-buy');
+                    let tagsBuy = [];
+
+                    function renderTagsBuy() {
+                        const wrapper = tagContainerBuy.querySelector('.tag-input-wrapper');
+                        tagContainerBuy.innerHTML = '';
+                        tagContainerBuy.appendChild(wrapper);
+                        tagsBuy.forEach(tag => {
+                            const tagElement = document.createElement('span');
+                            tagElement.className = 'tag';
+                            tagElement.innerHTML = `${tag} <span class="remove-tag" data-tag="${tag}">&times;</span>`;
+                            tagContainerBuy.insertBefore(tagElement, wrapper);
+                        });
+                        hiddenInputBuy.value = tagsBuy.join(',');
+                    }
+
+                    function addTagBuy(tag) {
+                        tag = tag.trim();
+                        if (!tag) {
+                            tagErrorBuy.textContent = 'Tag cannot be empty';
+                            tagErrorBuy.style.display = 'block';
+                            return;
+                        }
+                        if (tagsBuy.includes(tag)) {
+                            tagErrorBuy.textContent = 'Tag already exists';
+                            tagErrorBuy.style.display = 'block';
+                            return;
+                        }
+                        tagErrorBuy.style.display = 'none';
+                        tagsBuy.push(tag);
+                        renderTagsBuy();
+                        tagInputBuy.value = '';
+                    }
+
+                    tagInputBuy.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addTagBuy(tagInputBuy.value);
+                        }
+                    });
+
+                    addTagBtnBuy.addEventListener('click', () => {
+                        addTagBuy(tagInputBuy.value);
+                    });
+
+                    tagContainerBuy.addEventListener('click', (e) => {
+                        if (e.target.classList.contains('remove-tag')) {
+                            const tag = e.target.getAttribute('data-tag');
+                            tagsBuy = tagsBuy.filter(t => t !== tag);
+                            renderTagsBuy();
+                        }
+                    });
+
+                    buyForm.addEventListener('submit', function(e) {
+                        if (tagsBuy.length === 0) {
+                            e.preventDefault();
+                            tagErrorBuy.textContent = 'Please add at least one item type';
+                            tagErrorBuy.style.display = 'block';
+                            return;
+                        }
+                        hiddenInputBuy.value = tagsBuy.join(',');
+                    });
+                }
+            });
+            </script>
 
         <?php elseif ($_GET['action'] == 'items_for_sell'): ?>
             <!-- Items for Sale -->

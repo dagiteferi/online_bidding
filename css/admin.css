@@ -838,15 +838,13 @@ html {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    padding: 8px;
+    padding: 10px;
     border: 1px solid #ced4da;
-    border-radius: 6px;
+    border-radius: 8px;
     background: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     min-height: 40px;
     margin-bottom: 10px;
-    max-height: 120px;
-    overflow-y: auto;
 }
 
 .tag {
@@ -854,8 +852,8 @@ html {
     align-items: center;
     background-color: #e9ecef;
     color: #2c3e50;
-    padding: 4px 8px;
-    border-radius: 15px;
+    padding: 5px 10px;
+    border-radius: 20px;
     font-size: 14px;
     margin: 2px;
 }
@@ -875,73 +873,47 @@ html {
 .tag-input-wrapper {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
-    min-height: 40px;
+    margin-top: 10px;
 }
 
 .tag-input {
     flex-grow: 1;
     border: none;
     outline: none;
-    padding: 8px 12px;
-    font-size: 14px;
-    color: #2c3e50;
-    background: transparent;
-    height: 40px;
+    padding: 10px;
 }
 
 .add-tag-btn {
-    background-color: #48dbfb;
+    background: #007bff;
     color: white;
     border: none;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 5px 10px;
     cursor: pointer;
-    transition: background-color 0.3s ease;
-    font-size: 16px;
-    font-weight: bold;
-    flex-shrink: 0;
+    transition: background-color 0.3s;
 }
 
 .add-tag-btn:hover {
-    background-color: #1dc4e9;
-}
-
-.tag-input:focus {
-    outline: none;
+    background: #0056b3;
 }
 
 .error-text {
-    color: #e74c3c;
+    color: #dc3545;
     font-size: 12px;
-    margin-top: -5px;
-    margin-bottom: 10px;
-    display: none;
+    margin-top: 5px;
 }
 
-/* Description box styling */
-textarea {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ced4da;
-    border-radius: 6px;
-    font-size: 14px;
-    line-height: 1.5;
-    min-height: 120px;
-    resize: vertical;
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-textarea:focus {
-    border-color: #48dbfb;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(72, 219, 251, 0.25);
+/* Animation Keyframes */
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
 }
 
 /* Edit Form Styles */
