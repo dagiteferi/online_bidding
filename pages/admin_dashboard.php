@@ -1021,7 +1021,539 @@ try {
 } catch (PDOException $e) {
     $error = "Error fetching transactions: " . $e->getMessage();
 }
+
+// Fetch item or buy request data for editing
+if (isset($_GET['action']) && isset($_GET['item_id'])) {
+    if ($_GET['action'] == 'edit_item') {
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM items WHERE id = :item_id AND posted_by = :user_id");
+            $stmt->execute([
+                ':item_id' => intval($_GET['item_id']),
+                ':user_id' => $_SESSION['user_id']
+            ]);
+            $item_to_edit = $stmt->fetch();
+        } catch (PDOException $e) {
+            $error = "Error fetching item: " . $e->getMessage();
+        }
+    }
+}
+
+if (isset($_GET['action']) && isset($_GET['request_id'])) {
+    if ($_GET['action'] == 'edit_buy_request') {
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM buy_requests WHERE id = :request_id AND user_id = :user_id");
+            $stmt->execute([
+                ':request_id' => intval($_GET['request_id']),
+                ':user_id' => $_SESSION['user_id']
+            ]);
+            $request_to_edit = $stmt->fetch();
+        } catch (PDOException $e) {
+            $error = "Error fetching buy request: " . $e->getMessage();
+        }
+    }
+}
+
+// Handle edit item form submission
+if (isset($_POST['edit_item_submit'])) {
+    try {
+        if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+            throw new Exception("Invalid CSRF token");
+        }
+
+        $item_id = intval($_POST['item_id']);
+        $supplier_name = sanitizeInput($_POST['supplier_name']);
+        $item_name = sanitizeInput($_POST['item_name']);
+        $description = sanitizeInput($_POST['description']);
+        $price = floatval($_POST['price']);
+        $quantity = intval($_POST['quantity']);
+        $item_types = sanitizeInput($_POST['item_types']);
+
+        // Validate inputs
+        if (empty($supplier_name) || empty($item_name) || empty($description) || $price <= 0 || $quantity < 0) {
+            throw new Exception("All fields are required and must be valid");
+        }
+
+        // Handle image upload
+        $image_path = $_POST['existing_image'];
+        if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
+            $upload_dir = '../uploads/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+
+            $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+            if (!in_array($_FILES['image']['type'], $allowed_types)) {
+                throw new Exception("Invalid file type. Only JPG, PNG and GIF are allowed.");
+            }
+
+            $file_extension = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+            $new_filename = uniqid('item_') . '.' . $file_extension;
+            $full_path = $upload_dir . $new_filename;
+
+            if (move_uploaded_file($_FILES['image']['tmp_name'], $full_path)) {
+                $image_path = 'uploads/' . $new_filename;
+            } else {
+                throw new Exception("Failed to upload image");
+            }
+        }
+
+        // Update database
+        $stmt = $pdo->prepare("
+            UPDATE items 
+            SET supplier_name = :supplier_name,
+                item_name = :item_name,
+                description = :description,
+                price = :price,
+                quantity = :quantity,
+                item_type = :item_types,
+                image = :image,
+                updated_at = NOW()
+            WHERE id = :item_id AND posted_by = :user_id
+        ");
+
+        $result = $stmt->execute([
+            ':supplier_name' => $supplier_name,
+            ':item_name' => $item_name,
+            ':description' => $description,
+            ':price' => $price,
+            ':quantity' => $quantity,
+            ':item_types' => $item_types,
+            ':image' => $image_path,
+            ':item_id' => $item_id,
+            ':user_id' => $_SESSION['user_id']
+        ]);
+
+        if (!$result) {
+            throw new Exception("Failed to update item");
+        }
+
+        if ($stmt->rowCount() === 0) {
+            throw new Exception("No changes were made or you don't have permission to edit this item");
+        }
+
+        $_SESSION['success_message'] = "Item updated successfully!";
+        
+        // If it's an AJAX request, send JSON response
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Item updated successfully']);
+            exit;
+        }
+
+        // Regular form submission
+        header("Location: admin_dashboard.php?action=items_for_sell");
+        exit();
+
+    } catch (Exception $e) {
+        error_log("Error updating item: " . $e->getMessage());
+        $_SESSION['error_message'] = $e->getMessage();
+
+        // If it's an AJAX request, send JSON response
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+
+        // Regular form submission
+        header("Location: admin_dashboard.php?action=items_for_sell");
+        exit();
+    }
+}
+
+// Handle edit buy request form submission
+if (isset($_POST['edit_request_submit'])) {
+    try {
+        $request_id = intval($_POST['request_id']);
+        $item_name = sanitizeInput($_POST['item_name']);
+        $description = sanitizeInput($_POST['description']);
+        $max_price = floatval($_POST['max_price']);
+        $quantity = intval($_POST['quantity']);
+        $item_types = sanitizeInput($_POST['item_types']);
+
+        // Handle image upload
+        $image_path = $_POST['existing_image'];
+        if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
+            $upload_dir = '../uploads/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+            $file_extension = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+            $new_filename = uniqid('request_') . '.' . $file_extension;
+            if (move_uploaded_file($_FILES['image']['tmp_name'], $upload_dir . $new_filename)) {
+                $image_path = 'uploads/' . $new_filename;
+            }
+        }
+
+        $stmt = $pdo->prepare("
+            UPDATE buy_requests 
+            SET item_name = :item_name,
+                description = :description,
+                max_price = :max_price,
+                quantity = :quantity,
+                item_type = :item_types,
+                image = :image
+            WHERE id = :request_id AND user_id = :user_id
+        ");
+
+        $stmt->execute([
+            ':item_name' => $item_name,
+            ':description' => $description,
+            ':max_price' => $max_price,
+            ':quantity' => $quantity,
+            ':item_types' => $item_types,
+            ':image' => $image_path,
+            ':request_id' => $request_id,
+            ':user_id' => $_SESSION['user_id']
+        ]);
+
+        $_SESSION['success_message'] = "Buy request updated successfully!";
+        header("Location: admin_dashboard.php?action=buy_requests");
+        exit();
+    } catch (PDOException $e) {
+        $error = "Error updating buy request: " . $e->getMessage();
+    }
+}
+
+// At the beginning of the file, add this code to fetch item data
+if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($_GET['item_id'])) {
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM items WHERE id = :item_id AND posted_by = :user_id");
+        $stmt->execute([
+            ':item_id' => intval($_GET['item_id']),
+            ':user_id' => $_SESSION['user_id']
+        ]);
+        $item_to_edit = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$item_to_edit) {
+            $_SESSION['error_message'] = "Item not found or you don't have permission to edit it.";
+            header("Location: admin_dashboard.php?action=items_for_sell");
+            exit();
+        }
+    } catch (PDOException $e) {
+        $_SESSION['error_message'] = "Error fetching item: " . $e->getMessage();
+        header("Location: admin_dashboard.php?action=items_for_sell");
+        exit();
+    }
+}
+
+// Add this where your other form processing code is
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_item_submit'])) {
+    try {
+        // Validate CSRF token
+        if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+            throw new Exception("Invalid CSRF token");
+        }
+
+        // Validate required fields
+        $required_fields = ['item_id', 'supplier_name', 'item_name', 'description', 'price', 'quantity'];
+        foreach ($required_fields as $field) {
+            if (!isset($_POST[$field]) || trim($_POST[$field]) === '') {
+                throw new Exception("All fields are required");
+            }
+        }
+
+        // Sanitize and prepare data
+        $item_id = intval($_POST['item_id']);
+        $supplier_name = sanitizeInput($_POST['supplier_name']);
+        $item_name = sanitizeInput($_POST['item_name']);
+        $description = sanitizeInput($_POST['description']);
+        $price = floatval($_POST['price']);
+        $quantity = intval($_POST['quantity']);
+        $item_types = sanitizeInput($_POST['item_types'] ?? '');
+
+        // Validate numeric fields
+        if ($price <= 0) throw new Exception("Price must be greater than 0");
+        if ($quantity < 0) throw new Exception("Quantity cannot be negative");
+
+        // Handle image upload
+        $image_path = $_POST['existing_image'] ?? null;
+        if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
+            $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+            if (!in_array($_FILES['image']['type'], $allowed_types)) {
+                throw new Exception("Invalid file type. Only JPG, PNG and GIF are allowed.");
+            }
+
+            $upload_dir = '../uploads/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+
+            $file_extension = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+            $new_filename = uniqid('item_') . '.' . $file_extension;
+            $full_path = $upload_dir . $new_filename;
+
+            if (!move_uploaded_file($_FILES['image']['tmp_name'], $full_path)) {
+                throw new Exception("Failed to upload image");
+            }
+            $image_path = 'uploads/' . $new_filename;
+        }
+
+        // Update the database
+        $sql = "UPDATE items SET 
+                supplier_name = :supplier_name,
+                item_name = :item_name,
+                description = :description,
+                price = :price,
+                quantity = :quantity,
+                item_type = :item_types";
+        
+        if ($image_path !== null) {
+            $sql .= ", image = :image";
+        }
+        
+        $sql .= ", updated_at = NOW() 
+                WHERE id = :item_id AND posted_by = :user_id";
+
+        $stmt = $pdo->prepare($sql);
+        
+        $params = [
+            ':supplier_name' => $supplier_name,
+            ':item_name' => $item_name,
+            ':description' => $description,
+            ':price' => $price,
+            ':quantity' => $quantity,
+            ':item_types' => $item_types,
+            ':item_id' => $item_id,
+            ':user_id' => $_SESSION['user_id']
+        ];
+
+        if ($image_path !== null) {
+            $params[':image'] = $image_path;
+        }
+
+        $stmt->execute($params);
+
+        if ($stmt->rowCount() === 0) {
+            throw new Exception("No changes were made or you don't have permission to edit this item");
+        }
+
+        $_SESSION['success_message'] = "Item updated successfully!";
+        
+        // Handle AJAX requests
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Item updated successfully']);
+            exit;
+        }
+
+        // Regular form submission
+        header("Location: admin_dashboard.php?action=items_for_sell");
+        exit();
+
+    } catch (Exception $e) {
+        $_SESSION['error_message'] = $e->getMessage();
+        
+        // Handle AJAX requests
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+
+        // Regular form submission
+        header("Location: admin_dashboard.php?action=items_for_sell");
+        exit();
+    }
+}
+
+// Add this at the beginning of the file after session_start()
+if (isset($_GET['action']) && $_GET['action'] == 'items_for_sell') {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT i.*, u.username 
+            FROM items i 
+            LEFT JOIN users u ON i.posted_by = u.id 
+            WHERE i.posted_by = :user_id 
+            ORDER BY i.created_at DESC
+        ");
+        $stmt->execute([':user_id' => $_SESSION['user_id']]);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $error = "Error fetching items: " . $e->getMessage();
+    }
+}
 ?>
+<!-- Add this in your items for sale section where you display the items -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle edit button clicks
+    document.querySelectorAll('.edit-item-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const itemId = this.getAttribute('data-item-id');
+            window.location.href = `admin_dashboard.php?action=edit_item&item_id=${itemId}`;
+        });
+    });
+
+    // Handle edit form submission if it exists
+    const editForm = document.getElementById('edit-item-form');
+    if (editForm) {
+        editForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            submitButton.disabled = true;
+
+            const formData = new FormData(this);
+
+            fetch('admin_dashboard.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'alert alert-success';
+                    messageDiv.textContent = data.message;
+                    document.querySelector('.content-wrapper').insertBefore(messageDiv, document.querySelector('.content-wrapper').firstChild);
+
+                    // Redirect after a short delay
+                    setTimeout(() => {
+                        window.location.href = 'admin_dashboard.php?action=items_for_sell';
+                    }, 1000);
+                } else {
+                    throw new Error(data.message || 'Error updating item');
+                }
+            })
+            .catch(error => {
+                // Show error message
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'alert alert-danger';
+                messageDiv.textContent = error.message;
+                document.querySelector('.content-wrapper').insertBefore(messageDiv, document.querySelector('.content-wrapper').firstChild);
+
+                // Reset button
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+            });
+        });
+    }
+
+    // Initialize tags input if we're on the edit form
+    const tagContainer = document.getElementById('tag-container-edit');
+    if (tagContainer) {
+        const tagInput = document.getElementById('tag-input-edit');
+        const addTagBtn = document.getElementById('add-tag-edit');
+        const hiddenInput = document.getElementById('item-types-edit');
+        let tags = hiddenInput.value.split(',').filter(tag => tag.trim());
+
+        function renderTags() {
+            const wrapper = tagContainer.querySelector('.tag-input-wrapper');
+            tagContainer.innerHTML = '';
+            tagContainer.appendChild(wrapper);
+            tags.forEach(tag => {
+                const tagElement = document.createElement('span');
+                tagElement.className = 'tag';
+                tagElement.innerHTML = `${tag} <span class="remove-tag" data-tag="${tag}">&times;</span>`;
+                tagContainer.insertBefore(tagElement, wrapper);
+            });
+            hiddenInput.value = tags.join(',');
+        }
+
+        function addTag(tag) {
+            tag = tag.trim();
+            if (!tag) return;
+            if (tags.includes(tag)) return;
+            tags.push(tag);
+            renderTags();
+            tagInput.value = '';
+        }
+
+        renderTags();
+
+        tagInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addTag(tagInput.value);
+            }
+        });
+
+        addTagBtn.addEventListener('click', () => {
+            addTag(tagInput.value);
+        });
+
+        tagContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-tag')) {
+                const tag = e.target.getAttribute('data-tag');
+                tags = tags.filter(t => t !== tag);
+                renderTags();
+            }
+        });
+    }
+});
+</script>
+
+<!-- Add this where you want the edit form to appear -->
+<?php if (isset($_GET['action']) && $_GET['action'] == 'edit_item' && isset($item_to_edit)): ?>
+<div class="edit-form-overlay active"></div>
+<div class="edit-form-container active">
+    <button class="close-btn" onclick="window.location.href='admin_dashboard.php?action=items_for_sell'">&times;</button>
+    <h2><i class="fas fa-edit"></i> Edit Item for Sale</h2>
+    <form method="POST" enctype="multipart/form-data" id="edit-item-form">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+        <input type="hidden" name="item_id" value="<?php echo htmlspecialchars($item_to_edit['id']); ?>">
+        <input type="hidden" name="existing_image" value="<?php echo htmlspecialchars($item_to_edit['image'] ?? ''); ?>">
+
+        <div class="form-group">
+            <label>Supplier Name</label>
+            <input type="text" name="supplier_name" value="<?php echo htmlspecialchars($item_to_edit['supplier_name']); ?>" required class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label>Item Name</label>
+            <input type="text" name="item_name" value="<?php echo htmlspecialchars($item_to_edit['item_name']); ?>" required class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label>Description</label>
+            <textarea name="description" required class="form-control" rows="4"><?php echo htmlspecialchars($item_to_edit['description']); ?></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Price ($)</label>
+            <input type="number" name="price" value="<?php echo htmlspecialchars($item_to_edit['price']); ?>" step="0.01" required class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label>Quantity</label>
+            <input type="number" name="quantity" value="<?php echo htmlspecialchars($item_to_edit['quantity']); ?>" required class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label>Item Types</label>
+            <div class="tag-container" id="tag-container-edit">
+                <div class="tag-input-wrapper">
+                    <input type="text" id="tag-input-edit" class="tag-input" placeholder="Type and press Enter or click + to add a type">
+                    <button type="button" id="add-tag-edit" class="add-tag-btn">+</button>
+                </div>
+            </div>
+            <input type="hidden" name="item_types" id="item-types-edit" value="<?php echo htmlspecialchars($item_to_edit['item_type']); ?>">
+            <div id="tag-error-edit" class="error-text"></div>
+        </div>
+
+        <div class="form-group">
+            <label>Upload New Image (optional)</label>
+            <input type="file" name="image" accept="image/*" class="form-control">
+            <?php if (!empty($item_to_edit['image'])): ?>
+                <p class="mt-2">Current image: <img src="../<?php echo htmlspecialchars($item_to_edit['image']); ?>" alt="Current Item Image" style="max-width: 100px;"></p>
+            <?php endif; ?>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="admin-btn danger" onclick="window.location.href='admin_dashboard.php?action=items_for_sell'">Cancel</button>
+            <button type="submit" name="edit_item_submit" class="admin-btn primary">Update Item</button>
+        </div>
+    </form>
+</div>
+<?php endif; ?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -2276,8 +2808,9 @@ try {
             <div class="edit-form-container active">
                 <button class="close-btn" onclick="window.history.back()">&times;</button>
                 <h2><i class="fas fa-edit"></i> Edit Item</h2>
-                <form method="POST" enctype="multipart/form-data">
+                <form method="POST" enctype="multipart/form-data" id="edit-item-form">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                    <input type="hidden" name="item_id" value="<?php echo htmlspecialchars($item_to_edit['id']); ?>">
                     <input type="hidden" name="existing_image" value="<?php echo htmlspecialchars($item_to_edit['image'] ?? ''); ?>">
 
                     <div class="form-group">
@@ -2321,80 +2854,223 @@ try {
                         <label>Upload New Image (optional)</label>
                         <input type="file" name="image" accept="image/*" class="form-control">
                         <?php if (!empty($item_to_edit['image'])): ?>
-                            <p class="mt-2">Current image: <img src="<?php echo htmlspecialchars($item_to_edit['image']); ?>" alt="Current Item Image" style="max-width: 100px;"></p>
+                            <p class="mt-2">Current image: <img src="../<?php echo htmlspecialchars($item_to_edit['image']); ?>" alt="Current Item Image" style="max-width: 100px;"></p>
                         <?php endif; ?>
                     </div>
 
                     <div class="form-actions">
                         <button type="button" class="admin-btn danger" onclick="window.history.back()">Cancel</button>
-                        <button type="submit" class="admin-btn primary">Update Item</button>
+                        <button type="submit" name="edit_item_submit" class="admin-btn primary">Update Item</button>
                     </div>
                 </form>
             </div>
 
             <script>
-            // Initialize tags for edit form
-            const tagsEdit = <?php echo json_encode(explode(',', $item_to_edit['item_type'])); ?>.filter(tag => tag.trim());
-            const tagContainerEdit = document.getElementById('tag-container-edit');
-            const tagInputEdit = document.getElementById('tag-input-edit');
-            const addTagButtonEdit = document.getElementById('add-tag-edit');
-            const hiddenTagsEdit = document.getElementById('item-types-edit');
-            const tagErrorEdit = document.getElementById('tag-error-edit');
+            document.addEventListener('DOMContentLoaded', function() {
+                const form = document.getElementById('edit-item-form');
+                const tagInput = document.getElementById('tag-input-edit');
+                const addTagBtn = document.getElementById('add-tag-edit');
+                const tagContainer = document.getElementById('tag-container-edit');
+                const hiddenInput = document.getElementById('item-types-edit');
+                let tags = hiddenInput.value.split(',').filter(tag => tag.trim());
 
-            function renderTagsEdit() {
-                const tagWrapper = tagContainerEdit.querySelector('.tag-input-wrapper');
-                tagContainerEdit.innerHTML = '';
-                tagContainerEdit.appendChild(tagWrapper);
-                tagsEdit.forEach(tag => {
-                    const tagElement = document.createElement('span');
-                    tagElement.className = 'tag';
-                    tagElement.innerHTML = `${tag} <span class="remove-tag" data-tag="${tag}">&times;</span>`;
-                    tagContainerEdit.insertBefore(tagElement, tagWrapper);
-                });
-                hiddenTagsEdit.value = tagsEdit.join(',');
-            }
-
-            function addTagEdit(tag) {
-                tag = tag.trim();
-                if (!tag) {
-                    tagErrorEdit.textContent = 'Tag cannot be empty';
-                    tagErrorEdit.style.display = 'block';
-                    return;
+                function renderTags() {
+                    const wrapper = tagContainer.querySelector('.tag-input-wrapper');
+                    tagContainer.innerHTML = '';
+                    tagContainer.appendChild(wrapper);
+                    tags.forEach(tag => {
+                        const tagElement = document.createElement('span');
+                        tagElement.className = 'tag';
+                        tagElement.innerHTML = `${tag} <span class="remove-tag" data-tag="${tag}">&times;</span>`;
+                        tagContainer.insertBefore(tagElement, wrapper);
+                    });
+                    hiddenInput.value = tags.join(',');
                 }
-                if (tagsEdit.includes(tag)) {
-                    tagErrorEdit.textContent = 'Tag already exists';
-                    tagErrorEdit.style.display = 'block';
-                    return;
+
+                function addTag(tag) {
+                    tag = tag.trim();
+                    if (!tag) return;
+                    if (tags.includes(tag)) return;
+                    tags.push(tag);
+                    renderTags();
+                    tagInput.value = '';
                 }
-                tagErrorEdit.style.display = 'none';
-                tagsEdit.push(tag);
-                renderTagsEdit();
-                tagInputEdit.value = '';
-            }
 
-            renderTagsEdit();
+                renderTags();
 
-            tagInputEdit.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addTagEdit(tagInputEdit.value);
-                }
-            });
-
-            addTagButtonEdit.addEventListener('click', () => {
-                addTagEdit(tagInputEdit.value);
-            });
-
-            tagContainerEdit.addEventListener('click', (e) => {
-                if (e.target.classList.contains('remove-tag')) {
-                    const tag = e.target.getAttribute('data-tag');
-                    const index = tagsEdit.indexOf(tag);
-                    if (index > -1) {
-                        tagsEdit.splice(index, 1);
-                        renderTagsEdit();
+                tagInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addTag(tagInput.value);
                     }
-                }
+                });
+
+                addTagBtn.addEventListener('click', () => {
+                    addTag(tagInput.value);
+                });
+
+                tagContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('remove-tag')) {
+                        const tag = e.target.getAttribute('data-tag');
+                        tags = tags.filter(t => t !== tag);
+                        renderTags();
+                    }
+                });
+
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+
+                    fetch(window.location.href, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        window.location.href = 'admin_dashboard.php?action=items_for_sell';
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error updating item. Please try again.');
+                    });
+                });
             });
+            </script>
+        <?php endif; ?>
+
+        <?php if (isset($_GET['action']) && $_GET['action'] == 'edit_buy_request' && isset($request_to_edit)): ?>
+            <div class="edit-form-overlay active"></div>
+            <div class="edit-form-container active">
+                <button class="close-btn" onclick="window.history.back()">&times;</button>
+                <h2><i class="fas fa-edit"></i> Edit Buy Request</h2>
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                    <input type="hidden" name="request_id" value="<?php echo htmlspecialchars($request_to_edit['id']); ?>">
+                    <input type="hidden" name="existing_image" value="<?php echo htmlspecialchars($request_to_edit['image'] ?? ''); ?>">
+
+                    <div class="form-group">
+                        <label>Item Name</label>
+                        <input type="text" name="item_name" value="<?php echo htmlspecialchars($request_to_edit['item_name']); ?>" required class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea name="description" required class="form-control" rows="4"><?php echo htmlspecialchars($request_to_edit['description']); ?></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Maximum Price ($)</label>
+                        <input type="number" name="max_price" value="<?php echo htmlspecialchars($request_to_edit['max_price']); ?>" step="0.01" required class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" name="quantity" value="<?php echo htmlspecialchars($request_to_edit['quantity']); ?>" required class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Item Types</label>
+                        <div class="tag-container" id="tag-container-edit-request">
+                            <div class="tag-input-wrapper">
+                                <input type="text" id="tag-input-edit-request" class="tag-input" placeholder="Type and press Enter or click + to add a type">
+                                <button type="button" id="add-tag-edit-request" class="add-tag-btn">+</button>
+                            </div>
+                        </div>
+                        <input type="hidden" name="item_types" id="item-types-edit-request" value="<?php echo htmlspecialchars($request_to_edit['item_type']); ?>">
+                        <div id="tag-error-edit-request" class="error-text"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload New Image (optional)</label>
+                        <input type="file" name="image" accept="image/*" class="form-control">
+                        <?php if (!empty($request_to_edit['image'])): ?>
+                            <p class="mt-2">Current image: <img src="<?php echo htmlspecialchars($request_to_edit['image']); ?>" alt="Current Request Image" style="max-width: 100px;"></p>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="admin-btn danger" onclick="window.history.back()">Cancel</button>
+                        <button type="submit" name="edit_request_submit" class="admin-btn primary">Update Request</button>
+                    </div>
+                </form>
+            </div>
+
+            <script>
+            // Initialize tags for both forms
+            function initializeTags(containerId, inputId, addBtnId, hiddenInputId, initialTags) {
+                const container = document.getElementById(containerId);
+                const input = document.getElementById(inputId);
+                const addBtn = document.getElementById(addBtnId);
+                const hiddenInput = document.getElementById(hiddenInputId);
+                let tags = initialTags.split(',').filter(tag => tag.trim());
+
+                function renderTags() {
+                    const wrapper = container.querySelector('.tag-input-wrapper');
+                    container.innerHTML = '';
+                    container.appendChild(wrapper);
+                    tags.forEach(tag => {
+                        const tagElement = document.createElement('span');
+                        tagElement.className = 'tag';
+                        tagElement.innerHTML = `${tag} <span class="remove-tag" data-tag="${tag}">&times;</span>`;
+                        container.insertBefore(tagElement, wrapper);
+                    });
+                    hiddenInput.value = tags.join(',');
+                }
+
+                function addTag(tag) {
+                    tag = tag.trim();
+                    if (!tag) return;
+                    if (tags.includes(tag)) return;
+                    tags.push(tag);
+                    renderTags();
+                    input.value = '';
+                }
+
+                renderTags();
+
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addTag(input.value);
+                    }
+                });
+
+                addBtn.addEventListener('click', () => {
+                    addTag(input.value);
+                });
+
+                container.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('remove-tag')) {
+                        const tag = e.target.getAttribute('data-tag');
+                        tags = tags.filter(t => t !== tag);
+                        renderTags();
+                    }
+                });
+            }
+
+            // Initialize tags for item edit form
+            if (document.getElementById('tag-container-edit')) {
+                initializeTags(
+                    'tag-container-edit',
+                    'tag-input-edit',
+                    'add-tag-edit',
+                    'item-types-edit',
+                    document.getElementById('item-types-edit').value
+                );
+            }
+
+            // Initialize tags for request edit form
+            if (document.getElementById('tag-container-edit-request')) {
+                initializeTags(
+                    'tag-container-edit-request',
+                    'tag-input-edit-request',
+                    'add-tag-edit-request',
+                    'item-types-edit-request',
+                    document.getElementById('item-types-edit-request').value
+                );
+            }
             </script>
         <?php endif; ?>
     </div>
