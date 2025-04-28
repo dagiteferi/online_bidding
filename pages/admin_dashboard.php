@@ -110,7 +110,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'post_sell') {
                 }
 
                 if (!isset($error)) {
-                    $stmt = $pdo->prepare("INSERT INTO items_for_sale (supplier_name, item_name, item_type, description, price, quantity, status, image, close_time, created_at) VALUES (:supplier_name, :item_name, :item_type, :description, :price, :quantity, 'available', :image, :close_time, NOW())");
+                    $stmt = $pdo->prepare("INSERT INTO items (supplier_name, item_name, item_type, description, price, quantity, status, image, close_time, created_at, posted_by) VALUES (:supplier_name, :item_name, :item_type, :description, :price, :quantity, 'available', :image, :close_time, NOW(), :posted_by)");
                     $stmt->execute([
                         ':supplier_name' => $supplier_name,
                         ':item_name' => $item_name,
@@ -118,8 +118,9 @@ if (isset($_GET['action']) && $_GET['action'] == 'post_sell') {
                         ':description' => $description,
                         ':price' => $price,
                         ':quantity' => $quantity,
-                        ':image' => $image_path,
-                        ':close_time' => $close_time
+                        ':image' => $image_path ?? null,
+                        ':close_time' => $close_time,
+                        ':posted_by' => $_SESSION['user_id'] // Add the current user's ID
                     ]);
                     $success = "Item posted successfully!";
                     header("Location: admin_dashboard.php?action=items_for_sell");
@@ -171,15 +172,16 @@ if (isset($_GET['action']) && $_GET['action'] == 'post_buy') {
                 }
 
                 if (!isset($error)) {
-                    $stmt = $pdo->prepare("INSERT INTO buy_requests (item_name, item_type, description, max_price, quantity, status, image, close_time, created_at) VALUES (:item_name, :item_type, :description, :max_price, :quantity, 'open', :image, :close_time, NOW())");
+                    $stmt = $pdo->prepare("INSERT INTO buy_requests (item_name, item_type, description, max_price, quantity, status, image, close_time, created_at, user_id) VALUES (:item_name, :item_type, :description, :max_price, :quantity, 'open', :image, :close_time, NOW(), :user_id)");
                     $stmt->execute([
                         ':item_name' => $item_name,
                         ':item_type' => $item_types,
                         ':description' => $description,
                         ':max_price' => $max_price,
                         ':quantity' => $quantity,
-                        ':image' => $image_path,
-                        ':close_time' => $close_time
+                        ':image' => $image_path ?? null,
+                        ':close_time' => $close_time,
+                        ':user_id' => $_SESSION['user_id'] // Add the current user's ID
                     ]);
                     $success = "Buy request posted successfully!";
                     header("Location: admin_dashboard.php?action=buy_requests");
@@ -1125,58 +1127,108 @@ try {
         }
 
         .edit-form-container {
-            display: none;
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
             z-index: 1000;
-            width: 90%;
-            max-width: 600px;
-            max-height: 80vh;
+            max-width: 90%;
+            max-height: 90vh;
             overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            width: 600px;
+            display: none;
         }
 
         .edit-form-container.active {
             display: block;
         }
 
-        .edit-form-container form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+        .edit-form-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+            cursor: pointer;
         }
 
-        .edit-form-container .form-group {
-            margin-bottom: 0;
-        }
-
-        .edit-form-container .form-group label {
-            font-weight: 500;
-            color: #2c3e50;
-            margin-bottom: 5px;
+        .edit-form-overlay.active {
             display: block;
         }
 
-        .edit-form-container .form-group input,
-        .edit-form-container .form-group textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ced4da;
-            border-radius: 8px;
-            font-size: 14px;
-            color: #2c3e50;
+        .edit-form-container form {
+            max-height: 80vh;
+            overflow-y: auto;
+            padding-right: 10px;
         }
 
-        .edit-form-container .form-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
+        .edit-form-container .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .edit-form-container label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .edit-form-container input,
+        .edit-form-container textarea,
+        .edit-form-container select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .edit-form-container input:focus,
+        .edit-form-container textarea:focus,
+        .edit-form-container select:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+
+        .edit-form-container .close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            padding: 0.5rem;
+            line-height: 1;
+        }
+
+        .edit-form-container .close-btn:hover {
+            color: #333;
+        }
+
+        .edit-form-container .btn-submit {
+            background: #4CAF50;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 1rem;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+
+        .edit-form-container .btn-submit:hover {
+            background: #45a049;
         }
 
         .item-card {
@@ -1416,82 +1468,6 @@ try {
             margin: 0;
             font-size: 24px;
             color: #2c3e50;
-        }
-
-        /* Edit Form Styles */
-        .edit-form-container {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
-            z-index: 1000;
-            max-width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-            width: 600px;
-        }
-
-        .edit-form-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 999;
-            display: none;
-        }
-
-        .edit-form-container .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .edit-form-container label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-
-        .edit-form-container input,
-        .edit-form-container textarea,
-        .edit-form-container select {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        .edit-form-container .close-btn {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #666;
-        }
-
-        .edit-form-container .close-btn:hover {
-            color: #333;
-        }
-
-        .edit-form-container .btn-submit {
-            background: #4CAF50;
-            color: white;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 1rem;
-        }
-
-        .edit-form-container .btn-submit:hover {
-            background: #45a049;
         }
     </style>
 </head>
