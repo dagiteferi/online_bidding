@@ -1126,19 +1126,20 @@ try {
             display: none;
         }
 
-        /* Edit Form Styles */
         .edit-form-container {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             background: white;
-            padding: 20px;
+            padding: 2rem;
             border-radius: 8px;
             box-shadow: 0 0 20px rgba(0,0,0,0.2);
             z-index: 1000;
-            width: 500px;
-            max-height: 80vh;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            width: 600px;
             display: none;
         }
 
@@ -1150,11 +1151,12 @@ try {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            right: 0;
+            bottom: 0;
             background: rgba(0,0,0,0.5);
             z-index: 999;
             display: none;
+            cursor: pointer;
         }
 
         .edit-form-overlay.active {
@@ -1162,69 +1164,71 @@ try {
         }
 
         .edit-form-container form {
-            max-height: calc(80vh - 100px);
+            max-height: 80vh;
             overflow-y: auto;
             padding-right: 10px;
         }
 
         .edit-form-container .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 1.5rem;
         }
 
         .edit-form-container label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 0.5rem;
             font-weight: 500;
+            color: #333;
         }
 
         .edit-form-container input,
         .edit-form-container textarea,
         .edit-form-container select {
             width: 100%;
-            padding: 8px;
+            padding: 0.75rem;
             border: 1px solid #ddd;
             border-radius: 4px;
-            background: white;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .edit-form-container input:focus,
+        .edit-form-container textarea:focus,
+        .edit-form-container select:focus {
+            border-color: #4CAF50;
+            outline: none;
         }
 
         .edit-form-container .close-btn {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: 1rem;
+            right: 1rem;
             background: none;
             border: none;
-            font-size: 20px;
+            font-size: 1.5rem;
             cursor: pointer;
-            padding: 5px;
+            color: #666;
+            padding: 0.5rem;
+            line-height: 1;
+        }
+
+        .edit-form-container .close-btn:hover {
+            color: #333;
         }
 
         .edit-form-container .btn-submit {
             background: #4CAF50;
             color: white;
-            padding: 10px 20px;
+            padding: 0.75rem 1.5rem;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            width: 100%;
+            margin-top: 1rem;
+            font-size: 1rem;
+            transition: background-color 0.3s;
         }
 
-        /* Custom scrollbar for the form */
-        .edit-form-container form::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .edit-form-container form::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-
-        .edit-form-container form::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 4px;
-        }
-
-        .edit-form-container form::-webkit-scrollbar-thumb:hover {
-            background: #555;
+        .edit-form-container .btn-submit:hover {
+            background: #45a049;
         }
 
         .item-card {
@@ -2755,12 +2759,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Edit form functionality
 function showEditForm(requestId, type) {
-    // Create overlay
     const overlay = document.createElement('div');
     overlay.className = 'edit-form-overlay';
     document.body.appendChild(overlay);
-
-    // Create form container
+    
     const formContainer = document.createElement('div');
     formContainer.className = 'edit-form-container';
     formContainer.innerHTML = `
@@ -2773,68 +2775,76 @@ function showEditForm(requestId, type) {
             </div>
             <div class="form-group">
                 <label for="description">Description</label>
-                <textarea id="description" name="description" rows="4" required></textarea>
+                <textarea id="description" name="description" required></textarea>
             </div>
             <div class="form-group">
-                <label for="price">Price</label>
-                <input type="number" id="price" name="price" step="0.01" required>
+                <label for="price">${type === 'sale' ? 'Price' : 'Budget'}</label>
+                <input type="number" id="price" name="price" required>
             </div>
             <div class="form-group">
-                <label for="quantity">Quantity</label>
-                <input type="number" id="quantity" name="quantity" required>
+                <label for="status">Status</label>
+                <select id="status" name="status" required>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
             </div>
-            <div class="form-group">
-                <label for="close_time">Close Time</label>
-                <input type="datetime-local" id="close_time" name="close_time" required>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn-submit">Save Changes</button>
-            </div>
+            <button type="submit" class="btn-submit">Save Changes</button>
         </form>
     `;
+    
     document.body.appendChild(formContainer);
-
-    // Show form and overlay
-    formContainer.classList.add('active');
-    overlay.classList.add('active');
-
-    // Close form when clicking close button
-    const closeBtn = formContainer.querySelector('.close-btn');
-    closeBtn.addEventListener('click', closeForm);
-
-    // Close form when clicking overlay
-    overlay.addEventListener('click', closeForm);
-
-    // Prevent form from closing when clicking inside
-    formContainer.addEventListener('click', function(e) {
-        e.stopPropagation();
+    
+    // Fetch and populate data
+    fetch(`get_request_data.php?id=${requestId}&type=${type}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('title').value = data.title;
+            document.getElementById('description').value = data.description;
+            document.getElementById('price').value = data.price;
+            document.getElementById('status').value = data.status;
+        })
+        .catch(error => console.error('Error:', error));
+    
+    // Close button functionality
+    formContainer.querySelector('.close-btn').addEventListener('click', () => {
+        document.body.removeChild(overlay);
+        document.body.removeChild(formContainer);
     });
-
-    function closeForm() {
-        formContainer.remove();
-        overlay.remove();
-    }
-
-    // Focus first input
-    const firstInput = formContainer.querySelector('input');
-    if (firstInput) {
-        firstInput.focus();
-    }
+    
+    // Form submission
+    formContainer.querySelector('form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        formData.append('id', requestId);
+        formData.append('type', type);
+        
+        fetch('update_request.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error updating: ' + data.message);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+    
+    // Show overlay and form
+    overlay.style.display = 'block';
 }
 
-// Add event listeners for edit buttons
-document.addEventListener('DOMContentLoaded', function() {
-    const editButtons = document.querySelectorAll('.edit-item-btn, .edit-buy-request-btn');
-    editButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const type = this.classList.contains('edit-item-btn') ? 'sale' : 'buy';
-            const id = this.getAttribute('data-id');
-            showEditForm(id, type);
-        });
+// Add click handlers to edit buttons
+document.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const requestId = this.getAttribute('data-id');
+        const type = this.getAttribute('data-type');
+        showEditForm(requestId, type);
     });
 });
-// ... existing code ...
 </script>
 
 <script>
