@@ -190,10 +190,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_offer'])) {
                     )
                 ");
 
-                // If it's a buy request, item_id should be NULL and vice versa
+                // Execute with proper NULL handling
                 $result = $stmt->execute([
-                    ($item_id !== null) ? $item_id : null,
-                    ($request_id !== null) ? $request_id : null,
+                    $item_id,  // Will be NULL if not set
+                    $request_id,  // Will be NULL if not set
                     $_SESSION['user_id'],
                     $offer_type,
                     $offered_price,
